@@ -1,0 +1,8 @@
+{
+  "name": "kivin-example-benchmark-kivin",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kivin/core": "workspace:*"
+  }
+}

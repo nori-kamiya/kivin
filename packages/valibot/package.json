@@ -1,0 +1,33 @@
+{
+  "name": "@kivin/valibot",
+  "version": "0.0.1",
+  "description": "Valibot schema adapter for kivin",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/valibot"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@kivin/core": "workspace:*",
+    "@valibot/to-json-schema": "^1.5.0",
+    "valibot": "^1.2.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

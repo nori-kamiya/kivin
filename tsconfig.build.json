@@ -1,0 +1,16 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/decorators" },
+    { "path": "./packages/logger" },
+    { "path": "./packages/openapi" },
+    { "path": "./packages/valibot" },
+    { "path": "./packages/cli" },
+    { "path": "./examples/basic" },
+    { "path": "./examples/benchmark-kivin" },
+    { "path": "./examples/benchmark-hono" },
+    { "path": "./examples/benchmark-stack-kivin" },
+    { "path": "./examples/benchmark-stack-hono" }
+  ]
+}

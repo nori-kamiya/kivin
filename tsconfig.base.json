@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@kivin/core": ["packages/core/src/index.ts"],
+      "@kivin/decorators": ["packages/decorators/src/index.ts"],
+      "@kivin/logger": ["packages/logger/src/index.ts"],
+      "@kivin/openapi": ["packages/openapi/src/index.ts"],
+      "@kivin/valibot": ["packages/valibot/src/index.ts"],
+      "@kivin/cli": ["packages/cli/src/index.ts"]
+    },
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["node", "bun-types"],
+    "strict": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  }
+}

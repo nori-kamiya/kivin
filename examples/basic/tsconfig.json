@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "references": [
+    { "path": "../../packages/core" },
+    { "path": "../../packages/decorators" },
+    { "path": "../../packages/logger" },
+    { "path": "../../packages/openapi" },
+    { "path": "../../packages/valibot" }
+  ],
+  "include": ["src/**/*.ts", ".kivin/generated/**/*.ts", ".kivin/generated/**/*.json"]
+}

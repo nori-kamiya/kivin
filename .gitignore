@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+**/dist/
+*.tsbuildinfo
+
+# Compiled single-binary artifacts
+**/bin/
+examples/*/bin/
+
+# Generated framework artifacts (regenerate with `bun run generate`)
+.kivin/
+examples/*/.kivin/
+
+# Benchmark output logs
+.bench/
+
+# Test-generated artifacts
+packages/cli/tests/.generated/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Logs & temp
+*.log
+.cache/
+
+# Internal-only design / progress notes (not for public repo)
+PROJECT_STATE.md

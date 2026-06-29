@@ -1,0 +1,13 @@
+{
+  "name": "kivin-example-basic",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kivin/core": "workspace:*",
+    "@kivin/decorators": "workspace:*",
+    "@kivin/logger": "workspace:*",
+    "@kivin/openapi": "workspace:*",
+    "@kivin/valibot": "workspace:*",
+    "valibot": "^1.2.0"
+  }
+}

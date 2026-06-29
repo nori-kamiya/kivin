@@ -1,0 +1,8 @@
+{
+  "name": "kivin-example-benchmark-hono",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "hono": "^4.7.2"
+  }
+}

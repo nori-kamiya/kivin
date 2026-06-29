@@ -1,0 +1,32 @@
+{
+  "name": "@kivin/logger",
+  "version": "0.0.1",
+  "description": "Structured JSON-line logger and request logger middleware for kivin",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/logger"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@kivin/core": "workspace:*",
+    "@kivin/decorators": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

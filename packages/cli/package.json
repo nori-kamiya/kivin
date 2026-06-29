@@ -1,0 +1,36 @@
+{
+  "name": "@kivin/cli",
+  "version": "0.0.1",
+  "description": "Manifest and OpenAPI code-generation CLI for kivin",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "kivin": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@kivin/core": "workspace:*",
+    "@kivin/openapi": "workspace:*",
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}

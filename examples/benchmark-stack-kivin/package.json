@@ -1,0 +1,11 @@
+{
+  "name": "kivin-example-benchmark-stack-kivin",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kivin/core": "workspace:*",
+    "@kivin/logger": "workspace:*",
+    "@kivin/valibot": "workspace:*",
+    "valibot": "^1.2.0"
+  }
+}

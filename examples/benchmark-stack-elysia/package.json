@@ -1,0 +1,8 @@
+{
+  "name": "kivin-example-benchmark-stack-elysia",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "elysia": "^1.3.3"
+  }
+}

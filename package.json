@@ -1,0 +1,50 @@
+{
+  "name": "kivin-monorepo",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Bun single-binary, compile-time route-graph web framework",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "packageManager": "bun@1.3.10",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json",
+    "bench": "bun run bench:build && bun run scripts/benchmark.ts",
+    "bench:extended": "BENCH_MODE=extended bun run bench",
+    "bench:health": "bun run bench:build && bun run scripts/benchmark-health.ts",
+    "bench:stack": "bun run bench:stack:build && bun run scripts/benchmark-stack.ts",
+    "bench:stack:spot": "BENCH_ITERATIONS=${BENCH_ITERATIONS:-1} BENCH_VARIANTS=${BENCH_VARIANTS:-docs,users,create} bun run bench:stack",
+    "bench:kivin:create": "bun run bench:stack:build && bun run scripts/benchmark-kivin-create.ts",
+    "bench:stack:delete": "BENCH_ITERATIONS=${BENCH_ITERATIONS:-5} BENCH_VARIANTS=delete,delete-inline,delete-no-guard,delete-bare bun run bench:stack",
+    "bench:stack:delete:spot": "BENCH_ITERATIONS=${BENCH_ITERATIONS:-1} BENCH_VARIANTS=delete,delete-inline,delete-no-guard,delete-bare bun run bench:stack",
+    "bench:build": "bun build examples/benchmark-kivin/src/main.ts --compile --outfile examples/benchmark-kivin/bin/benchmark-kivin && bun build examples/benchmark-hono/src/main.ts --compile --outfile examples/benchmark-hono/bin/benchmark-hono && bun build examples/benchmark-elysia/src/main.ts --compile --outfile examples/benchmark-elysia/bin/benchmark-elysia",
+    "bench:stack:build": "bun build examples/benchmark-stack-kivin/src/main.ts --compile --outfile examples/benchmark-stack-kivin/bin/benchmark-stack-kivin && bun build examples/benchmark-stack-hono/src/main.ts --compile --outfile examples/benchmark-stack-hono/bin/benchmark-stack-hono && bun build examples/benchmark-stack-elysia/src/main.ts --compile --outfile examples/benchmark-stack-elysia/bin/benchmark-stack-elysia",
+    "check": "bun run generate && tsc -b tsconfig.build.json --pretty false",
+    "generate": "bun run packages/cli/src/bin.ts generate --entry examples/basic/src/app.ts --outDir examples/basic/.kivin/generated",
+    "openapi": "bun run packages/cli/src/bin.ts openapi --entry examples/basic/src/app.ts --output examples/basic/.kivin/generated/openapi.json",
+    "inspect:routes": "bun run packages/cli/src/bin.ts inspect routes --entry examples/basic/src/app.ts",
+    "inspect:modules": "bun run packages/cli/src/bin.ts inspect modules --entry examples/basic/src/app.ts",
+    "perf:check": "bun run scripts/perf-gate.ts",
+    "release:check": "bun run check && bun test && bun run example:smoke",
+    "test": "bun test",
+    "example:build": "bun run generate && bun build examples/basic/src/main.ts --compile --outfile examples/basic/bin/basic-app",
+    "example:smoke": "bun run example:build && bun run scripts/example-smoke.ts",
+    "example:dev": "bun run generate && bun run examples/basic/src/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "bun-types": "^1.3.10",
+    "elysia": "^1.3.3",
+    "hono": "^4.7.2",
+    "typescript": "^5.8.2",
+    "valibot": "^1.2.0"
+  }
+}
