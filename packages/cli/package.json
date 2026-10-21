@@ -28,7 +28,7 @@
   "dependencies": {
     "@kivin/core": "workspace:*",
     "@kivin/openapi": "workspace:*",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
