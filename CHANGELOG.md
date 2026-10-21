@@ -4,6 +4,16 @@
 フォーマットは [Keep a Changelog](https://keepachangelog.com/) に準拠し、
 バージョニングは [Semantic Versioning](https://semver.org/lang/ja/) に従います。
 
+## [Unreleased]
+
+### Fixed
+
+- `@kivin/core`: クエリ schema を持つルートで、クエリ文字列が無いリクエストが `400 query validation failed` になっていた問題を修正（optional なフィールドだけの schema でも空オブジェクトとして検証する）
+
+### Changed
+
+- 依存関係を更新（hono 4.13 / elysia 1.4.30 / valibot 1.5 ほか）。`@kivin/valibot` の valibot 下限を `^1.5.0` に引き上げ
+
 ## [0.0.1] - 2026-06-29
 
 初回公開リリース。

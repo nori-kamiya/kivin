@@ -29,6 +29,10 @@ const SearchQuerySchema = v.object({
   search: v.pipe(v.string(), v.minLength(2)),
 });
 
+const OptionalSearchQuerySchema = v.object({
+  search: v.optional(v.string()),
+});
+
 const IdParamSchema = v.object({
   id: v.pipe(v.string(), v.regex(/^\d+$/)),
 });
@@ -472,6 +476,10 @@ class TestController {
     return { search };
   }
 
+  optionalSearch(search: string | undefined) {
+    return { search: search ?? null };
+  }
+
   searchViaContext(context: RequestContext) {
     return { search: context.req.query('search') };
   }
@@ -751,6 +759,22 @@ const manifest: AppManifest = {
         tags: ['test'],
         security: [],
         querySchema: SearchQuerySchema,
+        responses: [],
+      },
+    },
+    {
+      method: 'GET',
+      fullPath: '/test/optional-search',
+      controller: TestController,
+      methodName: 'optionalSearch',
+      parameters: [{ index: 0, source: 'query', name: 'search' }],
+      guards: [],
+      middleware: [],
+      filters: [],
+      docs: {
+        tags: ['test'],
+        security: [],
+        querySchema: OptionalSearchQuerySchema,
         responses: [],
       },
     },
@@ -2552,6 +2576,13 @@ describe('createApp pipeline', () => {
     const payload = await response.json();
     expect(payload.message).toBe('query validation failed');
     expect(Array.isArray(payload.issues)).toBe(true);
+  });
+
+  test('query schema with only optional fields accepts a request without a query string', async () => {
+    const response = await app.fetch(new Request('http://localhost/test/optional-search'));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ search: null });
   });
 
   test('named query parameters are decoded without requiring a query schema object', async () => {

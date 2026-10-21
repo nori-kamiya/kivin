@@ -930,7 +930,7 @@ function createQueryPayloadResolver<TSchema>(
 ): CompiledQueryPayloadResolver {
   if (route.docs.querySchema) {
     const validateQuery = createSchemaValidator(definition, route.docs.querySchema, 'query');
-    return (requestUrl) => validateQuery(readQueryObject(requestUrl));
+    return (requestUrl) => validateQuery(readQueryObject(requestUrl) ?? {});
   }
 
   if (requiresQueryObject) {
