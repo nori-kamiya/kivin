@@ -13,7 +13,7 @@
 ### Changed
 
 - 依存関係を更新（hono 4.13 / elysia 1.4.30 / valibot 1.5 ほか）。`@kivin/valibot` の valibot 下限を `^1.5.0` に引き上げ
-- `@kivin/cli` の依存 TypeScript を `^5.9.3` から `^6.0.3` に更新（Compiler API を使うため TypeScript 7 には未対応）
+- `@kivin/cli`: AST 解析と module 解決を TypeScript Compiler API から oxc-parser / oxc-resolver に置き換え、`typescript` への依存を削除。生成される manifest / OpenAPI は従来と同一で、生成は約 5 倍速い（example で 310ms → 64ms）
 
 ## [0.0.1] - 2026-06-29
 

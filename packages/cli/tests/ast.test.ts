@@ -43,6 +43,18 @@ describe('buildManifestSourceFromAst', () => {
     expect(result.source).toContain('fullPath: "/inline/"');
     expect(result.source).toContain('fullPath: "/inline-second/"');
   });
+
+  test('keeps source offsets correct after non-ASCII text', async () => {
+    const result = await buildManifestSourceFromAst({
+      entry: join(testsDir, 'fixtures/unicode-app/src/app.ts'),
+      outFile: join(testsDir, '.generated', 'unicode-manifest.ts'),
+    });
+
+    expect(result.source).toContain('fullPath: "/ユーザー/"');
+    expect(result.source).toContain('summary: "ユーザー一覧 🚀", description: "説明文"');
+    expect(result.source).toContain('responses: [{ status: 200, description: "成功", schema: UserSchema }]');
+    expect(result.source).toContain("import { UserSchema } from '../fixtures/unicode-app/src/schemas';");
+  });
 });
 
 describe('generateArtifacts', () => {

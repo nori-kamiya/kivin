@@ -1,6 +1,23 @@
+import { existsSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, relative, resolve } from 'node:path';
-import ts from 'typescript';
+import { parseSync } from 'oxc-parser';
+import type {
+  ArrayExpressionElement,
+  CallExpression,
+  Class,
+  Decorator,
+  Expression,
+  MethodDefinition,
+  Node,
+  ObjectExpression,
+  ObjectProperty,
+  ParamPattern,
+  Program,
+  PropertyKey,
+  VariableDeclarator,
+} from 'oxc-parser';
+import { ResolverFactory } from 'oxc-resolver';
 
 interface AstImportBinding {
   kind: 'named' | 'default' | 'namespace';
@@ -14,7 +31,13 @@ interface AstImportContext {
   filePath: string;
   imports: Map<string, AstImportBinding>;
   localExports: Set<string>;
-  localDefinitions: Map<string, ts.Declaration>;
+  localDefinitions: Map<string, Node>;
+}
+
+interface ParsedSource {
+  filePath: string;
+  text: string;
+  program: Program;
 }
 
 interface AstNamedModuleRef {
@@ -92,7 +115,19 @@ interface RenderImportEntry {
 }
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.mjs'];
-const compilerOptionsCache = new Map<string, ts.CompilerOptions>();
+const TYPESCRIPT_SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts'];
+const resolver = new ResolverFactory({
+  tsconfig: 'auto',
+  conditionNames: ['types', 'import', 'default'],
+  mainFields: ['types', 'typings', 'module', 'main'],
+  extensions: ['.ts', '.tsx', '.d.ts', '.mts', '.d.mts', '.cts', '.d.cts', '.js', '.jsx', '.mjs', '.cjs', '.json'],
+  extensionAlias: {
+    '.js': ['.ts', '.tsx', '.d.ts', '.js'],
+    '.jsx': ['.tsx', '.d.ts', '.jsx'],
+    '.mjs': ['.mts', '.d.mts', '.mjs'],
+    '.cjs': ['.cts', '.d.cts', '.cjs'],
+  },
+});
 
 export async function buildManifestSourceFromAst(input: { entry: string; outFile: string }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
@@ -110,9 +145,9 @@ export async function buildManifestSourceFromAst(input: { entry: string; outFile
 }
 
 async function readAppModules(filePath: string): Promise<AstModuleRef[]> {
-  const sourceFile = await parseSource(filePath);
-  const context = createImportContext(filePath, sourceFile);
-  const defineApplicationCall = findCallExpression(sourceFile, 'defineApplication');
+  const source = await parseSource(filePath);
+  const context = createImportContext(filePath, source);
+  const defineApplicationCall = findCallExpression(source.program, 'defineApplication');
   if (!defineApplicationCall || defineApplicationCall.arguments.length === 0) {
     throw new Error(`defineApplication(...) was not found in ${filePath}`);
   }
@@ -121,16 +156,16 @@ async function readAppModules(filePath: string): Promise<AstModuleRef[]> {
   if (!config) {
     throw new Error(`defineApplication(...) requires a config object in ${filePath}`);
   }
-  if (!ts.isObjectLiteralExpression(config)) {
+  if (config.type !== 'ObjectExpression') {
     throw new Error(`defineApplication(...) requires an object literal in ${filePath}`);
   }
 
-  const modulesProperty = config.properties.find((property) => ts.isPropertyAssignment(property) && getPropertyName(property.name) === 'modules');
-  if (!modulesProperty || !ts.isPropertyAssignment(modulesProperty) || !ts.isArrayLiteralExpression(modulesProperty.initializer)) {
+  const modulesProperty = findPropertyAssignment(source, config, 'modules');
+  if (!modulesProperty || modulesProperty.value.type !== 'ArrayExpression') {
     throw new Error(`defineApplication({ modules: [...] }) is required in ${filePath}`);
   }
 
-  return modulesProperty.initializer.elements.map((element) => readModuleReference(context, asExpression(element), 'application modules'));
+  return modulesProperty.value.elements.map((element) => readModuleReference(context, source, asExpression(element), 'application modules'));
 }
 
 async function collectControllerRefs(moduleRefs: AstModuleRef[]): Promise<AstSymbolRef[]> {
@@ -157,61 +192,57 @@ async function walkModule(moduleRef: AstModuleRef, controllerRefs: Map<string, A
 }
 
 async function readModule(filePath: string, className: string): Promise<AstModuleNode> {
-  const sourceFile = await parseSource(filePath);
-  const context = createImportContext(filePath, sourceFile);
+  const source = await parseSource(filePath);
+  const context = createImportContext(filePath, source);
   const declaration = context.localDefinitions.get(className);
 
-  if (declaration && ts.isVariableDeclaration(declaration) && declaration.initializer) {
-    return parseInlineModuleDefinition(context, declaration.initializer, `module ${className}`);
+  if (declaration && declaration.type === 'VariableDeclarator' && declaration.init) {
+    return parseInlineModuleDefinition(context, source, declaration.init, `module ${className}`);
   }
 
-  const classDeclaration = sourceFile.statements.find(
-    (statement): statement is ts.ClassDeclaration => ts.isClassDeclaration(statement) && statement.name?.text === className,
-  );
+  const classDeclaration = findClassDeclaration(source.program, className);
 
   if (!classDeclaration) {
     throw new Error(`Module class or definition ${className} was not found in ${filePath}`);
   }
 
-  const moduleDecorator = getDecoratorByName(classDeclaration, 'Module');
+  const moduleDecorator = getDecoratorByName(classDeclaration.decorators, 'Module');
   const moduleCall = moduleDecorator ? getDecoratorCallExpression(moduleDecorator) : undefined;
   if (!moduleDecorator || !moduleCall || moduleCall.arguments.length === 0) {
     throw new Error(`@Module(...) was not found on ${className}`);
   }
 
   const config = moduleCall.arguments[0];
-  if (!config || !ts.isObjectLiteralExpression(config)) {
+  if (!config || config.type !== 'ObjectExpression') {
     throw new Error(`@Module(...) on ${className} must use an object literal`);
   }
 
-  return parseModuleObjectLiteral(context, config, `module ${className}`);
+  return parseModuleObjectLiteral(context, source, config, `module ${className}`);
 }
 
 async function readController(filePath: string, className: string): Promise<AstControllerNode> {
-  const sourceFile = await parseSource(filePath);
-  const context = createImportContext(filePath, sourceFile);
-  const classDeclaration = sourceFile.statements.find(
-    (statement): statement is ts.ClassDeclaration => ts.isClassDeclaration(statement) && statement.name?.text === className,
-  );
+  const source = await parseSource(filePath);
+  const context = createImportContext(filePath, source);
+  const classDeclaration = findClassDeclaration(source.program, className);
 
   if (!classDeclaration) {
     throw new Error(`Controller class ${className} was not found in ${filePath}`);
   }
 
-  const controllerDecorator = getDecoratorByName(classDeclaration, 'Controller');
+  const controllerDecorator = getDecoratorByName(classDeclaration.decorators, 'Controller');
   const controllerCall = controllerDecorator ? getDecoratorCallExpression(controllerDecorator) : undefined;
   if (!controllerDecorator || !controllerCall || controllerCall.arguments.length === 0) {
     throw new Error(`@Controller(...) was not found on ${className}`);
   }
 
   const basePath = readStringLiteral(controllerCall.arguments[0], filePath, '@Controller path');
-  const tags = readStringDecoratorValues(classDeclaration, 'Tag');
-  const guards = readExpressionListDecoratorValues(context, classDeclaration, 'UseGuards');
-  const middleware = readExpressionListDecoratorValues(context, classDeclaration, 'UseMiddleware');
-  const filters = readExpressionListDecoratorValues(context, classDeclaration, 'UseFilters');
-  const routes = classDeclaration.members
-    .filter((member): member is ts.MethodDeclaration => ts.isMethodDeclaration(member) && !!member.name)
-    .flatMap((member) => readRoute(context, filePath, member));
+  const tags = readStringDecoratorValues(classDeclaration.decorators, 'Tag', filePath);
+  const guards = readExpressionListDecoratorValues(context, source, classDeclaration.decorators, 'UseGuards');
+  const middleware = readExpressionListDecoratorValues(context, source, classDeclaration.decorators, 'UseMiddleware');
+  const filters = readExpressionListDecoratorValues(context, source, classDeclaration.decorators, 'UseFilters');
+  const routes = classDeclaration.body.body
+    .filter((member): member is MethodDefinition => (member.type === 'MethodDefinition' || member.type === 'TSAbstractMethodDefinition') && member.kind === 'method')
+    .flatMap((member) => readRoute(context, source, member));
 
   return {
     filePath,
@@ -225,9 +256,11 @@ async function readController(filePath: string, className: string): Promise<AstC
   };
 }
 
-function readRoute(context: AstImportContext, filePath: string, method: ts.MethodDeclaration): AstRouteNode[] {
+function readRoute(context: AstImportContext, source: ParsedSource, method: MethodDefinition): AstRouteNode[] {
+  const filePath = source.filePath;
+  const decorators = method.decorators;
   const routeDecorator = ['Get', 'Head', 'Post', 'Put', 'Patch', 'Delete', 'Options']
-    .map((name) => ({ name, decorator: getDecoratorByName(method, name) }))
+    .map((name) => ({ name, decorator: getDecoratorByName(decorators, name) }))
     .find((candidate) => candidate.decorator);
 
   const routeCall = routeDecorator?.decorator ? getDecoratorCallExpression(routeDecorator.decorator) : undefined;
@@ -236,26 +269,26 @@ function readRoute(context: AstImportContext, filePath: string, method: ts.Metho
   }
 
   const routePath = readStringLiteral(routeCall.arguments[0], filePath, `${routeDecorator.name} path`);
-  const summaryDecorator = getDecoratorByName(method, 'Summary');
+  const summaryDecorator = getDecoratorByName(decorators, 'Summary');
   const summaryCall = summaryDecorator ? getDecoratorCallExpression(summaryDecorator) : undefined;
   const summary = summaryCall?.arguments[0]
     ? readStringLiteral(summaryCall.arguments[0], filePath, 'Summary value')
     : undefined;
-  const description = readStringDecoratorArgument(method, 'Description', filePath);
-  const operationId = readStringDecoratorArgument(method, 'OperationId', filePath);
-  const bodySchema = readSingleExpressionDecoratorValue(context, method, 'UseBodySchema');
-  const querySchema = readSingleExpressionDecoratorValue(context, method, 'UseQuerySchema');
-  const paramSchema = readSingleExpressionDecoratorValue(context, method, 'UseParamSchema');
-  const security = readSecurityDecorators(method, filePath);
-  const tags = readStringDecoratorValues(method, 'Tag');
-  const guards = readExpressionListDecoratorValues(context, method, 'UseGuards');
-  const middleware = readExpressionListDecoratorValues(context, method, 'UseMiddleware');
-  const filters = readExpressionListDecoratorValues(context, method, 'UseFilters');
-  const responses = readResponseDecorators(context, method, filePath);
-  const parameters = method.parameters.flatMap((parameter, index) => readParameter(parameter, filePath, index));
+  const description = readStringDecoratorArgument(decorators, 'Description', filePath);
+  const operationId = readStringDecoratorArgument(decorators, 'OperationId', filePath);
+  const bodySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseBodySchema');
+  const querySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseQuerySchema');
+  const paramSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseParamSchema');
+  const security = readSecurityDecorators(decorators, filePath);
+  const tags = readStringDecoratorValues(decorators, 'Tag', filePath);
+  const guards = readExpressionListDecoratorValues(context, source, decorators, 'UseGuards');
+  const middleware = readExpressionListDecoratorValues(context, source, decorators, 'UseMiddleware');
+  const filters = readExpressionListDecoratorValues(context, source, decorators, 'UseFilters');
+  const responses = readResponseDecorators(context, source, decorators);
+  const parameters = method.value.params.flatMap((parameter, index) => readParameter(parameter, filePath, index));
 
   return [{
-    methodName: method.name.getText(),
+    methodName: getPropertyKeyText(source, method.key, method.computed),
     method: routeDecorator.name.toUpperCase() as AstRouteNode['method'],
     path: routePath,
     ...(summary ? { summary } : {}),
@@ -274,17 +307,17 @@ function readRoute(context: AstImportContext, filePath: string, method: ts.Metho
   }];
 }
 
-function readParameter(parameter: ts.ParameterDeclaration, filePath: string, index: number): RouteParameterDescriptor[] {
-  const decorators = ts.getDecorators(parameter) ?? [];
+function readParameter(parameter: ParamPattern, filePath: string, index: number): RouteParameterDescriptor[] {
+  const decorators = parameter.decorators ?? [];
   const result: RouteParameterDescriptor[] = [];
 
   for (const decorator of decorators) {
     const expression = getDecoratorCallExpression(decorator);
-    if (!expression || !ts.isIdentifier(expression.expression)) {
+    if (!expression || expression.callee.type !== 'Identifier') {
       continue;
     }
 
-    const decoratorName = expression.expression.text;
+    const decoratorName = expression.callee.name;
     if (decoratorName === 'Context') {
       result.push({ index, source: 'context' });
       continue;
@@ -307,236 +340,223 @@ function readParameter(parameter: ts.ParameterDeclaration, filePath: string, ind
   return result;
 }
 
-function readResponseDecorators(context: AstImportContext, method: ts.MethodDeclaration, filePath: string) {
-  return (ts.getDecorators(method) ?? [])
-    .map((decorator) => getDecoratorCallExpression(decorator))
-    .filter((expression): expression is ts.CallExpression => !!expression && ts.isIdentifier(expression.expression) && ['Response', 'ApiResponse'].includes(expression.expression.text))
+function readResponseDecorators(context: AstImportContext, source: ParsedSource, decorators: Decorator[]) {
+  const filePath = source.filePath;
+  return getDecoratorCalls(decorators, ['Response', 'ApiResponse'])
     .map((decorator) => {
       const status = readNumberLiteral(decorator.arguments[0], filePath, 'Response status');
       const secondArgument = decorator.arguments[1];
-      const schema = secondArgument && !(ts.isStringLiteral(secondArgument) || ts.isNoSubstitutionTemplateLiteral(secondArgument))
-        ? readExpressionRef(context, secondArgument)
+      const schema = secondArgument && !isStringLiteralLike(secondArgument)
+        ? readExpressionRef(context, source, secondArgument)
         : undefined;
       const description = decorator.arguments[2]
         ? readStringLiteral(decorator.arguments[2], filePath, 'Response description')
-        : secondArgument && (ts.isStringLiteral(secondArgument) || ts.isNoSubstitutionTemplateLiteral(secondArgument))
+        : secondArgument && isStringLiteralLike(secondArgument)
         ? readStringLiteral(secondArgument, filePath, 'Response description')
         : '';
       return schema ? { status, description, schema } : { status, description };
     });
 }
 
-function readSecurityDecorators(method: ts.MethodDeclaration, filePath: string) {
-  return (ts.getDecorators(method) ?? [])
-    .map((decorator) => getDecoratorCallExpression(decorator))
-    .filter((expression): expression is ts.CallExpression => !!expression && ts.isIdentifier(expression.expression) && expression.expression.text === 'Security')
-    .map((expression) => ({
-      scheme: readStringLiteral(expression.arguments[0], filePath, 'Security scheme'),
-      scopes: expression.arguments[1] && ts.isArrayLiteralExpression(expression.arguments[1])
-        ? expression.arguments[1].elements.map((element) => readStringLiteral(asExpression(element), filePath, 'Security scope'))
-        : [],
-    }));
+function readSecurityDecorators(decorators: Decorator[], filePath: string) {
+  return getDecoratorCalls(decorators, ['Security'])
+    .map((expression) => {
+      const scopes = expression.arguments[1];
+      return {
+        scheme: readStringLiteral(expression.arguments[0], filePath, 'Security scheme'),
+        scopes: scopes && scopes.type === 'ArrayExpression'
+          ? scopes.elements.map((element) => readStringLiteral(asExpression(element), filePath, 'Security scope'))
+          : [],
+      };
+    });
 }
 
-function readSymbolArrayProperty(context: AstImportContext, objectLiteral: ts.ObjectLiteralExpression, key: string): AstSymbolRef[] {
-  const property = objectLiteral.properties.find((candidate) => ts.isPropertyAssignment(candidate) && getPropertyName(candidate.name) === key);
-  if (!property || !ts.isPropertyAssignment(property)) {
+function readSymbolArrayProperty(context: AstImportContext, source: ParsedSource, objectLiteral: ObjectExpression, key: string): AstSymbolRef[] {
+  const property = findPropertyAssignment(source, objectLiteral, key);
+  if (!property) {
     return [];
   }
-  if (!ts.isArrayLiteralExpression(property.initializer)) {
+  if (property.value.type !== 'ArrayExpression') {
     throw new Error(`${key} must be an array in ${context.filePath}`);
   }
 
-  return property.initializer.elements.map((element) => resolveSymbolReference(context, element));
+  return property.value.elements.map((element) => resolveSymbolReference(context, source, element));
 }
 
-function readModuleArrayProperty(context: AstImportContext, objectLiteral: ts.ObjectLiteralExpression, key: string): AstModuleRef[] {
-  const property = objectLiteral.properties.find((candidate) => ts.isPropertyAssignment(candidate) && getPropertyName(candidate.name) === key);
-  if (!property || !ts.isPropertyAssignment(property)) {
+function readModuleArrayProperty(context: AstImportContext, source: ParsedSource, objectLiteral: ObjectExpression, key: string): AstModuleRef[] {
+  const property = findPropertyAssignment(source, objectLiteral, key);
+  if (!property) {
     return [];
   }
-  if (!ts.isArrayLiteralExpression(property.initializer)) {
+  if (property.value.type !== 'ArrayExpression') {
     throw new Error(`${key} must be an array in ${context.filePath}`);
   }
 
-  return property.initializer.elements.map((element) => readModuleReference(context, asExpression(element), key));
+  return property.value.elements.map((element) => readModuleReference(context, source, asExpression(element), key));
 }
 
-function readModuleReference(context: AstImportContext, expression: ts.Expression | undefined, label: string): AstModuleRef {
+function readModuleReference(context: AstImportContext, source: ParsedSource, expression: Expression | undefined, label: string): AstModuleRef {
   if (!expression) {
     throw new Error(`Unsupported ${label} expression in ${context.filePath}`);
   }
 
-  if (ts.isIdentifier(expression)) {
-    const importBinding = context.imports.get(expression.text);
+  if (expression.type === 'Identifier') {
+    const importBinding = context.imports.get(expression.name);
     if (importBinding) {
       return {
         kind: 'named',
-        name: expression.text,
+        name: expression.name,
         filePath: importBinding.resolvedFilePath ?? resolveImportPath(context.filePath, importBinding.moduleSpecifier),
       };
     }
 
-    const localDefinition = context.localDefinitions.get(expression.text);
-    if (localDefinition && ts.isVariableDeclaration(localDefinition) && localDefinition.initializer) {
+    const localDefinition = context.localDefinitions.get(expression.name);
+    if (localDefinition && localDefinition.type === 'VariableDeclarator' && localDefinition.init) {
       return {
         kind: 'inline',
         filePath: context.filePath,
-        ...parseInlineModuleDefinition(context, localDefinition.initializer, `${label} ${expression.text}`),
+        ...parseInlineModuleDefinition(context, source, localDefinition.init, `${label} ${expression.name}`),
       };
     }
 
-    if (context.localDefinitions.has(expression.text) || context.localExports.has(expression.text)) {
+    if (context.localDefinitions.has(expression.name) || context.localExports.has(expression.name)) {
       return {
         kind: 'named',
-        name: expression.text,
+        name: expression.name,
         filePath: context.filePath,
       };
     }
   }
 
-  if (ts.isCallExpression(expression) || ts.isObjectLiteralExpression(expression)) {
+  if (expression.type === 'CallExpression' || expression.type === 'ObjectExpression') {
     return {
       kind: 'inline',
       filePath: context.filePath,
-      ...parseInlineModuleDefinition(context, expression, label),
+      ...parseInlineModuleDefinition(context, source, expression, label),
     };
   }
 
-  throw new Error(`Unsupported ${label} expression in ${context.filePath}: ${expression.getText()}`);
+  throw new Error(`Unsupported ${label} expression in ${context.filePath}: ${getText(source, expression)}`);
 }
 
-function parseInlineModuleDefinition(context: AstImportContext, expression: ts.Expression, label: string): AstModuleNode {
-  if (ts.isCallExpression(expression) && ts.isIdentifier(expression.expression) && expression.expression.text === 'defineModule') {
+function parseInlineModuleDefinition(context: AstImportContext, source: ParsedSource, expression: Expression, label: string): AstModuleNode {
+  if (expression.type === 'CallExpression' && expression.callee.type === 'Identifier' && expression.callee.name === 'defineModule') {
     const argument = expression.arguments[0];
-    if (!argument || !ts.isObjectLiteralExpression(argument)) {
+    if (!argument || argument.type !== 'ObjectExpression') {
       throw new Error(`${label} defineModule(...) must use an object literal in ${context.filePath}`);
     }
-    return parseModuleObjectLiteral(context, argument, label);
+    return parseModuleObjectLiteral(context, source, argument, label);
   }
 
-  if (ts.isObjectLiteralExpression(expression)) {
-    return parseModuleObjectLiteral(context, expression, label);
+  if (expression.type === 'ObjectExpression') {
+    return parseModuleObjectLiteral(context, source, expression, label);
   }
 
   throw new Error(`${label} must be a @Module class, defineModule(...) call, or object literal in ${context.filePath}`);
 }
 
-function parseModuleObjectLiteral(context: AstImportContext, objectLiteral: ts.ObjectLiteralExpression, label: string): AstModuleNode {
+function parseModuleObjectLiteral(context: AstImportContext, source: ParsedSource, objectLiteral: ObjectExpression, label: string): AstModuleNode {
   return {
-    controllers: readSymbolArrayProperty(context, objectLiteral, 'controllers'),
-    imports: readModuleArrayProperty(context, objectLiteral, 'imports'),
+    controllers: readSymbolArrayProperty(context, source, objectLiteral, 'controllers'),
+    imports: readModuleArrayProperty(context, source, objectLiteral, 'imports'),
   };
 }
 
-function resolveSymbolReference(context: AstImportContext, node: ts.Expression): AstSymbolRef {
-  if (!ts.isIdentifier(node)) {
-    throw new Error(`Only identifier references are supported in ${context.filePath}: ${node.getText()}`);
+function resolveSymbolReference(context: AstImportContext, source: ParsedSource, node: ArrayExpressionElement): AstSymbolRef {
+  if (!node || node.type !== 'Identifier') {
+    throw new Error(`Only identifier references are supported in ${context.filePath}: ${node ? getText(source, node) : ''}`);
   }
 
-  const importBinding = context.imports.get(node.text);
+  const importBinding = context.imports.get(node.name);
   if (!importBinding) {
-    if (context.localExports.has(node.text)) {
-      return { name: node.text, filePath: context.filePath };
+    if (context.localExports.has(node.name)) {
+      return { name: node.name, filePath: context.filePath };
     }
-    throw new Error(`Unable to resolve symbol ${node.text} in ${context.filePath}`);
+    throw new Error(`Unable to resolve symbol ${node.name} in ${context.filePath}`);
   }
 
   return {
-    name: node.text,
+    name: node.name,
     filePath: importBinding.resolvedFilePath ?? resolveImportPath(context.filePath, importBinding.moduleSpecifier),
   };
 }
 
-function readSingleExpressionDecoratorValue(context: AstImportContext, node: ts.Node, decoratorName: string) {
-  const decorator = getDecoratorByName(node, decoratorName);
+function readSingleExpressionDecoratorValue(context: AstImportContext, source: ParsedSource, decorators: Decorator[], decoratorName: string) {
+  const decorator = getDecoratorByName(decorators, decoratorName);
   const expression = decorator ? getDecoratorCallExpression(decorator)?.arguments[0] : undefined;
-  return expression ? readExpressionRef(context, expression) : undefined;
+  return expression ? readExpressionRef(context, source, expression) : undefined;
 }
 
-function readExpressionListDecoratorValues(context: AstImportContext, node: ts.Node, decoratorName: string) {
-  const decorator = getDecoratorByName(node, decoratorName);
+function readExpressionListDecoratorValues(context: AstImportContext, source: ParsedSource, decorators: Decorator[], decoratorName: string) {
+  const decorator = getDecoratorByName(decorators, decoratorName);
   const expression = decorator ? getDecoratorCallExpression(decorator) : undefined;
   if (!expression) {
     return [];
   }
 
-  return expression.arguments.map((argument) => readExpressionRef(context, argument));
+  return expression.arguments.map((argument) => readExpressionRef(context, source, argument));
 }
 
-function readExpressionRef(context: AstImportContext, expression: ts.Expression): AstExpressionRef {
+function readExpressionRef(context: AstImportContext, source: ParsedSource, expression: Node): AstExpressionRef {
   const bindings = collectExpressionBindings(context, expression);
   return {
-    text: expression.getText(),
+    text: getText(source, expression),
     bindings,
   };
 }
 
-function collectExpressionBindings(context: AstImportContext, expression: ts.Expression): AstImportBinding[] {
+function collectExpressionBindings(context: AstImportContext, expression: Node): AstImportBinding[] {
   const seen = new Map<string, AstImportBinding>();
 
-  const visit = (node: ts.Node) => {
-    if (ts.isIdentifier(node)) {
-      if (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) {
-        return;
-      }
-      const imported = context.imports.get(node.text);
-      if (imported) {
-        seen.set(`${imported.kind}:${imported.localName}:${imported.moduleSpecifier}`, imported);
-        return;
-      }
-      if (context.localExports.has(node.text)) {
-        seen.set(`named:${node.text}:${context.filePath}`, {
-          kind: 'named',
-          localName: node.text,
-          importedName: node.text,
-          moduleSpecifier: relative(dirname(context.filePath), context.filePath),
-          resolvedFilePath: context.filePath,
-        });
-        return;
-      }
+  forEachReferenceIdentifier(expression, (identifier) => {
+    const imported = context.imports.get(identifier.name);
+    if (imported) {
+      seen.set(`${imported.kind}:${imported.localName}:${imported.moduleSpecifier}`, imported);
+      return;
     }
-    ts.forEachChild(node, visit);
-  };
+    if (context.localExports.has(identifier.name)) {
+      seen.set(`named:${identifier.name}:${context.filePath}`, {
+        kind: 'named',
+        localName: identifier.name,
+        importedName: identifier.name,
+        moduleSpecifier: relative(dirname(context.filePath), context.filePath),
+        resolvedFilePath: context.filePath,
+      });
+    }
+  });
 
-  visit(expression);
   return [...seen.values()];
 }
 
-function createImportContext(filePath: string, sourceFile: ts.SourceFile): AstImportContext {
+function createImportContext(filePath: string, source: ParsedSource): AstImportContext {
   const imports = new Map<string, AstImportBinding>();
   const localExports = new Set<string>();
-  const localDefinitions = new Map<string, ts.Declaration>();
+  const localDefinitions = new Map<string, Node>();
 
-  for (const statement of sourceFile.statements) {
-    if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier) && statement.importClause) {
-      const moduleSpecifier = statement.moduleSpecifier.text;
-      if (statement.importClause.name) {
-        const resolvedFilePath = resolveImportPathOrUndefined(filePath, moduleSpecifier);
-        imports.set(statement.importClause.name.text, {
-          kind: 'default',
-          localName: statement.importClause.name.text,
-          moduleSpecifier,
-          ...(resolvedFilePath ? { resolvedFilePath } : {}),
-        });
-      }
-      const bindings = statement.importClause.namedBindings;
-      if (bindings && ts.isNamespaceImport(bindings)) {
-        const resolvedFilePath = resolveImportPathOrUndefined(filePath, moduleSpecifier);
-        imports.set(bindings.name.text, {
-          kind: 'namespace',
-          localName: bindings.name.text,
-          moduleSpecifier,
-          ...(resolvedFilePath ? { resolvedFilePath } : {}),
-        });
-      }
-      if (bindings && ts.isNamedImports(bindings)) {
-        for (const element of bindings.elements) {
-          const resolvedFilePath = resolveImportPathOrUndefined(filePath, moduleSpecifier);
-          imports.set(element.name.text, {
+  for (const statement of source.program.body) {
+    if (statement.type === 'ImportDeclaration' && statement.specifiers.length > 0) {
+      const moduleSpecifier = statement.source.value;
+      const resolvedFilePath = resolveImportPathOrUndefined(filePath, moduleSpecifier);
+      for (const specifier of statement.specifiers) {
+        if (specifier.type === 'ImportDefaultSpecifier') {
+          imports.set(specifier.local.name, {
+            kind: 'default',
+            localName: specifier.local.name,
+            moduleSpecifier,
+            ...(resolvedFilePath ? { resolvedFilePath } : {}),
+          });
+        } else if (specifier.type === 'ImportNamespaceSpecifier') {
+          imports.set(specifier.local.name, {
+            kind: 'namespace',
+            localName: specifier.local.name,
+            moduleSpecifier,
+            ...(resolvedFilePath ? { resolvedFilePath } : {}),
+          });
+        } else {
+          imports.set(specifier.local.name, {
             kind: 'named',
-            localName: element.name.text,
-            importedName: element.propertyName?.text ?? element.name.text,
+            localName: specifier.local.name,
+            importedName: specifier.imported.type === 'Identifier' ? specifier.imported.name : specifier.imported.value,
             moduleSpecifier,
             ...(resolvedFilePath ? { resolvedFilePath } : {}),
           });
@@ -544,23 +564,26 @@ function createImportContext(filePath: string, sourceFile: ts.SourceFile): AstIm
       }
     }
 
-    if ((ts.isClassDeclaration(statement) || ts.isFunctionDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)) && statement.name && hasExportModifier(statement)) {
-      localExports.add(statement.name.text);
+    const { declaration, exported } = unwrapExport(statement);
+    if (!declaration) {
+      continue;
     }
-    if ((ts.isClassDeclaration(statement) || ts.isFunctionDeclaration(statement) || ts.isInterfaceDeclaration(statement) || ts.isTypeAliasDeclaration(statement) || ts.isEnumDeclaration(statement)) && statement.name) {
-      localDefinitions.set(statement.name.text, statement);
-    }
-    if (ts.isVariableStatement(statement) && hasExportModifier(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) {
-          localExports.add(declaration.name.text);
-        }
+    if (
+      (declaration.type === 'ClassDeclaration' || declaration.type === 'FunctionDeclaration' || declaration.type === 'TSDeclareFunction' || declaration.type === 'TSInterfaceDeclaration' || declaration.type === 'TSTypeAliasDeclaration' || declaration.type === 'TSEnumDeclaration')
+      && declaration.id
+    ) {
+      if (exported) {
+        localExports.add(declaration.id.name);
       }
+      localDefinitions.set(declaration.id.name, declaration);
     }
-    if (ts.isVariableStatement(statement)) {
-      for (const declaration of statement.declarationList.declarations) {
-        if (ts.isIdentifier(declaration.name)) {
-          localDefinitions.set(declaration.name.text, declaration);
+    if (declaration.type === 'VariableDeclaration') {
+      for (const declarator of declaration.declarations) {
+        if (declarator.id.type === 'Identifier') {
+          if (exported) {
+            localExports.add(declarator.id.name);
+          }
+          localDefinitions.set(declarator.id.name, declarator);
         }
       }
     }
@@ -569,89 +592,172 @@ function createImportContext(filePath: string, sourceFile: ts.SourceFile): AstIm
   return { filePath, imports, localExports, localDefinitions };
 }
 
-function hasExportModifier(node: ts.Node) {
-  return (ts.getModifiers(node as ts.HasModifiers)?.some((modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword)) ?? false;
+function unwrapExport(statement: Program['body'][number]): { declaration: Node | null | undefined; exported: boolean } {
+  if (statement.type === 'ExportNamedDeclaration') {
+    return { declaration: statement.declaration, exported: true };
+  }
+  if (statement.type === 'ExportDefaultDeclaration') {
+    return { declaration: statement.declaration, exported: true };
+  }
+  return { declaration: statement, exported: false };
 }
 
-function getDecoratorByName(node: ts.Node, decoratorName: string) {
-  return (getDecorators(node) ?? []).find((decorator) => {
-    const expression = getDecoratorCallExpression(decorator);
-    if (!expression) {
-      return false;
+function findClassDeclaration(program: Program, className: string): Class | undefined {
+  for (const statement of program.body) {
+    const { declaration } = unwrapExport(statement);
+    if (declaration?.type === 'ClassDeclaration' && declaration.id?.name === className) {
+      return declaration;
     }
-    return ts.isIdentifier(expression.expression) && expression.expression.text === decoratorName;
-  }) as ts.Decorator | undefined;
+  }
+  return undefined;
 }
 
-function readStringDecoratorValues(node: ts.Node, decoratorName: string) {
-  return (getDecorators(node) ?? [])
+function getDecoratorByName(decorators: Decorator[] | undefined, decoratorName: string) {
+  return (decorators ?? []).find((decorator) => {
+    const expression = getDecoratorCallExpression(decorator);
+    return !!expression && expression.callee.type === 'Identifier' && expression.callee.name === decoratorName;
+  });
+}
+
+function getDecoratorCalls(decorators: Decorator[] | undefined, decoratorNames: string[]) {
+  return (decorators ?? [])
     .map((decorator) => getDecoratorCallExpression(decorator))
-    .filter((expression): expression is ts.CallExpression => !!expression && ts.isIdentifier(expression.expression) && expression.expression.text === decoratorName)
-    .map((expression) => readStringLiteral(expression.arguments[0], node.getSourceFile().fileName, decoratorName));
+    .filter((expression): expression is CallExpression => !!expression && expression.callee.type === 'Identifier' && decoratorNames.includes(expression.callee.name));
 }
 
-function readStringDecoratorArgument(node: ts.Node, decoratorName: string, filePath: string) {
-  const decorator = getDecoratorByName(node, decoratorName);
+function readStringDecoratorValues(decorators: Decorator[] | undefined, decoratorName: string, filePath: string) {
+  return getDecoratorCalls(decorators, [decoratorName])
+    .map((expression) => readStringLiteral(expression.arguments[0], filePath, decoratorName));
+}
+
+function readStringDecoratorArgument(decorators: Decorator[] | undefined, decoratorName: string, filePath: string) {
+  const decorator = getDecoratorByName(decorators, decoratorName);
   const expression = decorator ? getDecoratorCallExpression(decorator) : undefined;
   const argument = expression?.arguments[0];
   return argument ? readStringLiteral(argument, filePath, decoratorName) : undefined;
 }
 
-function getDecorators(node: ts.Node) {
-  return ts.getDecorators(node as ts.HasDecorators);
+function getDecoratorCallExpression(decorator: Decorator) {
+  return decorator.expression.type === 'CallExpression' ? decorator.expression : undefined;
 }
 
-function getDecoratorCallExpression(decorator: ts.Decorator) {
-  return ts.isCallExpression(decorator.expression) ? decorator.expression : undefined;
+function isStringLiteralLike(node: Node) {
+  return (node.type === 'Literal' && typeof node.value === 'string')
+    || (node.type === 'TemplateLiteral' && node.expressions.length === 0);
 }
 
-function readStringLiteral(node: ts.Expression | undefined, filePath: string, label: string) {
-  if (!node || !ts.isStringLiteralLike(node)) {
-    throw new Error(`${label} must be a string literal in ${filePath}`);
+function readStringLiteral(node: Node | null | undefined, filePath: string, label: string) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') {
+    return node.value;
   }
-  return node.text;
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0) {
+    return node.quasis[0]?.value.cooked ?? '';
+  }
+  throw new Error(`${label} must be a string literal in ${filePath}`);
 }
 
-function readNumberLiteral(node: ts.Expression | undefined, filePath: string, label: string) {
-  if (!node || !ts.isNumericLiteral(node)) {
+function readNumberLiteral(node: Node | undefined, filePath: string, label: string) {
+  if (node?.type !== 'Literal' || typeof node.value !== 'number') {
     throw new Error(`${label} must be a numeric literal in ${filePath}`);
   }
-  return Number(node.text);
+  return node.value;
 }
 
-function getPropertyName(name: ts.PropertyName) {
-  if (ts.isIdentifier(name) || ts.isStringLiteral(name)) {
-    return name.text;
+function findPropertyAssignment(source: ParsedSource, objectLiteral: ObjectExpression, key: string): ObjectProperty | undefined {
+  return objectLiteral.properties.find((property): property is ObjectProperty =>
+    property.type === 'Property'
+    && property.kind === 'init'
+    && !property.method
+    && !property.shorthand
+    && getPropertyKeyText(source, property.key, property.computed) === key);
+}
+
+function getPropertyKeyText(source: ParsedSource, key: PropertyKey, computed: boolean) {
+  if (computed) {
+    return `[${getText(source, key)}]`;
   }
-  return name.getText();
+  if (key.type === 'Identifier') {
+    return key.name;
+  }
+  if (key.type === 'Literal' && typeof key.value === 'string') {
+    return key.value;
+  }
+  return getText(source, key);
 }
 
-function findCallExpression(sourceFile: ts.SourceFile, functionName: string): ts.CallExpression | undefined {
-  let found: ts.CallExpression | undefined;
-  const visit = (node: ts.Node) => {
+function getText(source: ParsedSource, node: Node) {
+  return source.text.slice(node.start, node.end);
+}
+
+function findCallExpression(program: Program, functionName: string): CallExpression | undefined {
+  let found: CallExpression | undefined;
+  walk(program, (node) => {
     if (found) {
-      return;
+      return false;
     }
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === functionName) {
+    if (node.type === 'CallExpression' && node.callee.type === 'Identifier' && node.callee.name === functionName) {
       found = node;
-      return;
+      return false;
     }
-    ts.forEachChild(node, visit);
-  };
-  visit(sourceFile);
+    return true;
+  });
   return found;
 }
 
-async function parseSource(filePath: string) {
-  const content = await readFile(filePath, 'utf8');
-  return ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true, getScriptKind(filePath));
+function walk(root: Node, visit: (node: Node, parent: Node | undefined, key: string | undefined) => boolean) {
+  const visitNode = (node: Node, parent: Node | undefined, key: string | undefined) => {
+    if (!visit(node, parent, key)) {
+      return;
+    }
+    const children: Array<{ node: Node; key: string }> = [];
+    for (const [childKey, value] of Object.entries(node)) {
+      if (childKey === 'parent') {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (isNode(item)) {
+            children.push({ node: item, key: childKey });
+          }
+        }
+      } else if (isNode(value)) {
+        children.push({ node: value, key: childKey });
+      }
+    }
+    children.sort((left, right) => left.node.start - right.node.start);
+    for (const child of children) {
+      visitNode(child.node, node, child.key);
+    }
+  };
+  visitNode(root, undefined, undefined);
 }
 
-function getScriptKind(filePath: string) {
-  if (filePath.endsWith('.tsx')) {
-    return ts.ScriptKind.TSX;
-  }
-  return ts.ScriptKind.TS;
+function isNode(value: unknown): value is Node {
+  return typeof value === 'object' && value !== null && typeof (value as { type?: unknown }).type === 'string' && typeof (value as { start?: unknown }).start === 'number';
+}
+
+function forEachReferenceIdentifier(root: Node, visit: (identifier: { name: string; start: number; end: number }, shorthand: boolean) => void) {
+  const visited = new Set<number>();
+  walk(root, (node, parent, key) => {
+    if (node.type !== 'Identifier') {
+      return true;
+    }
+    if (parent?.type === 'MemberExpression' && key === 'property' && !parent.computed) {
+      return false;
+    }
+    if (visited.has(node.start)) {
+      return false;
+    }
+    visited.add(node.start);
+    visit(node, parent?.type === 'Property' && parent.shorthand);
+    return false;
+  });
+}
+
+async function parseSource(filePath: string): Promise<ParsedSource> {
+  const text = await readFile(filePath, 'utf8');
+  const { program } = parseSync(filePath, text, { lang: filePath.endsWith('.tsx') ? 'tsx' : 'ts', sourceType: 'module' });
+  return { filePath, text, program };
 }
 
 function resolveImportPath(fromFile: string, moduleSpecifier: string) {
@@ -663,58 +769,63 @@ function resolveImportPath(fromFile: string, moduleSpecifier: string) {
 }
 
 function resolveImportPathOrUndefined(fromFile: string, moduleSpecifier: string) {
-  const compilerOptions = loadCompilerOptions(fromFile);
-  const resolvedModule = ts.resolveModuleName(moduleSpecifier, fromFile, compilerOptions, ts.sys).resolvedModule;
-  if (resolvedModule?.resolvedFileName && !resolvedModule.resolvedFileName.endsWith('.d.ts')) {
-    return resolvedModule.resolvedFileName;
+  const isRelative = moduleSpecifier.startsWith('.');
+  if (!isRelative && !hasTsconfig(dirname(fromFile))) {
+    // Without a tsconfig, bare specifiers are tried relative to the importing file first (baseUrl-like).
+    const local = probeFile(resolve(dirname(fromFile), moduleSpecifier), TYPESCRIPT_SOURCE_EXTENSIONS);
+    if (local) {
+      return local;
+    }
   }
 
-  if (moduleSpecifier.startsWith('.')) {
+  const resolvedPath = resolver.resolveFileSync(fromFile, moduleSpecifier).path;
+  if (resolvedPath && isTypeScriptSource(resolvedPath)) {
+    return resolvedPath;
+  }
+
+  if (isRelative) {
     const basePath = resolve(dirname(fromFile), moduleSpecifier);
-    return probeFile(basePath);
+    return probeFile(basePath, SOURCE_EXTENSIONS);
   }
 
   return undefined;
 }
 
-function loadCompilerOptions(fromFile: string) {
-  const configPath = ts.findConfigFile(dirname(fromFile), ts.sys.fileExists, 'tsconfig.json');
-  const cacheKey = configPath ?? '__default__';
-  const cached = compilerOptionsCache.get(cacheKey);
-  if (cached) {
+function isTypeScriptSource(filePath: string) {
+  return TYPESCRIPT_SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension)) && !/\.d\.[mc]?ts$/.test(filePath);
+}
+
+const tsconfigLookupCache = new Map<string, boolean>();
+
+function hasTsconfig(directory: string): boolean {
+  const cached = tsconfigLookupCache.get(directory);
+  if (cached !== undefined) {
     return cached;
   }
-
-  const compilerOptions = configPath
-    ? parseTsConfig(configPath)
-    : { moduleResolution: ts.ModuleResolutionKind.Bundler, baseUrl: dirname(fromFile) };
-  compilerOptionsCache.set(cacheKey, compilerOptions);
-  return compilerOptions;
+  const parent = dirname(directory);
+  const found = fileExists(resolve(directory, 'tsconfig.json')) || (parent !== directory && hasTsconfig(parent));
+  tsconfigLookupCache.set(directory, found);
+  return found;
 }
 
-function parseTsConfig(configPath: string) {
-  const loaded = ts.readConfigFile(configPath, ts.sys.readFile);
-  if (loaded.error) {
-    throw new Error(`Unable to read tsconfig: ${configPath}`);
-  }
-
-  return ts.parseJsonConfigFileContent(loaded.config, ts.sys, dirname(configPath)).options;
+function fileExists(filePath: string) {
+  return existsSync(filePath) && statSync(filePath).isFile();
 }
 
-function probeFile(basePath: string) {
-  for (const extension of SOURCE_EXTENSIONS) {
+function probeFile(basePath: string, extensions: string[]) {
+  for (const extension of extensions) {
     const direct = `${basePath}${extension}`;
-    if (ts.sys.fileExists(direct)) {
+    if (fileExists(direct)) {
       return direct;
     }
   }
-  for (const extension of SOURCE_EXTENSIONS) {
+  for (const extension of extensions) {
     const nested = resolve(basePath, `index${extension}`);
-    if (ts.sys.fileExists(nested)) {
+    if (fileExists(nested)) {
       return nested;
     }
   }
-  if (ts.sys.fileExists(basePath)) {
+  if (extensions === SOURCE_EXTENSIONS && fileExists(basePath)) {
     return basePath;
   }
   return undefined;
@@ -943,37 +1054,30 @@ function sanitizeIdentifier(value: string) {
 }
 
 function rewriteExpressionIdentifiers(expressionText: string, replacements: Map<string, string>) {
-  const sourceFile = ts.createSourceFile('expression.ts', `const __value = (${expressionText});`, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const statement = sourceFile.statements[0];
-  if (!statement || !ts.isVariableStatement(statement)) {
-    return expressionText;
-  }
-  const initializer = statement.declarationList.declarations[0]?.initializer;
+  const prefix = 'const __value = ';
+  const text = `${prefix}(${expressionText});`;
+  const { program } = parseSync('expression.ts', text, { lang: 'ts', sourceType: 'module' });
+  const statement = program.body[0];
+  const initializer = statement?.type === 'VariableDeclaration' ? statement.declarations[0]?.init : undefined;
   if (!initializer) {
     return expressionText;
   }
 
-  const transformed = ts.transform<ts.Expression>(initializer, [
-    (context) => (root) => ts.visitNode(root, function visit(node: ts.Node): ts.Node {
-      if (ts.isIdentifier(node)) {
-        if (ts.isPropertyAccessExpression(node.parent) && node.parent.name === node) {
-          return node;
-        }
-        const replacement = replacements.get(node.text);
-        if (replacement) {
-          return ts.factory.createIdentifier(replacement);
-        }
-      }
-      return ts.visitEachChild(node, visit, context);
-    }) as ts.Expression,
-  ]);
+  const edits: Array<{ start: number; end: number; text: string }> = [];
+  forEachReferenceIdentifier(initializer, (identifier, shorthand) => {
+    const replacement = replacements.get(identifier.name);
+    if (replacement) {
+      edits.push({ start: identifier.start, end: identifier.end, text: shorthand ? `${identifier.name}: ${replacement}` : replacement });
+    }
+  });
 
-  const printer = ts.createPrinter();
-  const result = printer.printNode(ts.EmitHint.Expression, transformed.transformed[0] ?? initializer, sourceFile);
-  transformed.dispose();
+  let result = text.slice(initializer.start, initializer.end);
+  for (const edit of edits.sort((left, right) => right.start - left.start)) {
+    result = `${result.slice(0, edit.start - initializer.start)}${edit.text}${result.slice(edit.end - initializer.start)}`;
+  }
   return result;
 }
 
-function asExpression(node: ts.Node): ts.Expression | undefined {
-  return ts.isExpression(node) ? node : undefined;
+function asExpression(node: ArrayExpressionElement): Expression | undefined {
+  return node && node.type !== 'SpreadElement' ? node : undefined;
 }

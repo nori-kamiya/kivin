@@ -4,6 +4,8 @@
 
 CLI は decorator metadata を runtime で実行せず、TypeScript source を AST 解析して route manifest を生成します。
 
+構文解析は [oxc-parser](https://www.npmjs.com/package/oxc-parser)、module 解決は [oxc-resolver](https://www.npmjs.com/package/oxc-resolver) で行い、`typescript` パッケージには依存しません(利用者の TypeScript のバージョンに左右されない)。
+
 ## Why
 
 - Bun の TS 直実行で legacy decorators metadata に依存しない
@@ -20,8 +22,10 @@ CLI は decorator metadata を runtime で実行せず、TypeScript source を A
 
 ## Alias resolution
 
-- nearest `tsconfig.json` を探索する
+- nearest `tsconfig.json` を探索する(oxc-resolver の `tsconfig: 'auto'`。`extends` も追う)
 - `compilerOptions.baseUrl` と `compilerOptions.paths` を読んで module を解決する
+- 解決先は TypeScript source(`.ts` / `.tsx` / `.mts` / `.cts`)だけを採用し、`.d.ts` や npm package の JS は bare specifier のまま残す
+- `tsconfig.json` が見つからない場合、bare specifier はまず import 元のディレクトリからの相対として探す
 - relative import でなくても app / module / controller graph をたどれる
 
 ## Import collision avoidance

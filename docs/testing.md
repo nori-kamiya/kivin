@@ -11,6 +11,7 @@
 - AST generator: route and enhancer extraction
 - AST generator: tsconfig path alias resolution and import collision avoidance
 - AST generator: generated manifest importability and stable import rendering
+- AST generator: source offsets stay correct after non-ASCII text
 - OpenAPI contract alignment: manifest request/response/security/tags/summary docs stay semantically aligned with generated OpenAPI operations
 - smoke test: Bun single binary build, boot, and endpoint verification
 - example mutation flow: `PUT` / `PATCH` / `DELETE` and conflict handling

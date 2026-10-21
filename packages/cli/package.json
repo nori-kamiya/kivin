@@ -28,7 +28,8 @@
   "dependencies": {
     "@kivin/core": "workspace:*",
     "@kivin/openapi": "workspace:*",
-    "typescript": "^6.0.3"
+    "oxc-parser": "^0.155.0",
+    "oxc-resolver": "^11.24.2"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
