@@ -10,7 +10,7 @@
     "url": "git+https://github.com/nori-kamiya/kivin.git"
   },
   "homepage": "https://github.com/nori-kamiya/kivin#readme",
-  "packageManager": "bun@1.4.3",
+  "packageManager": "bun@1.4.4",
   "workspaces": [
     "packages/*",
     "examples/*"
