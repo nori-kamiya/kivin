@@ -16,14 +16,41 @@ export function validateOrThrow<TSchema>(
 
   const result = schemaAdapter.parse(schema, input);
   if (!result.success) {
-    throw Response.json({ message: `${label} validation failed`, issues: result.issues }, { status: 400 });
+    throw createValidationErrorResponse(label, result.issues);
   }
 
   return result.output;
 }
 
+export interface ValidationIssue {
+  /** Location of the failing value, e.g. `['items', 0, 'name']` (empty for the whole value). */
+  path: Array<string | number>;
+  message: string;
+}
+
+/**
+ * Validation issues as sent to clients: only `path` and `message`, the same for every schema
+ * library. Raw library issues (valibot's carry `input` and the whole parent object for every path
+ * step) would echo the request back — passwords included — and differ per adapter.
+ */
+export function toValidationIssues(issues: unknown): ValidationIssue[] {
+  if (!Array.isArray(issues)) {
+    return [];
+  }
+  return issues.map((issue) => {
+    const record = (typeof issue === 'object' && issue !== null ? issue : {}) as { message?: unknown; path?: unknown };
+    const path = Array.isArray(record.path)
+      ? record.path.map((segment: unknown) => {
+          const key = typeof segment === 'object' && segment !== null && 'key' in segment ? (segment as { key: unknown }).key : segment;
+          return typeof key === 'number' ? key : String(key);
+        })
+      : [];
+    return { path, message: typeof record.message === 'string' ? record.message : 'Invalid value' };
+  });
+}
+
 export function createValidationErrorResponse(label: string, issues: unknown) {
-  return Response.json({ message: `${label} validation failed`, issues }, { status: 400 });
+  return Response.json({ message: `${label} validation failed`, issues: toValidationIssues(issues) }, { status: 400 });
 }
 
 export function createSchemaValidator<TSchema>(
