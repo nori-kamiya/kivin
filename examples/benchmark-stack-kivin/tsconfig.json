@@ -7,8 +7,9 @@
   },
   "references": [
     { "path": "../../packages/core" },
+    { "path": "../../packages/decorators" },
     { "path": "../../packages/logger" },
     { "path": "../../packages/valibot" }
   ],
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", ".kivin/generated/**/*.ts", ".kivin/generated/**/*.json"]
 }

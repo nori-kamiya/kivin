@@ -69,6 +69,8 @@ const binaries: Record<Framework, string> = {
 };
 
 if (!process.argv.includes('--no-build')) {
+  // The kivin app's manifest (with AOT executors) is generated from its decorator source.
+  await run([process.execPath, resolve(repoRoot, 'packages/cli/src/bin.ts'), 'generate', '--entry', resolve(repoRoot, 'examples/benchmark-stack-kivin/src/app.ts'), '--outDir', resolve(repoRoot, 'examples/benchmark-stack-kivin/.kivin/generated')]);
   for (const framework of frameworks) {
     await run([process.execPath, 'build', resolve(repoRoot, `examples/benchmark-stack-${framework}/src/main.ts`), '--compile', '--outfile', binaries[framework]]);
   }
