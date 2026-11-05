@@ -21,6 +21,19 @@
 - guard / middleware / exception filter pipeline
 - root singleton container と request-local child container
 
+`createApp` 本体は `src/app.ts` に置き、実行時の各責務は `src/runtime/` に分けています。
+
+| file | 責務 |
+| --- | --- |
+| `runtime/types.ts` | manifest / compiled route / Bun route の型と共有定数 |
+| `runtime/manifest.ts` | decorator metadata から `AppManifest` を組み立てる（CLI を使わない経路） |
+| `runtime/payload.ts` | schema validation と body / query / path payload の遅延ロード |
+| `runtime/arguments.ts` | parameter metadata から handler 引数を組み立てて呼び出す |
+| `runtime/results.ts` | handler の戻り値を `Response` に変換し、native static response を事前計算する |
+| `runtime/pipeline.ts` | guard / middleware / exception filter のコンパイルと実行 |
+| `runtime/routing.ts` | path lookup、allowed methods、Bun native `routes` テーブル |
+| `runtime/executor.ts` | route ごとに特化 executor を選んで組み立てる |
+
 ### `@kivin/decorators`
 
 - `@Module`
