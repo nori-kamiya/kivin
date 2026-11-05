@@ -1,5 +1,7 @@
 export type Constructor<T = unknown> = new (...args: never[]) => T;
-export type Token<T = unknown> = Constructor<T> | string | symbol;
+import type { InjectionToken } from './contracts';
+
+export type Token<T = unknown> = Constructor<T> | InjectionToken<T> | string | symbol;
 export type HttpMethod = 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
 
 export interface ParseSuccess<TOutput> {

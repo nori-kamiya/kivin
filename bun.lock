@@ -103,6 +103,13 @@
         "@kivin/core": "workspace:*",
       },
     },
+    "packages/standard-schema": {
+      "name": "@kivin/standard-schema",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
     "packages/valibot": {
       "name": "@kivin/valibot",
       "version": "0.0.1",
@@ -131,6 +138,8 @@
     "@kivin/logger": ["@kivin/logger@workspace:packages/logger"],
 
     "@kivin/openapi": ["@kivin/openapi@workspace:packages/openapi"],
+
+    "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
 
     "@kivin/valibot": ["@kivin/valibot@workspace:packages/valibot"],
 

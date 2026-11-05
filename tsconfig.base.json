@@ -9,6 +9,7 @@
       "@kivin/logger": ["./packages/logger/src/index.ts"],
       "@kivin/openapi": ["./packages/openapi/src/index.ts"],
       "@kivin/valibot": ["./packages/valibot/src/index.ts"],
+      "@kivin/standard-schema": ["./packages/standard-schema/src/index.ts"],
       "@kivin/cli": ["./packages/cli/src/index.ts"]
     },
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
