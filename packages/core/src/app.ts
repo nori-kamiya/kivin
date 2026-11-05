@@ -124,6 +124,16 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
 
   let activeServer: Server<unknown> | undefined;
   let closing: Promise<void> | undefined;
+  let initializing: Promise<void> | undefined;
+  let initialized = false;
+
+  /** Distinct singleton instances (a `useValue` object may back several tokens), in creation order. */
+  const lifecycleInstances = () => {
+    container.resolveAllSingletons();
+    return [...new Set(container.singletonInstances())];
+  };
+  const hookOwners = (hook: 'onModuleInit' | 'onApplicationBootstrap') =>
+    lifecycleInstances().filter((instance) => typeof (instance as Record<string, unknown> | null)?.[hook] === 'function');
 
   const app = {
     fetch,
@@ -133,6 +143,13 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
      * collides with a manifest route is rejected so app routes can never be shadowed silently.
      */
     listen(options: number | ListenOptions) {
+      if (!initialized) {
+        const owners = container.findHookOwners(['onModuleInit', 'onApplicationBootstrap']);
+        if (owners.length > 0) {
+          const names = owners.join(', ');
+          throw new Error(`${names} define onModuleInit / onApplicationBootstrap; call \`await app.init()\` before app.listen() so they run before the first request`);
+        }
+      }
       const {
         routes: extraRoutes = {},
         websockets,
@@ -212,6 +229,26 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         }
       })();
       return closing;
+    },
+    /**
+     * Runs startup hooks: creates every singleton provider, then awaits `onModuleInit()` on each
+     * (dependencies before their dependents), then `onApplicationBootstrap()` on each. Call it before
+     * `listen()` (which refuses to start while hooks are pending) or before using `fetch` directly.
+     * Safe to call more than once; a failing hook rejects and can be retried.
+     */
+    init() {
+      initializing ??= (async () => {
+        for (const hook of ['onModuleInit', 'onApplicationBootstrap'] as const) {
+          for (const instance of hookOwners(hook)) {
+            await (instance as Record<string, () => unknown>)[hook]!();
+          }
+        }
+        initialized = true;
+      })().catch((error: unknown) => {
+        initializing = undefined;
+        throw error;
+      });
+      return initializing;
     },
     /** Resolves a provider from the app's root container (handy in scripts and tests). */
     get<T>(token: Token<T>): T {
