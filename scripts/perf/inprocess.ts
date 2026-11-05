@@ -6,13 +6,16 @@ const durationMs = Number(process.env.PERF_DURATION_MS ?? 400);
 const warmupOps = Number(process.env.PERF_WARMUP_OPS ?? 3000);
 const only = process.env.PERF_SCENARIOS?.split(',');
 
-const app = createBenchApp();
+const apps = new Map<string, ReturnType<typeof createBenchApp>>();
 const results: Array<{ name: string; opsPerSec: number }> = [];
 
 for (const scenario of scenarios) {
   if (only && !only.includes(scenario.name)) {
     continue;
   }
+  const variant = scenario.app ?? 'default';
+  const app = apps.get(variant) ?? createBenchApp(variant);
+  apps.set(variant, app);
 
   const first = await app.fetch(scenario.request());
   await first.arrayBuffer();

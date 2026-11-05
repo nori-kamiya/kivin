@@ -49,7 +49,8 @@ async function loadBlock(target: string, init: RequestInit, durationMs: number) 
 
 const results: Array<{ name: string; base: number[]; current: number[]; ratios: number[] }> = [];
 for (const scenario of scenarios) {
-  if (only && !only.includes(scenario.name)) {
+  // The network servers run the default app only.
+  if ((only && !only.includes(scenario.name)) || (scenario.app && scenario.app !== 'default')) {
     continue;
   }
   const baseTarget = await prepare(baseUrl, scenario);
