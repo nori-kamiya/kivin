@@ -2,7 +2,7 @@
 // alternates short timed blocks between them (A B B A ...), so CPU frequency, noisy neighbours and
 // GC drift hit both sides equally. Each adjacent block pair yields one current/base throughput ratio.
 //
-//   bun paired.ts <base bench-app.ts> <current bench-app.ts>
+//   bun paired.ts <base bench-app bundle> <current bench-app bundle>
 // Prints one JSON line: { results: [{ name, base: ops[], current: ops[], ratios: number[] }] }.
 import type { BenchScenario } from './bench-app';
 
@@ -10,7 +10,7 @@ type BenchModule = { createBenchApp: () => { fetch: (request: Request) => Respon
 
 const [basePath, currentPath] = process.argv.slice(2);
 if (!basePath || !currentPath) {
-  throw new Error('usage: bun paired.ts <base bench-app.ts> <current bench-app.ts>');
+  throw new Error('usage: bun paired.ts <base bench-app bundle> <current bench-app bundle>');
 }
 
 const blockMs = Number(process.env.PERF_BLOCK_MS ?? 60);

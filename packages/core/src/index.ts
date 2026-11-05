@@ -3,7 +3,7 @@ export { Container } from './container';
 export { getCookie, parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptions } from './cookies';
 export { createCorsHandler, createCorsMiddleware, type CorsHandler, type CorsOptions } from './cors';
 export type { AotExecutorFactory, AotRouteRuntime } from './runtime/aot';
-export { createToken, type InferSchemaInput, type InferSchemaOutput, type InjectionToken, type RouteContract, type TokenValue, type TokenValues } from './contracts';
+export { createToken, type InferSchemaInput, type InferSchemaOutput, type InjectionToken, type RouteContract, type RouteInput, type RouteInputSpec, type TokenValue, type TokenValues } from './contracts';
 export { RequestContext, ResponseState } from './context';
 export {
     HttpError,
@@ -28,6 +28,8 @@ export {
     getInjectableMetadata,
     getModuleDecoratorMetadata,
     getRouteDescriptors,
+    getRouteMetadataOwner,
+    METADATA_SYMBOL,
     setControllerMetadata,
     setInjectableMetadata,
     setModuleDecoratorMetadata,
@@ -41,6 +43,7 @@ export {
     type ModuleLike,
     type OpenApiExample,
     type OpenApiSecurityScheme,
+    type InputField,
     type ParameterMetadata,
     type ParameterSource,
     type ProviderDefinition,

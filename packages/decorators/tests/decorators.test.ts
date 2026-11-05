@@ -1,9 +1,8 @@
-import { getControllerMetadata, getInjectableMetadata, getModuleDecoratorMetadata, getRouteDescriptors } from '@kivin/core';
+import { buildManifest, defineApplication, getControllerMetadata, getInjectableMetadata, getModuleDecoratorMetadata, getRouteDescriptors, getRouteMetadataOwner, METADATA_SYMBOL } from '@kivin/core';
+import { createValibotAdapter } from '@kivin/valibot';
 import { describe, expect, test } from 'bun:test';
 import {
     ApiResponse,
-    Body,
-    Context,
     Controller,
     Delete,
     Description,
@@ -11,9 +10,7 @@ import {
     Injectable,
     Module,
     OperationId,
-    PathParam,
     Post,
-    QueryParam,
     Security,
     Summary,
     Tag,
@@ -51,8 +48,8 @@ class ItemsController {
   @OperationId('items.list')
   @UseQuerySchema(QUERY_SCHEMA)
   @ApiResponse(200, RESPONSE_SCHEMA, 'Item list')
-  list(@QueryParam('search') search?: string) {
-    return search;
+  list(input: { query: { search?: string } }) {
+    return input.query.search;
   }
 
   @Post('/:id')
@@ -63,13 +60,13 @@ class ItemsController {
   @UseGuards(RouteGuard)
   @UseFilters(Filter)
   @ApiResponse(201, 'Created')
-  create(@PathParam('id') id: string, @Body() body: unknown, @Context() context: unknown) {
-    return { id, body, context };
+  create({ params, body, context }: { params: { id: string }; body: unknown; context: unknown }) {
+    return { id: params.id, body, context };
   }
 
   @Delete('/:id')
-  remove(@QueryParam() query: unknown) {
-    return query;
+  remove() {
+    return undefined;
   }
 
   helper() {
@@ -128,19 +125,51 @@ describe('decorators', () => {
     expect(create.docs.responses[0]?.schema).toBeUndefined();
   });
 
-  test('parameter decorators record sources sorted by index', () => {
-    const routes = getRouteDescriptors(ItemsController);
-    expect(routes.find((route) => route.methodName === 'list')!.parameters).toEqual([{ index: 0, source: 'query', name: 'search' }]);
-    expect(routes.find((route) => route.methodName === 'create')!.parameters).toEqual([
-      { index: 0, source: 'path', name: 'id' },
-      { index: 1, source: 'body' },
-      { index: 2, source: 'context' },
-    ]);
-    expect(routes.find((route) => route.methodName === 'remove')!.parameters).toEqual([{ index: 0, source: 'query' }]);
+  test('records metadata on the class decorator metadata object (TC39)', () => {
+    const owner = (ItemsController as unknown as Record<symbol, unknown>)[METADATA_SYMBOL];
+    expect(owner).toBeDefined();
+    expect(getRouteMetadataOwner(ItemsController)).toBe(owner as object);
+  });
+
+  test('handlers without parameter decorators expose no positional parameters', () => {
+    for (const route of getRouteDescriptors(ItemsController)) {
+      expect(route.parameters).toEqual([]);
+    }
+  });
+
+  test('rejects decorating static methods', () => {
+    expect(() => {
+      class Invalid {
+        @Get('/x')
+        static handler() {
+          return undefined;
+        }
+      }
+      return Invalid;
+    }).toThrow('@Get can only decorate public instance methods');
   });
 
   test('method-level enhancers are kept separate from controller-level ones', () => {
     const create = getRouteDescriptors(ItemsController).find((route) => route.methodName === 'create')!;
     expect(create.enhancers).toEqual({ guards: [RouteGuard], middleware: [], filters: [Filter] });
+  });
+
+  test('buildManifest gives handlers that declare a parameter the full input object', () => {
+    const manifest = buildManifest(defineApplication({ modules: [ItemsModule], schemaAdapter: createValibotAdapter() }));
+    const byMethod = Object.fromEntries(manifest.routes.map((route) => [route.methodName, route.parameters]));
+    expect(byMethod.list).toEqual([{ index: 0, source: 'input' }]);
+    expect(byMethod.remove).toEqual([]);
+  });
+
+  test('fails loudly when called with legacy (experimentalDecorators) arguments', () => {
+    class Legacy {
+      handler() {
+        return undefined;
+      }
+    }
+    const legacyCall = Get('/x') as unknown as (target: object, key: string, descriptor: PropertyDescriptor) => void;
+    expect(() => legacyCall(Legacy.prototype, 'handler', Object.getOwnPropertyDescriptor(Legacy.prototype, 'handler')!)).toThrow('kivin uses TC39 standard decorators');
+    const legacyClassCall = Controller('/x') as unknown as (target: Function) => void;
+    expect(() => legacyClassCall(Legacy)).toThrow('kivin uses TC39 standard decorators');
   });
 });

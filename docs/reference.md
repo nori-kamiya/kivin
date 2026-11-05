@@ -113,9 +113,12 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 `@UseGuards(...)`, `@UseMiddleware(...)`, `@UseFilters(...)`。
 
-### Parameters
+### Handler input
 
-`@Context()`, `@PathParam(name)`, `@QueryParam(name?)`, `@Body()`。
+引数デコレータはありません（TC39 標準デコレータには存在しないため）。ハンドラは 1 つの入力オブジェクト `{ params, query, body, context }` を受け取り、型は `RouteInput<{ params?: typeof S; query?: typeof S; body?: typeof S }>` で付けます。分割代入したフィールドだけがリクエストごとに計算されます。
+
+- デコレータは TC39 標準で動きます。`experimentalDecorators` は不要です（有効にしないでください）。
+- メソッドのメタデータは `Class[Symbol.metadata]` に保存されます。`Symbol.metadata` が無い実行環境では `@kivin/core` が well-known symbol を補います。
 
 ### Validation schemas
 

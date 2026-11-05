@@ -59,8 +59,8 @@ export class UserController {
   @Summary('Find user by id')
   @UseParamSchema(v.object({ id: v.string() }))
   @Response(200, UserSchema, 'User detail')
-  findById(@PathParam('id') id: string) {
-    return { id, name: 'Ada' };
+  findById({ params }: RouteInput) {
+    return { id: params.id, name: 'Ada' };
   }
 }
 ```

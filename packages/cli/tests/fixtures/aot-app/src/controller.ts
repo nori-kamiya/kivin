@@ -1,5 +1,5 @@
-import { HttpError, type RequestContext } from '@kivin/core';
-import { ApiResponse, Body, Context, Controller, Delete, Get, Injectable, Patch, PathParam, Post, Put, QueryParam, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import { HttpError, type RouteInput } from '@kivin/core';
+import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
 import { HeaderMiddleware, ItemMissing, MissingFilter, RawKeyGuard, REQUEST_ID, RoleGuard, Store, TraceMiddleware } from './providers';
 import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery } from './schemas';
 
@@ -9,20 +9,25 @@ export class AotController {
   constructor(private readonly store: Store) {}
 
   @Get('/context')
-  context(@Context() context: RequestContext) {
+  context({ context }: RouteInput) {
     return context.json({ role: context.get('role') ?? null, path: new URL(context.request.url).pathname });
   }
 
   @Get('/search')
   @UseQuerySchema(SearchQuery)
-  search(@QueryParam('q') q: string | undefined, @QueryParam() all: unknown, @Context() context: RequestContext) {
-    context.setResponseHeader('x-search', q ?? '-');
-    return { q: q ?? null, all };
+  search({ query, context }: RouteInput<{ query: typeof SearchQuery }>) {
+    context.setResponseHeader('x-search', query.q ?? '-');
+    return { q: query.q ?? null, all: query };
   }
 
   @Get('/raw-query')
-  rawQuery(@QueryParam('name') name: string | undefined, @Context() context: RequestContext) {
-    return context.json({ name: name ?? null });
+  rawQuery({ query, context }: RouteInput) {
+    return context.json({ name: query.name ?? null });
+  }
+
+  @Get('/whole-input')
+  wholeInput(input: RouteInput) {
+    return { params: input.params, query: input.query, hasContext: Boolean(input.context) };
   }
 
   @Get('/items/:id')
@@ -30,12 +35,12 @@ export class AotController {
   @UseFilters(MissingFilter)
   @ApiResponse(200, Item, 'item')
   @ApiResponse(404, ErrorBody, 'missing')
-  find(@PathParam('id') id: number, @Context() context: RequestContext) {
-    const item = this.store.items.get(id);
+  find({ params, context }: RouteInput<{ params: typeof IdParams }>) {
+    const item = this.store.items.get(params.id);
     if (!item) {
       throw new ItemMissing();
     }
-    context.setResponseHeader('x-found', String(id));
+    context.setResponseHeader('x-found', String(params.id));
     return item;
   }
 
@@ -43,9 +48,9 @@ export class AotController {
   @UseGuards(RoleGuard)
   @UseBodySchema(ItemInput)
   @ApiResponse(201, Item, 'created')
-  async create(@Body() input: { name: string; price: number }, @Context() context: RequestContext) {
+  async create({ body, context }: RouteInput<{ body: typeof ItemInput }>) {
     const fromContext = await context.jsonBody<{ name: string }>();
-    return { id: 99, name: `${input.name}/${fromContext.name}`, price: input.price };
+    return { id: 99, name: `${body.name}/${fromContext.name}`, price: body.price };
   }
 
   @Put('/items/:id')
@@ -53,11 +58,11 @@ export class AotController {
   @UseMiddleware(HeaderMiddleware)
   @UseParamSchema(IdParams)
   @UseBodySchema(ItemInput)
-  replace(@PathParam('id') id: number, @Body() input: { name: string; price: number }) {
-    if (input.price < 0) {
+  replace({ params, body }: RouteInput<{ params: typeof IdParams; body: typeof ItemInput }>) {
+    if (body.price < 0) {
       throw new HttpError(422, 'Negative price');
     }
-    return { id, ...input };
+    return { id: params.id, ...body };
   }
 
   @Patch('/items/:id')
@@ -65,49 +70,49 @@ export class AotController {
   @UseFilters(MissingFilter)
   @UseParamSchema(IdParams)
   @UseBodySchema(ItemPatch)
-  patch(@PathParam('id') id: number, @Body() input: { name?: string; price?: number }, @Context() context: RequestContext) {
-    const item = this.store.items.get(id);
+  patch({ params, body, context }: RouteInput<{ params: typeof IdParams; body: typeof ItemPatch }>) {
+    const item = this.store.items.get(params.id);
     if (!item) {
       throw new ItemMissing();
     }
     context.setResponseHeader('x-patched', '1');
-    return { ...item, ...input };
+    return { ...item, ...body };
   }
 
   @Delete('/items/:id')
   @UseGuards(RawKeyGuard, RoleGuard)
   @ApiResponse(204, 'deleted')
-  remove(@PathParam('id') id: string) {
-    if (id === '0') {
+  remove({ params }: RouteInput) {
+    if (params.id === '0') {
       throw new Response('teapot', { status: 418 });
     }
     return undefined;
   }
 
   @Get('/boom/:kind')
-  boom(@PathParam('kind') kind: string, @Context() context: RequestContext) {
-    context.setCookie('boom', kind);
-    if (kind === 'http') {
+  boom({ params, context }: RouteInput) {
+    context.setCookie('boom', params.kind!);
+    if (params.kind === 'http') {
       throw new HttpError(409, 'Conflict here');
     }
-    if (kind === 'response') {
+    if (params.kind === 'response') {
       throw Response.json({ thrown: true }, { status: 400 });
     }
-    if (kind === 'error') {
+    if (params.kind === 'error') {
       throw new Error('kaboom');
     }
-    return { kind };
+    return { kind: params.kind };
   }
 
   @Get('/scoped')
-  scoped(@Context() context: RequestContext) {
+  scoped({ context }: RouteInput) {
     const first = context.inject<{ id: number }>(REQUEST_ID);
     const second = context.inject<{ id: number }>(REQUEST_ID);
     return { same: first === second, positive: first.id > 0 };
   }
 
   @Post('/echo')
-  echo(@Body() body: unknown, @Context() context: RequestContext) {
+  echo({ body, context }: RouteInput) {
     context.setCookie('a', '1');
     context.setCookie('b', '2');
     return { body };
@@ -115,13 +120,12 @@ export class AotController {
 
   @Get('/invalid-response')
   @ApiResponse(200, Item, 'item')
-  invalidResponse(@Context() context: RequestContext) {
-    void context;
+  invalidResponse() {
     return { id: 'not-a-number' };
   }
 
   @Get('/no-content')
-  noContent(@Context() context: RequestContext) {
+  noContent({ context }: RouteInput) {
     context.setResponseStatus(204);
     return undefined;
   }

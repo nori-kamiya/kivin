@@ -28,6 +28,7 @@ const cases: Case[] = [
   { name: 'query schema invalid', request: get('/aot/search?q=x') },
   { name: 'raw named query', request: get('/aot/raw-query?name=ada') },
   { name: 'raw named query missing', request: get('/aot/raw-query') },
+  { name: 'whole input object (no destructuring)', request: get('/aot/whole-input?x=1') },
   { name: 'param schema found', request: get('/aot/items/1') },
   { name: 'param schema invalid', request: get('/aot/items/abc') },
   { name: 'filter handles missing', request: get('/aot/items/7') },

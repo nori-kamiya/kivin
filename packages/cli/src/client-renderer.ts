@@ -172,11 +172,8 @@ export type KivinClient = ReturnType<typeof createClient>;
     if (schema) {
       return `${infer}<${schema}>`;
     }
-    const names = route.parameters.filter((parameter) => parameter.source === 'query' && parameter.name).map((parameter) => parameter.name!);
-    if (names.length > 0) {
-      return `{ ${names.map((name) => `${JSON.stringify(name)}?: string`).join('; ')} }`;
-    }
-    return route.parameters.some((parameter) => parameter.source === 'query') ? 'Record<string, string | undefined>' : undefined;
+    const reads = route.parameters.some((parameter) => parameter.source === 'query' || (parameter.source === 'input' && (parameter.fields ?? ['query']).includes('query')));
+    return reads ? 'Record<string, string | undefined>' : undefined;
   }
 
   function bodyType(route: AstRouteNode, handler: string, schema: string | undefined, infer: string) {
@@ -184,7 +181,11 @@ export type KivinClient = ReturnType<typeof createClient>;
       return `${infer}<${schema}>`;
     }
     const bodyParameter = route.parameters.find((parameter) => parameter.source === 'body');
-    return bodyParameter ? `Parameters<${handler}>[${bodyParameter.index}]` : undefined;
+    if (bodyParameter) {
+      return `Parameters<${handler}>[${bodyParameter.index}]`;
+    }
+    const inputParameter = route.parameters.find((parameter) => parameter.source === 'input' && (parameter.fields ?? ['body']).includes('body'));
+    return inputParameter ? `NonNullable<Parameters<${handler}>[0]>['body']` : undefined;
   }
 }
 

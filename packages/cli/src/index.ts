@@ -331,7 +331,7 @@ function describeExecutionMode(
     return 'native-static';
   }
 
-  const requiresContextParameter = route.parameters.some((parameter) => parameter.source === 'context');
+  const requiresContextParameter = route.parameters.some((parameter) => parameter.source === 'context' || (parameter.source === 'input' && (parameter.fields ?? ['context']).includes('context')));
   const requiresContextGuards = guardTokens.some((token) => !tokenSupportsRawGuard(token, state));
   if (requiresContextParameter || middlewareTokens.length > 0 || filterTokens.length > 0 || requiresContextGuards) {
     return 'context-runtime';

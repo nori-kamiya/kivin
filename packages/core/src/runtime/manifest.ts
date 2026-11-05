@@ -47,7 +47,13 @@ export function buildRoute<TSchema>(
     fullPath: joinPaths(controllerMetadata.basePath, descriptor.route.path),
     controller,
     methodName: descriptor.methodName,
-    parameters: descriptor.parameters,
+    // Without the CLI there is no AST to see which input fields a handler destructures, so a handler
+    // that declares a parameter receives the full input object.
+    parameters: descriptor.parameters.length > 0
+      ? descriptor.parameters
+      : ((controller.prototype as Record<string, unknown>)[descriptor.methodName] as ((...args: unknown[]) => unknown) | undefined)?.length
+        ? [{ index: 0, source: 'input' }]
+        : [],
     guards: [...new Set([...controllerMetadata.guards, ...descriptor.enhancers.guards])],
     middleware: [...new Set([...controllerMetadata.middleware, ...descriptor.enhancers.middleware])],
     filters: [...new Set([...controllerMetadata.filters, ...descriptor.enhancers.filters])],

@@ -1,5 +1,5 @@
 // Compile-time tests for the helpers used by the generated `contracts.ts`.
-import type { InferSchemaInput, InferSchemaOutput, RouteContract } from '@kivin/core';
+import type { InferSchemaInput, InferSchemaOutput, RouteContract, RouteInput } from '@kivin/core';
 import * as v from 'valibot';
 
 const BodySchema = v.object({ name: v.string(), age: v.optional(v.number()) });
@@ -26,3 +26,17 @@ export type ReturnsOk = RouteContract.Expect<RouteContract.Returns<typeof BodySc
 export type ReturnsResponseIsSkipped = RouteContract.Expect<RouteContract.Returns<typeof BodySchema, Response, 'raw response'>>;
 // @ts-expect-error the returned value does not satisfy the response schema
 export type ReturnsWrong = RouteContract.Expect<RouteContract.Returns<typeof BodySchema, { title: string }, 'wrong return'>>;
+
+// RouteInput / RouteContract.Input: the handler's declared input vs the route's schemas.
+type FindHandler = (input: Pick<RouteInput<{ params: typeof ParamsSchema }>, 'params' | 'context'>) => unknown;
+export type InputOk = RouteContract.Expect<RouteContract.Input<{ params: typeof ParamsSchema }, Parameters<FindHandler>[0], 'ok'>>;
+export type InputParamsTyped = RouteContract.Expect<Equal<RouteInput<{ params: typeof ParamsSchema }>['params'], { id: number }>>;
+export type InputDefaults = RouteContract.Expect<Equal<RouteInput['params'], Record<string, string>>>;
+// @ts-expect-error the handler expects a params schema the route does not declare
+export const inputMissingSchema: RouteContract.Input<{}, Parameters<FindHandler>[0], 'missing'> = true;
+type CreateHandler = (input: { body: { name: string; age?: number | undefined } }) => unknown;
+export type InputBodyOk = RouteContract.Expect<RouteContract.Input<{ body: typeof BodySchema }, Parameters<CreateHandler>[0], 'ok'>>;
+type StrictCreateHandler = (input: { body: { name: string; email: string } }) => unknown;
+// @ts-expect-error the body schema does not produce `email`
+export type InputBodyMismatch = RouteContract.Expect<RouteContract.Input<{ body: typeof BodySchema }, Parameters<StrictCreateHandler>[0], 'mismatch'>>;
+export type NoInputIsFine = RouteContract.Expect<RouteContract.Input<{}, undefined, 'none'>>;

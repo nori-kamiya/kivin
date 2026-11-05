@@ -1,6 +1,6 @@
+import type { RouteInput } from '@kivin/core';
 import {
     ApiResponse,
-    Body,
     Controller,
     Delete,
     Description,
@@ -47,7 +47,8 @@ export class ContractController {
   @Security('apiKeyAuth')
   @ApiResponse(202, ContractSchema, 'Revision accepted')
   @ApiResponse(400, ErrorSchema, 'Bad request')
-  createRevision(@Body() _input: unknown) {
+  createRevision({ body }: RouteInput<{ body: typeof CreateRevisionSchema }>) {
+    void body;
     return {
       id: 'contract-1',
       revisionId: 'rev-1',

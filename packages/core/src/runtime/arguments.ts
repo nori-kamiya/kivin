@@ -21,8 +21,67 @@ export function createArgumentResolver(parameters: ParameterMetadata[]): Compile
   };
 }
 
+/** Builds the handler's input object with only the fields it reads. */
+export function buildInputObject(fields: readonly string[] | undefined, bodyValue: unknown, context: unknown, paramValue: unknown, queryValue: unknown) {
+  const input: Record<string, unknown> = {};
+  for (const field of fields ?? INPUT_FIELDS) {
+    switch (field) {
+      case 'params':
+        input.params = paramValue ?? {};
+        break;
+      case 'query':
+        input.query = queryValue ?? {};
+        break;
+      case 'body':
+        input.body = bodyValue;
+        break;
+      case 'context':
+        input.context = context;
+        break;
+    }
+  }
+  return input;
+}
+
+const INPUT_FIELDS = ['params', 'query', 'body', 'context'] as const;
+
+/**
+ * Input-object getter specialised on the fields the handler reads, so the hot path builds a
+ * fixed-shape object literal instead of looping over field names.
+ */
+function createInputGetter(fields: readonly string[] | undefined): CompiledHandlerArgumentGetter {
+  switch ((fields ?? INPUT_FIELDS).join(',')) {
+    case '':
+      return () => ({});
+    case 'params':
+      return (_bodyValue, _context, paramValue) => ({ params: paramValue ?? {} });
+    case 'query':
+      return (_bodyValue, _context, _paramValue, _params, queryValue) => ({ query: queryValue ?? {} });
+    case 'body':
+      return (bodyValue) => ({ body: bodyValue });
+    case 'context':
+      return (_bodyValue, context) => ({ context });
+    case 'params,body':
+      return (bodyValue, _context, paramValue) => ({ params: paramValue ?? {}, body: bodyValue });
+    case 'params,context':
+      return (_bodyValue, context, paramValue) => ({ params: paramValue ?? {}, context });
+    case 'body,context':
+      return (bodyValue, context) => ({ body: bodyValue, context });
+    case 'query,context':
+      return (_bodyValue, context, _paramValue, _params, queryValue) => ({ query: queryValue ?? {}, context });
+    case 'params,body,context':
+      return (bodyValue, context, paramValue) => ({ params: paramValue ?? {}, body: bodyValue, context });
+    case 'params,query,body,context':
+      return (bodyValue, context, paramValue, _params, queryValue) => ({ params: paramValue ?? {}, query: queryValue ?? {}, body: bodyValue, context });
+    default:
+      return (bodyValue, context, paramValue, _params, queryValue) => buildInputObject(fields, bodyValue, context, paramValue, queryValue);
+  }
+}
+
 export function resolveParameterValue(parameter: ParameterMetadata, input: CompiledArgumentInput) {
   switch (parameter.source) {
+    case 'input':
+      return buildInputObject(parameter.fields, input.bodyValue, input.context, input.paramValue, input.queryValue);
     case 'context':
       return input.context;
     case 'body':
@@ -52,6 +111,8 @@ export function resolveParameterValue(parameter: ParameterMetadata, input: Compi
 
 export function createCompiledArgumentGetter(parameter: ParameterMetadata): CompiledHandlerArgumentGetter {
   switch (parameter.source) {
+    case 'input':
+      return createInputGetter(parameter.fields);
     case 'context':
       return (_bodyValue, context) => context;
     case 'body':

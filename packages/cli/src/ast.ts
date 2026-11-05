@@ -86,13 +86,15 @@ export interface AstRouteNode {
   paramSchema?: AstExpressionRef;
   security: Array<{ scheme: string; scopes: string[] }>;
   responses: Array<{ status: number; description: string; schema?: AstExpressionRef }>;
-  parameters: Array<{ index: number; source: 'context' | 'path' | 'query' | 'body'; name?: string }>;
+  parameters: RouteParameterDescriptor[];
   guards: AstExpressionRef[];
   middleware: AstExpressionRef[];
   filters: AstExpressionRef[];
 }
 
-type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body'; name?: string };
+export type InputField = 'params' | 'query' | 'body' | 'context';
+export type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body' | 'input'; name?: string; fields?: InputField[] };
+const INPUT_FIELDS: readonly InputField[] = ['params', 'query', 'body', 'context'];
 
 interface AstSymbolRef {
   name: string;
@@ -186,27 +188,18 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
       const label = `${controller.className}.${route.methodName}`;
       const add = (check: string) => checks.push(`export type Check${checks.length} = ${contract}.Expect<${check}>;`);
 
-      for (const parameter of route.parameters) {
-        const parameterType = `Parameters<${handler}>[${parameter.index}]`;
-        if (parameter.source === 'body') {
-          const schema = schemaType(controller, route.bodySchema);
-          if (schema) {
-            add(`${contract}.Body<${schema}, ${parameterType}, ${JSON.stringify(`${label}: @Body() parameter does not accept the body schema output`)}>`);
-          }
-          continue;
-        }
-
-        if (parameter.source === 'query' || parameter.source === 'path') {
-          const schema = schemaType(controller, parameter.source === 'query' ? route.querySchema : route.paramSchema);
-          if (!schema) {
-            continue;
-          }
-          const decorator = parameter.source === 'query' ? 'QueryParam' : 'PathParam';
-          const schemaDecorator = parameter.source === 'query' ? 'UseQuerySchema' : 'UseParamSchema';
-          add(parameter.name
-            ? `${contract}.Field<${schema}, ${JSON.stringify(parameter.name)}, ${parameterType}, ${JSON.stringify(`${label}: @${decorator}('${parameter.name}') does not match @${schemaDecorator}`)}>`
-            : `${contract}.Whole<${schema}, ${parameterType}, ${JSON.stringify(`${label}: @${decorator}() does not match @${schemaDecorator}`)}>`);
-        }
+      const inputParameter = route.parameters.find((parameter) => parameter.source === 'input');
+      if (inputParameter) {
+        // The input kivin builds from the declared schemas must satisfy the handler's parameter type,
+        // e.g. `RouteInput<{ params: typeof IdParams }>` while the route says `@UseParamSchema(IdParams)`.
+        const spec = (['params', 'query', 'body'] as const)
+          .map((field) => {
+            const schema = schemaType(controller, field === 'params' ? route.paramSchema : field === 'query' ? route.querySchema : route.bodySchema);
+            return schema ? `${field}: ${schema}` : undefined;
+          })
+          .filter(Boolean);
+        const specType = spec.length > 0 ? `{ ${spec.join('; ')} }` : '{}';
+        add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema`)}>`);
       }
 
       const successResponses = route.responses.filter((response) => response.status >= 200 && response.status < 300 && response.schema);
@@ -364,7 +357,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   const middleware = readExpressionListDecoratorValues(context, source, decorators, 'UseMiddleware');
   const filters = readExpressionListDecoratorValues(context, source, decorators, 'UseFilters');
   const responses = readResponseDecorators(context, source, decorators);
-  const parameters = method.value.params.flatMap((parameter, index) => readParameter(parameter, filePath, index));
+  const parameters = readHandlerInput(method.value.params, filePath, getPropertyKeyText(source, method.key, method.computed));
 
   return [{
     methodName: getPropertyKeyText(source, method.key, method.computed),
@@ -386,37 +379,40 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   }];
 }
 
-function readParameter(parameter: ParamPattern, filePath: string, index: number): RouteParameterDescriptor[] {
-  const decorators = parameter.decorators ?? [];
-  const result: RouteParameterDescriptor[] = [];
-
-  for (const decorator of decorators) {
-    const expression = getDecoratorCallExpression(decorator);
-    if (!expression || expression.callee.type !== 'Identifier') {
-      continue;
-    }
-
-    const decoratorName = expression.callee.name;
-    if (decoratorName === 'Context') {
-      result.push({ index, source: 'context' });
-      continue;
-    }
-    if (decoratorName === 'Body') {
-      result.push({ index, source: 'body' });
-      continue;
-    }
-    if (decoratorName === 'PathParam') {
-      result.push({ index, source: 'path', name: readStringLiteral(expression.arguments[0], filePath, 'PathParam value') });
-      continue;
-    }
-    if (decoratorName === 'QueryParam') {
-      const name = expression.arguments[0] ? readStringLiteral(expression.arguments[0], filePath, 'QueryParam value') : undefined;
-      result.push(name ? { index, source: 'query', name } : { index, source: 'query' });
-    }
-
+/**
+ * Handlers receive one input object (`find({ params, context }: RouteInput<...>)`). When it is
+ * destructured, only those fields are recorded so the runtime computes nothing else per request.
+ */
+function readHandlerInput(parameters: ParamPattern[], filePath: string, methodName: string): RouteParameterDescriptor[] {
+  if (parameters.length === 0) {
+    return [];
+  }
+  if (parameters.length > 1) {
+    throw new Error(`${methodName} in ${filePath}: route handlers take a single input object, e.g. ${methodName}({ params, body, context }: RouteInput<...>)`);
   }
 
-  return result;
+  const parameter = parameters[0]!;
+  if ((parameter.decorators ?? []).length > 0) {
+    throw new Error(`${methodName} in ${filePath}: parameter decorators (@Body, @PathParam, @QueryParam, @Context) were removed with the move to TC39 decorators; destructure the input object instead, e.g. ${methodName}({ params, body }: RouteInput<...>)`);
+  }
+
+  const pattern = parameter.type === 'AssignmentPattern' ? parameter.left : parameter;
+  if (pattern.type !== 'ObjectPattern') {
+    return [{ index: 0, source: 'input' }];
+  }
+
+  const fields: InputField[] = [];
+  for (const property of pattern.properties) {
+    if (property.type === 'RestElement') {
+      return [{ index: 0, source: 'input' }];
+    }
+    const key = property.computed ? undefined : property.key.type === 'Identifier' ? property.key.name : property.key.type === 'Literal' ? String(property.key.value) : undefined;
+    if (!key || !INPUT_FIELDS.includes(key as InputField)) {
+      throw new Error(`${methodName} in ${filePath}: unknown input field "${key ?? '?'}"; available fields are ${INPUT_FIELDS.join(', ')}`);
+    }
+    fields.push(key as InputField);
+  }
+  return [{ index: 0, source: 'input', fields: INPUT_FIELDS.filter((field) => fields.includes(field)) }];
 }
 
 function readResponseDecorators(context: AstImportContext, source: ParsedSource, decorators: Decorator[]) {
@@ -1114,7 +1110,16 @@ function renderStringArray(values: string[]) {
 }
 
 function renderParameters(parameters: AstRouteNode['parameters']) {
-  return `[${parameters.map((parameter) => parameter.name ? `{ index: ${parameter.index}, source: ${JSON.stringify(parameter.source)}, name: ${JSON.stringify(parameter.name)} }` : `{ index: ${parameter.index}, source: ${JSON.stringify(parameter.source)} }`).join(', ')}]`;
+  return `[${parameters.map((parameter) => {
+    const entries = [`index: ${parameter.index}`, `source: ${JSON.stringify(parameter.source)}`];
+    if (parameter.name) {
+      entries.push(`name: ${JSON.stringify(parameter.name)}`);
+    }
+    if (parameter.fields) {
+      entries.push(`fields: ${renderStringArray(parameter.fields)}`);
+    }
+    return `{ ${entries.join(', ')} }`;
+  }).join(', ')}]`;
 }
 
 function renderSecurity(security: AstRouteNode['security']) {

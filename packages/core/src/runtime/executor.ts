@@ -197,15 +197,20 @@ export function compileRouteExecutor<TSchema>(input: {
   const filters = compileFilters(input.container, [...input.globalFilterTokens, ...input.route.filters]);
   const resolveArguments = createArgumentResolver(input.route.parameters);
   const invokeHandler = createHandlerInvoker(input.route.parameters);
-  const hasContextParameter = input.route.parameters.some((parameter) => parameter.source === 'context');
-  const hasBodyParameter = input.route.parameters.some((parameter) => parameter.source === 'body');
-  const hasPathParameter = input.route.parameters.some((parameter) => parameter.source === 'path');
-  const hasQueryParameter = input.route.parameters.some((parameter) => parameter.source === 'query');
+  // An input-object parameter (`find({ params, context })`) counts as each of the fields it reads.
+  const reads = (source: 'context' | 'body' | 'path' | 'query', field: 'context' | 'body' | 'params' | 'query') =>
+    input.route.parameters.some((parameter) => parameter.source === source || (parameter.source === 'input' && (parameter.fields ?? ['params', 'query', 'body', 'context']).includes(field)));
+  const hasContextParameter = reads('context', 'context');
+  const hasBodyParameter = reads('body', 'body');
+  const hasPathParameter = reads('path', 'params');
+  const hasQueryParameter = reads('query', 'query');
+  const inputReads = (field: 'params' | 'query') =>
+    input.route.parameters.some((parameter) => parameter.source === 'input' && (parameter.fields ?? ['params', 'query', 'body', 'context']).includes(field));
   const hasSingleBodyParameter = input.route.parameters.length === 1
     && input.route.parameters[0]?.index === 0
     && input.route.parameters[0]?.source === 'body';
-  const requiresQueryObject = Boolean(input.route.docs.querySchema) || input.route.parameters.some((parameter) => parameter.source === 'query' && !parameter.name);
-  const requiresParamObject = Boolean(input.route.docs.paramSchema) || input.route.parameters.some((parameter) => parameter.source === 'path' && !parameter.name);
+  const requiresQueryObject = Boolean(input.route.docs.querySchema) || inputReads('query') || input.route.parameters.some((parameter) => parameter.source === 'query' && !parameter.name);
+  const requiresParamObject = Boolean(input.route.docs.paramSchema) || inputReads('params') || input.route.parameters.some((parameter) => parameter.source === 'path' && !parameter.name);
   const requiresRequestUrl = requiresQueryObject || hasQueryParameter;
   const requiresBody = hasBodyParameter || Boolean(input.route.docs.bodySchema);
   const singletonGuards = guards.singletonInstances;
