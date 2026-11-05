@@ -19,7 +19,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - generated typed HTTP client (`client.ts`)
 - `kivin dev` watch mode (regenerate + restart)
 - ahead-of-time route executors generated into the manifest (`--no-aot` / `KIVIN_AOT=0` to opt out)
-- CORS, cookies, JWT auth guard (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
+- CORS, cookies, JWT auth guard with JWKS (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
 - graceful shutdown with `onApplicationShutdown` hooks, `createTestingApp` with provider overrides
 - OpenAPI 3.1 generation
 - `operationId`, route description, and security scheme support
