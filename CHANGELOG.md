@@ -41,6 +41,7 @@
 - `@kivin/logger`: `LOGGER` / `LOGGER_OPTIONS` を型付きトークンにした
 - example は `/openapi.json` と `/docs` を `app.listen({ routes })` の native route として配信するようにした
 - 性能劣化ゲートのベンチアプリをデコレータで書いたソースにし、比較する両側でそれぞれの `kivin generate` を使って manifest を生成するようにした
+- `perf:check`（Hono / Elysia 比較）を固定閾値の判定から、3 つの compiled binary を同時に起動して交互に計測するペア計測（中央値と 95% CI）に置き換えた。数値では失敗せず、job summary に結果を出す
 - 依存関係を更新（hono 4.13 / elysia 1.4.30 / valibot 1.5 ほか）。`@kivin/valibot` の valibot 下限を `^1.5.0` に引き上げ
 - `@kivin/cli`: AST 解析と module 解決を TypeScript Compiler API から oxc-parser / oxc-resolver に置き換え、`typescript` への依存を削除。生成される manifest / OpenAPI は従来と同一で、生成は約 5 倍速い（example で 310ms → 64ms）
 - 開発用の TypeScript を 7.0（ネイティブ版 `tsc`）に更新。出力される JS は同一で、`.d.ts` は推論型のプロパティ順などの表記差のみ

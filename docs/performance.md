@@ -64,7 +64,7 @@ PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 - **HTTP（参考値）**: 2 つの compiled binary を同時に起動し、load client がブロックを交互に流します。client とサーバーが CPU を取り合うためノイズが大きく（同一コードでも ±10〜20%）、10% 超の明確な低下は警告として表示しますがブロックはしません。
 - **検出力の確認**: リクエスト経路に約 3% の処理を足すと幾何平均で検出され、同一コード同士の比較では誤検出しないことを確認しています。閾値は `PERF_SCENARIO_THRESHOLD` / `PERF_GEOMEAN_THRESHOLD` / `PERF_SIZE_THRESHOLD` で調整できます。
 
-Hono / Elysia との比較（`bun run perf:check`）は CI 上で参考として実行します（`continue-on-error`）。
+Hono / Elysia との比較（`bun run perf:check`）は CI で参考値としてペア計測し、結果を job summary に出します。
 
 ## Commands
 
@@ -124,9 +124,13 @@ BENCH_VARIANTS=users,create BENCH_ITERATIONS=3 bun run bench:stack:spot
 
 `bun run bench:health` は minimal `GET /health` だけを対象に、`kivin` の `context-json` / `plain-response` / `static-object` 実装差を切り分けて測る suite です。Bun route path 上で何が勝ち、何が負けているかを isolated に確認するために使います。
 
-`bun run perf:check` は release candidate 前の lightweight perf gate です。`bench:health` と `bench:stack` を少ない iteration で再実行し、短時間でも比較的安定している勝ち筋だけを見て退行を止めます。stack 側は noise を減らすため `docs,patch,create` に絞って回します。default は `PERF_GATE_ITERATIONS=5` です。
+`bun run perf:check` は kivin / Hono / Elysia の比較です（`scripts/bench-compare.ts`）。`examples/benchmark-stack-*` の compiled binary を 3 つ同時に起動し、load client が短いブロックを Latin square の順番（全員が同じ回数ずつ 1 番目・2 番目・3 番目になる）で流して、ローテーションごとに kivin/Hono・kivin/Elysia の比を取ります。結果は中央値と bootstrap 95% CI で出します。
 
-full benchmark の比較対象は `kivin` / `hono` / `elysia` ですが、`perf:check` は今のところ安定性重視で `kivin` 対 `hono` の regression gate に留めています。Elysia は target/runtime として full benchmark では追いますが、gate 条件にはまだ含めていません。
+- 対象: health / docs / read-users（query validation）/ create・patch（guard + body validation）/ delete（guard）
+- 調整: `COMPARE_ROTATIONS`（既定 8）/ `COMPARE_BLOCK_MS`（既定 300）/ `COMPARE_CONCURRENCY`（既定 32）/ `COMPARE_WORKLOADS`
+- 合否: 数値では落としません。サーバーが起動しない、または想定外の status を返した場合だけ失敗します。
+
+以前の `perf:check` は、手元の環境で決めた固定の閾値（例: 「Hono の 105% 以上」）で判定していました。しかし GitHub の共有ランナーでは同じ測定が実行ごとに 13k〜52k req/s と揺れ、変更と無関係に失敗し続けていたため、ペア計測による参考値に置き換えました。kivin 自身の劣化は `perf:regression` が判定します。
 
 既定では `BENCH_ITERATIONS=5` です。回数を変えたい場合は次のように実行します。
 
@@ -134,7 +138,7 @@ full benchmark の比較対象は `kivin` / `hono` / `elysia` ですが、`perf:
 BENCH_ITERATIONS=7 bun run bench
 BENCH_ITERATIONS=7 bun run bench:health
 BENCH_ITERATIONS=7 bun run bench:stack
-PERF_GATE_ITERATIONS=5 bun run perf:check
+COMPARE_ROTATIONS=12 bun run perf:check
 ```
 
 cross-framework の順位を更新したい時は `10` iteration を基準にする方が安全です。
