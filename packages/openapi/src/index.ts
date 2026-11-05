@@ -44,11 +44,7 @@ export function buildOpenApiDocument<TSchema>(input: {
       requestBody: route.docs.bodySchema
         ? {
             required: true,
-            content: {
-              'application/json': {
-                schema: input.schemaAdapter.toOpenApiSchema(route.docs.bodySchema),
-              },
-            },
+            content: requestBodyContent(route.docs.consumes, input.schemaAdapter.toOpenApiSchema(route.docs.bodySchema)),
           }
         : undefined,
       responses: Object.fromEntries(
@@ -91,6 +87,11 @@ export function buildOpenApiDocument<TSchema>(input: {
       : {}),
     paths,
   };
+}
+
+/** Request body content for the route's `@Consumes` media type (JSON when unset). */
+function requestBodyContent(consumes: string | undefined, schema: Record<string, unknown>) {
+  return { [consumes ?? 'application/json']: { schema } };
 }
 
 function buildParameters<TSchema>(

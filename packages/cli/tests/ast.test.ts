@@ -106,9 +106,11 @@ describe('generateArtifacts', () => {
     const manifest = moduleNamespace.default ?? moduleNamespace.manifest;
 
     expect(Array.isArray(manifest.routes)).toBe(true);
-    expect(manifest.routes).toHaveLength(6);
+    expect(manifest.routes).toHaveLength(7);
     expect(manifest.routes[2].docs.operationId).toBe('users.create');
-    expect(manifest.routes[5].docs.operationId).toBe('users.delete');
+    expect(manifest.routes[5].docs.operationId).toBe('users.uploadAvatar');
+    expect(manifest.routes[5].docs.consumes).toBe('multipart/form-data');
+    expect(manifest.routes[6].docs.operationId).toBe('users.delete');
     expect(result.contractsPath).toBe(join(outDir, 'contracts.ts'));
     expect(await readFile(result.contractsPath, 'utf8')).toContain('RouteContract.Expect<');
   });
@@ -157,7 +159,7 @@ describe('inspect commands', () => {
       entry: exampleApp,
     });
 
-    expect(routes.map((route) => route.method)).toEqual(['GET', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+    expect(routes.map((route) => route.method)).toEqual(['GET', 'GET', 'POST', 'PUT', 'PATCH', 'PUT', 'DELETE']);
     expect(routes[2]).toMatchObject({
       fullPath: '/users/',
       controller: 'UserController',
@@ -166,7 +168,7 @@ describe('inspect commands', () => {
       methodName: 'create',
       operationId: 'users.create',
     });
-    expect(routes[5]).toMatchObject({
+    expect(routes[6]).toMatchObject({
       fullPath: '/users/:id',
       controller: 'UserController',
       controllerScope: 'singleton',
@@ -338,7 +340,7 @@ async function expectOpenApiContractAlignment(input: { entry: string; outDir: st
       ? {
           required: true,
           content: {
-            'application/json': {
+            [route.docs.consumes ?? 'application/json']: {
               schema: appDefinition.schemaAdapter.toOpenApiSchema(route.docs.bodySchema),
             },
           },

@@ -14,11 +14,20 @@ const outDir = join(import.meta.dir, '.generated/aot-app');
 interface Case {
   name: string;
   request: () => Request;
+  /** Expected status, for cases whose outcome is not otherwise obvious from the differential check. */
+  status?: number;
 }
 
 const json = (method: string, path: string, body: unknown, headers: Record<string, string> = {}) => () =>
   new Request(`http://aot.test${path}`, { method, headers: { 'content-type': 'application/json', ...headers }, body: typeof body === 'string' ? body : JSON.stringify(body) });
 const get = (path: string, headers: Record<string, string> = {}, method = 'GET') => () => new Request(`http://aot.test${path}`, { method, headers });
+
+function uploadForm(title: string) {
+  const form = new FormData();
+  form.append('title', title);
+  form.append('file', new File(['body'], 'a.txt'));
+  return form;
+}
 
 const cases: Case[] = [
   { name: 'context json', request: get('/aot/context') },
@@ -55,6 +64,9 @@ const cases: Case[] = [
   { name: 'boom Error -> 500', request: get('/aot/boom/error') },
   { name: 'request-scoped injection', request: get('/aot/scoped') },
   { name: 'echo body without schema + cookies', request: json('POST', '/aot/echo', { a: [1, 2] }) },
+  { name: 'multipart upload', status: 200, request: () => new Request('http://aot.test/aot/upload', { method: 'POST', body: uploadForm('Doc') }) },
+  { name: 'multipart upload invalid', status: 400, request: () => new Request('http://aot.test/aot/upload', { method: 'POST', body: uploadForm('') }) },
+  { name: 'multipart route rejects json (415)', status: 415, request: json('POST', '/aot/upload', { title: 'Doc' }) },
   { name: 'response schema violation', request: get('/aot/invalid-response') },
   { name: 'queued 204 status', request: get('/aot/no-content') },
   { name: 'method not allowed', request: get('/aot/scoped', {}, 'POST') },
@@ -118,6 +130,9 @@ for (const variant of ['app', 'app-globals'] as const) {
       test(testCase.name, async () => {
         const fromAot = await snapshot(await aotApp.fetch(testCase.request()));
         const fromRuntime = await snapshot(await runtimeApp.fetch(testCase.request()));
+        if (testCase.status !== undefined) {
+          expect(fromAot.status).toBe(testCase.status);
+        }
         expect(fromAot).toEqual(fromRuntime);
       });
     }
