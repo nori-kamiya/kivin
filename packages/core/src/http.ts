@@ -1,3 +1,4 @@
+import { JSON_CONTENT_TYPE } from './response';
 export interface HttpErrorOptions {
   body?: unknown;
   headers?: HeadersInit;
@@ -19,7 +20,7 @@ export class HttpError extends Error {
   toResponse() {
     const headers = new Headers(this.headers);
     if (!headers.has('content-type') && this.body !== undefined) {
-      headers.set('content-type', 'application/json; charset=utf-8');
+      headers.set('content-type', JSON_CONTENT_TYPE);
     }
 
     return new Response(this.body === undefined ? null : JSON.stringify(this.body), {

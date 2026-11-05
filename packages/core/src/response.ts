@@ -1,19 +1,14 @@
-export const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+/** The JSON content type kivin sends; it is exactly what Bun's native `Response.json()` writes. */
+export const JSON_CONTENT_TYPE = 'application/json;charset=utf-8';
 export const TEXT_CONTENT_TYPE = 'text/plain; charset=utf-8';
 
-const JSON_HEADERS = Object.freeze({ 'content-type': JSON_CONTENT_TYPE });
 const TEXT_HEADERS = Object.freeze({ 'content-type': TEXT_CONTENT_TYPE });
 const NO_CONTENT_RESPONSE = new Response(null, { status: 204 });
-const JSON_RESPONSE_INIT_201 = Object.freeze({ status: 201, headers: JSON_HEADERS });
+const STATUS_201 = Object.freeze({ status: 201 });
 
-function serializeJson(data: unknown) {
-  const serialized = JSON.stringify(data);
-  if (serialized === undefined) {
-    throw new TypeError('Value is not JSON serializable');
-  }
-
-  return serialized;
-}
+// JSON responses go through Bun's native `Response.json()`, which serialises and sets the content type
+// in one step and is markedly faster than `new Response(JSON.stringify(data), { headers })`. It
+// follows `JSON.stringify` semantics and throws the same TypeError for non-serialisable values.
 
 function isHeaderRecord(headers: HeadersInit): headers is Record<string, string> {
   return !Array.isArray(headers) && !(headers instanceof Headers);
@@ -40,50 +35,32 @@ function mergeHeadersWithContentType(init: ResponseInit, contentType: string) {
 }
 
 export function createJsonResponse(data: unknown, init: ResponseInit = {}) {
-  const serialized = serializeJson(data);
-
   if (!init.headers && init.status === undefined && init.statusText === undefined) {
-    return new Response(serialized, { headers: JSON_HEADERS });
+    return Response.json(data);
   }
 
   if (!init.headers && init.status !== undefined && init.statusText === undefined) {
-    return new Response(serialized, {
-      status: init.status,
-      headers: JSON_HEADERS,
-    });
+    return Response.json(data, { status: init.status });
   }
 
-  return new Response(serialized, mergeHeadersWithContentType(init, JSON_CONTENT_TYPE));
+  // As before, an explicit content-type in `init.headers` is replaced by the JSON one.
+  return Response.json(data, mergeHeadersWithContentType(init, JSON_CONTENT_TYPE));
 }
 
 export function createJsonResponseWithStatus(data: unknown, status: number) {
-  return new Response(serializeJson(data), {
-    status,
-    headers: JSON_HEADERS,
-  });
+  return Response.json(data, { status });
 }
 
 export function createJsonResponseCreated(data: unknown) {
-  return new Response(serializeJson(data), JSON_RESPONSE_INIT_201);
+  return Response.json(data, STATUS_201);
 }
 
 export function createJsonResponseWithHeader(data: unknown, headerName: string, headerValue: string) {
-  return new Response(serializeJson(data), {
-    headers: {
-      'content-type': JSON_CONTENT_TYPE,
-      [headerName]: headerValue,
-    },
-  });
+  return Response.json(data, { headers: { [headerName]: headerValue } });
 }
 
 export function createJsonResponseWithStatusAndHeader(data: unknown, status: number, headerName: string, headerValue: string) {
-  return new Response(serializeJson(data), {
-    status,
-    headers: {
-      'content-type': JSON_CONTENT_TYPE,
-      [headerName]: headerValue,
-    },
-  });
+  return Response.json(data, { status, headers: { [headerName]: headerValue } });
 }
 
 export function createTextResponse(data: string, init: ResponseInit = {}) {

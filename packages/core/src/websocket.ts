@@ -50,10 +50,7 @@ export function compileWebSocketRoutes(routes: Record<string, WebSocketRoute<any
       if (server.upgrade(request, { data: { route, params, data } })) {
         return undefined;
       }
-      return new Response(JSON.stringify({ message: 'Expected a WebSocket upgrade request' }), {
-        status: 426,
-        headers: { 'content-type': 'application/json; charset=utf-8', upgrade: 'websocket' },
-      });
+      return Response.json({ message: 'Expected a WebSocket upgrade request' }, { status: 426, headers: { upgrade: 'websocket' } });
     };
   }
 

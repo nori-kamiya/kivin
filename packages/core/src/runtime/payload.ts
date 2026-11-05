@@ -16,20 +16,14 @@ export function validateOrThrow<TSchema>(
 
   const result = schemaAdapter.parse(schema, input);
   if (!result.success) {
-    throw new Response(JSON.stringify({ message: `${label} validation failed`, issues: result.issues }), {
-      status: 400,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
-    });
+    throw Response.json({ message: `${label} validation failed`, issues: result.issues }, { status: 400 });
   }
 
   return result.output;
 }
 
 export function createValidationErrorResponse(label: string, issues: unknown) {
-  return new Response(JSON.stringify({ message: `${label} validation failed`, issues }), {
-    status: 400,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
+  return Response.json({ message: `${label} validation failed`, issues }, { status: 400 });
 }
 
 export function createSchemaValidator<TSchema>(
