@@ -25,6 +25,7 @@
 - `@kivin/jwt`: Web Crypto ベースの `verifyJwt` / `signJwt` と `createJwtGuard`
 - `@kivin/jwt`: JWKS 対応。`createRemoteJwks(url)`（TTL / `Cache-Control` キャッシュ、未知の `kid` での rate limit 付き再取得、取得失敗時は直前の鍵を継続）と `createLocalJwks`。`key` に鍵リゾルバ関数を渡せるようにし、JWKS が取得できない場合ガードは 503 を返す
 - `@kivin/decorators`: `@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded')` で入力オブジェクトの `body` にフォーム（`File` を含む）を検証して渡せるようにした。OpenAPI は該当 media type で出力し、生成クライアントは `FormData` で送信する
+- `@kivin/core`: 起動時フック `onModuleInit` / `onApplicationBootstrap` と `app.init()` を追加。フックを持つ provider があるのに `init()` 前に `listen()` するとエラーにして、フックが黙って実行されないようにした。`createTestingApp().request()` は自動で `init()` する
 - `@kivin/decorators` / `@kivin/core`: `@UseHeaderSchema` と入力オブジェクトの `headers` を追加。リクエストヘッダ（小文字名）を検証・型付けしてハンドラに渡し、OpenAPI に `in: header` として出力する。`headers` を読まない・schema の無いルートには一切コストがかからない
 - `@kivin/valibot`: `v.file()` / `v.blob()` を OpenAPI で `{ type: 'string', format: 'binary' }` として出力
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
@@ -32,6 +33,7 @@
 ### Fixed
 
 - `@kivin/core`: 同じメソッドと形のパスを持つルート（`GET /x` と `GET /x/`、`/u/:id` と `/u/:name` など）が黙って両方登録され、`app.fetch` と Bun の native routes とで別のハンドラが選ばれていた問題を修正。起動時に両方のルートを示すエラーにする
+- `@kivin/core`: provider の循環依存が `RangeError: Maximum call stack size exceeded` になっていたのを、`Circular dependency: A -> B -> C -> A` と経路を示すエラーにした。未登録 provider のエラーにも `(required by Repo <- Service)` と依存元を付けた
 
 - `@kivin/core`: パスパラメータやクエリに不正なパーセントエンコーディング（`/users/%ZZ`、`?q=50%`）があると `URIError` がルーターから投げられ、`app.fetch` が例外になる（HTTP では 500）問題を修正。デコードできない部分は元の文字列のまま渡す
 - `@kivin/core`: ハンドラが `Bun.file()` / `Blob` / `ReadableStream` / `ArrayBuffer` / typed array を返すと JSON 化されて `{}`（typed array は添字のオブジェクト）が返っていた問題を修正。ボディとしてそのまま送り、Content-Type は Blob の型（ファイルは拡張子から）か `application/octet-stream` にする
