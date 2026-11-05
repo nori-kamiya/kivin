@@ -8,6 +8,7 @@ import { createJsonResponseWithStatus, createNoContentResponse } from '../respon
 import type { Token } from '../types';
 import { aotEnabled, createAotRuntime } from './aot';
 import { isFormMediaType, withFormBody } from './form-body';
+import { routeUsesHeaders, withRouteHeaders } from './headers';
 import { createArgumentResolver, createCompiledHandlerExecutor, createHandlerInvoker } from './arguments';
 import { createBodyPayloadFromJsonLoaderResolver, createBodyPayloadLoaderFactory, createBodyPayloadResolver, createParamPayloadResolver, createQueryPayloadResolver, createSchemaValidator } from './payload';
 import { applyFilters, compileFilters, compileGuards, compileMiddleware, createRawExecutionState, createRawGuardsAllowChecker, createRawMiddlewareDispatcher, createRawResponseExecutionState, createResolvedRawMiddlewareInvoker, createScopedResolver, createSingleRawGuardAllowChecker, describeToken, enforceGuards, resolveCompiledDependencies, resolveRawMiddlewareResult, runMiddlewareChain } from './pipeline';
@@ -187,8 +188,12 @@ export function compileRouteExecutor<TSchema>(input: {
   globalMiddlewareTokens: Token[];
   route: ManifestRoute<TSchema>;
 }): CompiledRoute<TSchema> {
-  const compiled = compileRouteExecutorFor(input);
-  return isFormMediaType(input.route.docs.consumes) ? withFormBody(compiled) : compiled;
+  let compiled = compileRouteExecutorFor(input);
+  if (isFormMediaType(input.route.docs.consumes)) {
+    compiled = withFormBody(compiled);
+  }
+  // Headers are validated before the form body is installed / anything else runs.
+  return routeUsesHeaders(input.route) ? withRouteHeaders(compiled, input.definition, input.route) : compiled;
 }
 
 function compileRouteExecutorFor<TSchema>(input: {

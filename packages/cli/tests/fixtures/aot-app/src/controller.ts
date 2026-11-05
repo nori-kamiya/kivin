@@ -1,7 +1,7 @@
 import { HttpError, type RouteInput } from '@kivin/core';
-import { ApiResponse, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import { ApiResponse, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseHeaderSchema, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
 import { HeaderMiddleware, ItemMissing, MissingFilter, RawKeyGuard, REQUEST_ID, RoleGuard, Store, TraceMiddleware } from './providers';
-import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery, UploadForm } from './schemas';
+import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery, UploadForm, VersionHeaders } from './schemas';
 
 @Controller('/aot')
 @Injectable({ deps: [Store] })
@@ -123,6 +123,13 @@ export class AotController {
   @UseBodySchema(UploadForm)
   async upload({ body }: RouteInput<{ body: typeof UploadForm }>) {
     return { title: body.title, file: body.file.name, text: await body.file.text() };
+  }
+
+  @Get('/versioned/:id')
+  @UseHeaderSchema(VersionHeaders)
+  @UseParamSchema(IdParams)
+  versioned({ headers, params }: RouteInput<{ headers: typeof VersionHeaders; params: typeof IdParams }>) {
+    return { version: headers['x-api-version'], id: params.id };
   }
 
   @Get('/invalid-response')
