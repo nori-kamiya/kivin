@@ -32,6 +32,7 @@
 ### Fixed
 
 - `@kivin/openapi`: OpenAPI の `paths` がルート定義のまま `/users/:id` になっており、OpenAPI のパステンプレート（`/users/{id}`）として解釈されなかった（Swagger UI の Try it out・コード生成・バリデータでパスパラメータが置換されない／不整合エラー）問題を修正。末尾スラッシュも落とす（`/users/` → `/users`）
+- `@kivin/openapi`: param schema の無いルートでパス変数が `parameters` に宣言されず、`@ApiResponse` の無いルートが空の `responses` になって OpenAPI として不正だった問題を修正（パス変数は必須の string として補い、レスポンス未宣言なら `200` を出す）
 
 - `@kivin/core`: パスパラメータやクエリに不正なパーセントエンコーディング（`/users/%ZZ`、`?q=50%`）があると `URIError` がルーターから投げられ、`app.fetch` が例外になる（HTTP では 500）問題を修正。デコードできない部分は元の文字列のまま渡す
 - `@kivin/core`: ハンドラが `Bun.file()` / `Blob` / `ReadableStream` / `ArrayBuffer` / typed array を返すと JSON 化されて `{}`（typed array は添字のオブジェクト）が返っていた問題を修正。ボディとしてそのまま送り、Content-Type は Blob の型（ファイルは拡張子から）か `application/octet-stream` にする

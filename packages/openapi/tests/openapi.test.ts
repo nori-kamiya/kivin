@@ -121,3 +121,25 @@ describe('toOpenApiPath', () => {
     expect(toOpenApiPath(input)).toBe(expected);
   });
 });
+
+describe('OpenAPI validity for routes without schemas', () => {
+  class Bare {}
+  const routes = [
+    { method: 'GET', fullPath: '/orgs/:orgId/users/:id', controller: Bare, methodName: 'a', parameters: [], guards: [], middleware: [], filters: [], docs: { tags: [], security: [], responses: [] } },
+  ] as unknown as AppManifest<Record<string, unknown>>["routes"];
+  const document = buildOpenApiDocument({ manifest: { routes }, schemaAdapter: jsonSchemaAdapter, info: { title: 't', version: '1' } }) as unknown as {
+    paths: Record<string, Record<string, { parameters: Array<{ in: string; name: string; required: boolean }>; responses: Record<string, unknown> }>>;
+  };
+  const operation = document.paths['/orgs/{orgId}/users/{id}']!.get!;
+
+  test('every path template variable is declared as a required path parameter', () => {
+    expect(operation.parameters.map(({ in: location, name, required }) => ({ location, name, required }))).toEqual([
+      { location: 'path', name: 'orgId', required: true },
+      { location: 'path', name: 'id', required: true },
+    ]);
+  });
+
+  test('an operation without @ApiResponse documents a 200', () => {
+    expect(operation.responses).toEqual({ '200': { description: 'Success' } });
+  });
+});
