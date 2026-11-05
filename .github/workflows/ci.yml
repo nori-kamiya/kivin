@@ -44,8 +44,8 @@ jobs:
     name: Hono / Elysia comparison (report only)
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    # Cross-framework ratios on shared runners are informative but too noisy to block a merge;
-    # regressions of kivin itself are gated by perf-regression above.
+    # Paired kivin / Hono / Elysia ratios, written to the job summary. It only fails when a benchmark
+    # server is broken, never on the numbers; regressions of kivin itself are gated by perf-regression.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4

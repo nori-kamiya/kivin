@@ -32,7 +32,7 @@
     "openapi": "bun run packages/cli/src/bin.ts openapi --entry examples/basic/src/app.ts --output examples/basic/.kivin/generated/openapi.json",
     "inspect:routes": "bun run packages/cli/src/bin.ts inspect routes --entry examples/basic/src/app.ts",
     "inspect:modules": "bun run packages/cli/src/bin.ts inspect modules --entry examples/basic/src/app.ts",
-    "perf:check": "bun run scripts/perf-gate.ts",
+    "perf:check": "bun run scripts/bench-compare.ts",
     "perf:regression": "bun run scripts/perf-regression.ts",
     "release:check": "bun run check && bun test && bun run example:smoke",
     "test": "bun test",
