@@ -16,7 +16,7 @@
 // HTTP throughput (both binaries serving, client alternating) is reported but only warns: on shared
 // runners the load client competes with the servers for CPU, so it is too noisy to block a merge.
 import { existsSync } from 'node:fs';
-import { appendFile, cp, mkdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { appendFile, cp, mkdir, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 
 const repoRoot = resolve(import.meta.dir, '..');
@@ -243,12 +243,24 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
   return { side, tree, dir };
 }
 
+/** Links the repo's installed dependencies (root and per-workspace) into a worktree or runner dir. */
 async function linkNodeModules(dir: string) {
-  const target = join(dir, 'node_modules');
-  if (resolve(dir) === repoRoot || existsSync(target)) {
+  if (resolve(dir) === repoRoot) {
     return;
   }
-  await symlink(join(repoRoot, 'node_modules'), target, 'dir');
+  // Bun's isolated installs keep workspace dependencies in packages/*/node_modules, so those are
+  // linked too (e.g. @valibot/to-json-schema for packages/valibot).
+  const links: Array<[string, string]> = [[join(repoRoot, 'node_modules'), join(dir, 'node_modules')]];
+  if (existsSync(join(dir, 'packages'))) {
+    for (const entry of await readdir(join(repoRoot, 'packages'))) {
+      links.push([join(repoRoot, 'packages', entry, 'node_modules'), join(dir, 'packages', entry, 'node_modules')]);
+    }
+  }
+  for (const [source, target] of links) {
+    if (existsSync(source) && !existsSync(target) && existsSync(join(target, '..'))) {
+      await symlink(source, target, 'dir');
+    }
+  }
 }
 
 async function startServer(binary: string) {
