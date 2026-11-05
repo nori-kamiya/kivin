@@ -157,6 +157,27 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 
 `context.formData()` / `context.form()` は従来どおり使え、`@Consumes` ルートでも `body` と同じ解析結果を共有します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。
 
+## 起動時フック（`onModuleInit` / `onApplicationBootstrap`）
+
+DB 接続やキャッシュのウォームアップなど、最初のリクエストより前に終えたい非同期処理は provider のフックに書き、`listen` の前に `await app.init()` を呼びます。
+
+```ts
+class Database {
+  async onModuleInit() {
+    await this.pool.connect();
+  }
+}
+
+const app = createApp(definition, manifest);
+await app.init();       // 全 singleton を生成し onModuleInit → onApplicationBootstrap を順に await
+app.listen(3000);
+```
+
+- singleton provider をすべて生成し（ルートで使われない provider も含む）、依存される側から順に `onModuleInit()` を await し、その後 `onApplicationBootstrap()` を同じ順で await します
+- フックを持つ provider があるのに `init()` 前に `listen()` を呼ぶとエラーになります（フックが黙って実行されないことを防ぐため）。フックが無いアプリは従来どおり `init()` 不要です
+- `init()` は何度呼んでも 1 回だけ実行されます。フックが失敗すると reject し、再度呼べばやり直せます
+- `createTestingApp(...).request()` は最初のリクエストの前に自動で `init()` します。`app.fetch` を直接使う場合は自分で `await app.init()` してください
+
 ## Graceful shutdown
 
 ```ts

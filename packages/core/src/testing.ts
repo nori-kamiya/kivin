@@ -29,18 +29,22 @@ export function createTestingApp<TSchema>(definition: AppDefinition<TSchema>, op
   const app = createApp({ ...definition, modules: [...definition.modules, overrides] }, options.manifest ?? buildManifest(definition));
 
   return Object.assign(app, {
-    /** `app.fetch` with a relative path; `json` is serialized with a JSON content type. */
-    request(path: string, init: RequestInit & { json?: unknown } = {}) {
+    /**
+     * `app.fetch` with a relative path; `json` is serialized with a JSON content type. Runs
+     * `app.init()` (startup hooks) before the first request.
+     */
+    async request(path: string, init: RequestInit & { json?: unknown } = {}) {
+      await app.init();
       const { json, ...rest } = init;
       const headers = new Headers(rest.headers);
       if (json !== undefined && !headers.has('content-type')) {
         headers.set('content-type', 'application/json');
       }
-      return Promise.resolve(app.fetch(new Request(new URL(path, 'http://kivin.test'), {
+      return app.fetch(new Request(new URL(path, 'http://kivin.test'), {
         ...rest,
         headers,
         ...(json !== undefined ? { body: JSON.stringify(json) } : {}),
-      })));
+      }));
     },
   });
 }

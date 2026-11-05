@@ -56,9 +56,44 @@ export class Container implements ContainerLike {
     return provider ? getProviderScope(provider) : undefined;
   }
 
-  /** Singleton instances created so far, oldest first. */
+  /** Singleton instances created so far, oldest first (dependencies before their dependents). */
   singletonInstances(): readonly unknown[] {
     return this.singletonOrder;
+  }
+
+  /**
+   * Names of singleton providers that define one of `hooks`, found without creating providers that
+   * do not exist yet (class prototypes, `useValue` objects, already created instances). Factory
+   * providers that were never created cannot be inspected and are not reported.
+   */
+  findHookOwners(hooks: readonly string[]): string[] {
+    const defines = (target: unknown) => typeof target === 'object' && target !== null && hooks.some((hook) => typeof (target as Record<string, unknown>)[hook] === 'function');
+    const names = new Set<string>();
+    for (const instance of this.singletonOrder) {
+      if (defines(instance)) {
+        names.add((instance as object).constructor?.name ?? 'provider');
+      }
+    }
+    for (const provider of this.providers.values()) {
+      if (getProviderScope(provider) !== 'singleton' || typeof provider === 'function') {
+        continue;
+      }
+      if ('useClass' in provider && defines(provider.useClass.prototype)) {
+        names.add(provider.useClass.name);
+      } else if ('useValue' in provider && defines(provider.useValue)) {
+        names.add(String(typeof provider.provide === 'function' ? provider.provide.name : provider.provide));
+      }
+    }
+    return [...names];
+  }
+
+  /** Creates every registered singleton provider that does not exist yet (for lifecycle hooks). */
+  resolveAllSingletons() {
+    for (const [token, provider] of this.providers) {
+      if (getProviderScope(provider) === 'singleton') {
+        this.resolve(token);
+      }
+    }
   }
 
   createRequestContainer() {
