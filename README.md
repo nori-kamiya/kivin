@@ -18,6 +18,8 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - compile-time route / DI contract checks (`contracts.ts`, typed `@Injectable` deps)
 - generated typed HTTP client (`client.ts`)
 - `kivin dev` watch mode (regenerate + restart)
+- CORS, cookies, JWT auth guard (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
+- graceful shutdown with `onApplicationShutdown` hooks, `createTestingApp` with provider overrides
 - OpenAPI 3.1 generation
 - `operationId`, route description, and security scheme support
 - standardized `HttpError` helpers and `204 No Content` responses
@@ -37,6 +39,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - `@kivin/openapi`: OpenAPI ドキュメント生成
 - `@kivin/valibot`: Valibot schema adapter
 - `@kivin/standard-schema`: Standard Schema adapter（Zod / ArkType / Valibot など）
+- `@kivin/jwt`: JWT の検証・署名（Web Crypto）と認証 guard
 - `@kivin/cli`: manifest と OpenAPI のコード生成 CLI
 
 ## Quick start
@@ -191,6 +194,7 @@ full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:
 ## Documents
 
 - [docs/reference.md](docs/reference.md) — API reference
+- [docs/production.md](docs/production.md) — CORS / Cookie / JWT / WebSocket / SSE / multipart / graceful shutdown / テスト
 - [docs/architecture.md](docs/architecture.md)
 - [docs/development-guide.md](docs/development-guide.md)
 - [docs/ast-generator.md](docs/ast-generator.md)

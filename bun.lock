@@ -88,6 +88,13 @@
         "@kivin/core": "workspace:*",
       },
     },
+    "packages/jwt": {
+      "name": "@kivin/jwt",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
     "packages/logger": {
       "name": "@kivin/logger",
       "version": "0.0.1",
@@ -134,6 +141,8 @@
     "@kivin/core": ["@kivin/core@workspace:packages/core"],
 
     "@kivin/decorators": ["@kivin/decorators@workspace:packages/decorators"],
+
+    "@kivin/jwt": ["@kivin/jwt@workspace:packages/jwt"],
 
     "@kivin/logger": ["@kivin/logger@workspace:packages/logger"],
 

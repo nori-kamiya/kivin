@@ -1,5 +1,7 @@
 export { buildManifest, createApp, type AppManifest, type BunRouteDefinition, type BunRouteHandler, type ListenOptions, type ManifestRoute } from './app';
 export { Container } from './container';
+export { getCookie, parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptions } from './cookies';
+export { createCorsHandler, createCorsMiddleware, type CorsHandler, type CorsOptions } from './cors';
 export { createToken, type InferSchemaInput, type InferSchemaOutput, type InjectionToken, type RouteContract, type TokenValue, type TokenValues } from './contracts';
 export { RequestContext, ResponseState } from './context';
 export {
@@ -62,6 +64,9 @@ export {
     createTextResponse
 } from './response';
 export type { CanActivate, ExceptionFilter, HonoLikeMiddleware, NestLikeMiddleware } from './runtime-types';
+export { createEventStream, formatEvent, type EventStream, type EventStreamHandler, type EventStreamOptions, type ServerSentEvent } from './sse';
+export { createTestingApp, type TestingAppOptions } from './testing';
+export { compileWebSocketRoutes, defineWebSocket, type KivinWebSocket, type WebSocketData, type WebSocketRoute } from './websocket';
 export { SecureHeadersMiddleware, createSecureHeadersMiddleware, type SecureHeadersOptions } from './security';
 export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, SchemaAdapter, Token } from './types';
 

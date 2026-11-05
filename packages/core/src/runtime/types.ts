@@ -150,4 +150,15 @@ export interface ListenOptions {
   hostname?: string;
   /** Extra native Bun routes served alongside the application routes. */
   routes?: Record<string, BunRouteDefinition>;
+  /** WebSocket routes by path (Bun route syntax, e.g. `/rooms/:id`). See `defineWebSocket`. */
+  websockets?: Record<string, import('../websocket').WebSocketRoute<any>>;
+  /** Maximum request body size in bytes (Bun's default is 128 MiB). */
+  maxRequestBodySize?: number;
+  /** Seconds a connection may stay idle before Bun closes it. */
+  idleTimeout?: number;
+  /**
+   * Calls `app.close()` and exits on these signals: `true` means SIGINT and SIGTERM.
+   * Off by default so tests and embedding hosts keep control of the process.
+   */
+  shutdownSignals?: boolean | readonly NodeJS.Signals[];
 }
