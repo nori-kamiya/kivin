@@ -1,7 +1,8 @@
 // Maps route parameter metadata onto handler arguments and invokes handlers.
 import type { ParameterMetadata } from '../metadata';
 import { readNamedQueryParam } from '../request-url';
-import type { CompiledArgumentInput, CompiledArgumentResolver, CompiledHandlerArgumentGetter, CompiledHandlerExecutor, CompiledHandlerInvoker } from './types';
+import { getRouteHeaders } from './headers';
+import { type CompiledArgumentInput, type CompiledArgumentResolver, type CompiledHandlerArgumentGetter, type CompiledHandlerExecutor, type CompiledHandlerInvoker, EMPTY_PARAMS } from './types';
 
 export function createArgumentResolver(parameters: ParameterMetadata[]): CompiledArgumentResolver {
   if (parameters.length === 0) {
@@ -22,7 +23,7 @@ export function createArgumentResolver(parameters: ParameterMetadata[]): Compile
 }
 
 /** Builds the handler's input object with only the fields it reads. */
-export function buildInputObject(fields: readonly string[] | undefined, bodyValue: unknown, context: unknown, paramValue: unknown, queryValue: unknown) {
+export function buildInputObject(fields: readonly string[] | undefined, bodyValue: unknown, context: unknown, paramValue: unknown, queryValue: unknown, params: Record<string, string> = EMPTY_PARAMS) {
   const input: Record<string, unknown> = {};
   for (const field of fields ?? INPUT_FIELDS) {
     switch (field) {
@@ -38,12 +39,15 @@ export function buildInputObject(fields: readonly string[] | undefined, bodyValu
       case 'context':
         input.context = context;
         break;
+      case 'headers':
+        input.headers = getRouteHeaders(params);
+        break;
     }
   }
   return input;
 }
 
-const INPUT_FIELDS = ['params', 'query', 'body', 'context'] as const;
+const INPUT_FIELDS = ['params', 'query', 'body', 'context', 'headers'] as const;
 
 /**
  * Input-object getter specialised on the fields the handler reads, so the hot path builds a
@@ -71,17 +75,17 @@ function createInputGetter(fields: readonly string[] | undefined): CompiledHandl
       return (_bodyValue, context, _paramValue, _params, queryValue) => ({ query: queryValue ?? {}, context });
     case 'params,body,context':
       return (bodyValue, context, paramValue) => ({ params: paramValue ?? {}, body: bodyValue, context });
-    case 'params,query,body,context':
-      return (bodyValue, context, paramValue, _params, queryValue) => ({ params: paramValue ?? {}, query: queryValue ?? {}, body: bodyValue, context });
+    case 'params,query,body,context,headers':
+      return (bodyValue, context, paramValue, params, queryValue) => ({ params: paramValue ?? {}, query: queryValue ?? {}, body: bodyValue, context, headers: getRouteHeaders(params) });
     default:
-      return (bodyValue, context, paramValue, _params, queryValue) => buildInputObject(fields, bodyValue, context, paramValue, queryValue);
+      return (bodyValue, context, paramValue, params, queryValue) => buildInputObject(fields, bodyValue, context, paramValue, queryValue, params);
   }
 }
 
 export function resolveParameterValue(parameter: ParameterMetadata, input: CompiledArgumentInput) {
   switch (parameter.source) {
     case 'input':
-      return buildInputObject(parameter.fields, input.bodyValue, input.context, input.paramValue, input.queryValue);
+      return buildInputObject(parameter.fields, input.bodyValue, input.context, input.paramValue, input.queryValue, input.params);
     case 'context':
       return input.context;
     case 'body':

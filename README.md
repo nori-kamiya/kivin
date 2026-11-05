@@ -172,12 +172,12 @@ export class UserController {
 decorator は型を変えられないため、schema とハンドラの入力型は別々に書くことになります。kivin はそのズレをビルド時に検出します。
 
 - `kivin generate` は `contracts.ts` も出力します。`tsconfig` に `.kivin/generated/**/*.ts` を含めておくと、`tsc` が次の不一致をエラーにします。
-  - ハンドラの入力型（`RouteInput<{ params; query; body }>`）と、ルートの `@UseParamSchema` / `@UseQuerySchema` / `@UseBodySchema`
+  - ハンドラの入力型（`RouteInput<{ params; query; body; headers }>`）と、ルートの `@UseParamSchema` / `@UseQuerySchema` / `@UseBodySchema` / `@UseHeaderSchema`
   - ハンドラの戻り値と、宣言された 2xx レスポンス schema（`Response` を直接返す場合は対象外）
 - `@Injectable({ deps })` は型付きで、deps の並び・型・個数がコンストラクタ引数と合わないとコンパイルエラーになります。シンボルのトークンに型を付けたい場合は `createToken<T>('key')` を使います。
 
 ```text
-contracts.ts: Type '{ contractError: "UserController.findById: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema"; ... }' does not satisfy the constraint 'true'.
+contracts.ts: Type '{ contractError: "UserController.findById: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema / @UseHeaderSchema"; ... }' does not satisfy the constraint 'true'.
 ```
 
 型は Standard Schema の型情報から取るので、Valibot 以外の validator でも同じように効きます。

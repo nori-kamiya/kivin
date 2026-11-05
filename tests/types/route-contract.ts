@@ -40,3 +40,12 @@ type StrictCreateHandler = (input: { body: { name: string; email: string } }) =>
 // @ts-expect-error the body schema does not produce `email`
 export type InputBodyMismatch = RouteContract.Expect<RouteContract.Input<{ body: typeof BodySchema }, Parameters<StrictCreateHandler>[0], 'mismatch'>>;
 export type NoInputIsFine = RouteContract.Expect<RouteContract.Input<{}, undefined, 'none'>>;
+
+// headers: typed by @UseHeaderSchema, otherwise a string record.
+const HeadersSchema = v.object({ 'x-api-version': v.picklist(['1', '2']) });
+export type HeadersTyped = RouteContract.Expect<Equal<RouteInput<{ headers: typeof HeadersSchema }>['headers'], { 'x-api-version': '1' | '2' }>>;
+export type HeadersDefault = RouteContract.Expect<Equal<RouteInput['headers'], Record<string, string | undefined>>>;
+type VersionedHandler = (input: { headers: { 'x-api-version': '1' | '2' } }) => unknown;
+export type InputHeadersOk = RouteContract.Expect<RouteContract.Input<{ headers: typeof HeadersSchema }, Parameters<VersionedHandler>[0], 'ok'>>;
+// @ts-expect-error the handler expects typed headers the route does not validate
+export const inputHeadersMissing: RouteContract.Input<{}, Parameters<VersionedHandler>[0], 'missing'> = true;
