@@ -2,7 +2,7 @@
 import type { ResponseState } from '../context';
 import { HttpError } from '../http';
 import type { AppDefinition } from '../metadata';
-import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithStatus, createNoContentResponse } from '../response';
+import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithStatus, createNoContentResponse, isBinaryBody } from '../response';
 import { createSchemaValidator } from './payload';
 import { type ManifestRoute, RESPONSE_INIT_201, RESPONSE_INIT_204, type ResponseStateAdapter } from './types';
 import { isPromiseLike } from './utils';
@@ -206,6 +206,11 @@ export function createNativeStaticResponse<TSchema>(input: {
 
     if (result instanceof Response) {
       return result.clone();
+    }
+
+    // Files and streams are read per request (the file may change; a stream can be read once).
+    if (isBinaryBody(result)) {
+      return undefined;
     }
 
     const validated = mapResponseBody ? mapResponseBody(result) : result;

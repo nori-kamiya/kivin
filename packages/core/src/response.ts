@@ -10,6 +10,38 @@ const STATUS_201 = Object.freeze({ status: 201 });
 // in one step and is markedly faster than `new Response(JSON.stringify(data), { headers })`. It
 // follows `JSON.stringify` semantics and throws the same TypeError for non-serialisable values.
 
+/**
+ * Handler results that are already a body (`Bun.file()`, `Blob`, `ReadableStream`, `ArrayBuffer`,
+ * typed arrays) are sent as-is instead of being JSON-serialised (which would yield `{}`). Plain
+ * objects and arrays are rejected on the prototype check first, so JSON results pay one comparison.
+ */
+export function isBinaryBody(value: unknown): value is Blob | ReadableStream | ArrayBuffer | ArrayBufferView {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype === Object.prototype || prototype === Array.prototype || prototype === null) {
+    return false;
+  }
+  return value instanceof Blob || value instanceof ReadableStream || value instanceof ArrayBuffer || ArrayBuffer.isView(value);
+}
+
+/**
+ * Response for a result that is not JSON: `undefined` (a handler that returns nothing) is an empty
+ * body with the given status; a binary body keeps a Blob's own type (files: from the extension),
+ * otherwise application/octet-stream.
+ */
+export function createBodyResponse(data: undefined | Blob | ReadableStream | ArrayBuffer | ArrayBufferView, init?: ResponseInit) {
+  if (data === undefined) {
+    return new Response(null, init);
+  }
+  const response = new Response(data as BodyInit, init);
+  if (!response.headers.has('content-type')) {
+    response.headers.set('content-type', 'application/octet-stream');
+  }
+  return response;
+}
+
 function isHeaderRecord(headers: HeadersInit): headers is Record<string, string> {
   return !Array.isArray(headers) && !(headers instanceof Headers);
 }
@@ -35,6 +67,10 @@ function mergeHeadersWithContentType(init: ResponseInit, contentType: string) {
 }
 
 export function createJsonResponse(data: unknown, init: ResponseInit = {}) {
+  if (data === undefined || isBinaryBody(data)) {
+    return createBodyResponse(data, init);
+  }
+
   if (!init.headers && init.status === undefined && init.statusText === undefined) {
     return Response.json(data);
   }
@@ -48,14 +84,26 @@ export function createJsonResponse(data: unknown, init: ResponseInit = {}) {
 }
 
 export function createJsonResponseWithStatus(data: unknown, status: number) {
+  if (data === undefined || isBinaryBody(data)) {
+    return createBodyResponse(data, { status });
+  }
+
   return Response.json(data, { status });
 }
 
 export function createJsonResponseCreated(data: unknown) {
+  if (data === undefined || isBinaryBody(data)) {
+    return createBodyResponse(data, STATUS_201);
+  }
+
   return Response.json(data, STATUS_201);
 }
 
 export function createJsonResponseWithHeader(data: unknown, headerName: string, headerValue: string) {
+  if (data === undefined || isBinaryBody(data)) {
+    return createBodyResponse(data, { headers: { [headerName]: headerValue } });
+  }
+
   // Setting the header afterwards is ~25-35% cheaper in Bun than passing a headers init object
   // (no init dictionary conversion). A content-type override still wins, as it did via init.
   const response = Response.json(data);
@@ -64,6 +112,10 @@ export function createJsonResponseWithHeader(data: unknown, headerName: string, 
 }
 
 export function createJsonResponseWithStatusAndHeader(data: unknown, status: number, headerName: string, headerValue: string) {
+  if (data === undefined || isBinaryBody(data)) {
+    return createBodyResponse(data, { status, headers: { [headerName]: headerValue } });
+  }
+
   return Response.json(data, { status, headers: { [headerName]: headerValue } });
 }
 
