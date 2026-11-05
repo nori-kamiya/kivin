@@ -13,6 +13,7 @@ import type { ContainerLike } from '../metadata';
 import { readNamedQueryParam } from '../request-url';
 import type { Token } from '../types';
 import { applyFilters, runMiddlewareChain } from './pipeline';
+import { createUnhandledErrorResponse } from './results';
 import type { CompiledRouteExecutor, ManifestRoute, ResponseStateAdapter, RouteFilters, RouteGuards, RouteMiddleware } from './types';
 import { isPromiseLike, rethrowJsonBodyError } from './utils';
 
@@ -178,7 +179,7 @@ export function createAotRuntime(input: {
       if (error instanceof Response) {
         return withQueuedHeaders(error, current);
       }
-      return withQueuedHeaders(Response.json({ message: 'Internal Server Error' }, { status: 500 }), current);
+      return withQueuedHeaders(createUnhandledErrorResponse(error), current);
   }
 
   function afterMiddleware(result: unknown, context: RequestContext): Response {

@@ -157,6 +157,14 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 
 `context.formData()` / `context.form()` は従来どおり使え、`@Consumes` ルートでも `body` と同じ解析結果を共有します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。
 
+## 未処理の例外
+
+フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。
+
+- `HttpError` やフィルタが応答を返した例外は出力しません
+- `@kivin/logger` の `RequestLoggerMiddleware` が `request.error` として記録した例外は二重に出しません
+- 独自のロガーで記録する場合は、記録後に `markErrorReported(error)` を呼ぶと既定の出力を抑止できます
+
 ## 起動時フック（`onModuleInit` / `onApplicationBootstrap`）
 
 DB 接続やキャッシュのウォームアップなど、最初のリクエストより前に終えたい非同期処理は provider のフックに書き、`listen` の前に `await app.init()` を呼びます。

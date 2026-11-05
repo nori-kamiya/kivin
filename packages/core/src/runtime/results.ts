@@ -157,7 +157,31 @@ export function finalizeRawResult(
   return finalize(result, responseState);
 }
 
-export function createUnhandledErrorResponse() {
+const ERROR_REPORTED = Symbol.for('kivin.errorReported');
+
+/**
+ * Marks an error as already logged (e.g. by a request logger middleware) so the default report for
+ * unhandled errors does not print it again.
+ */
+export function markErrorReported(error: unknown) {
+  if (typeof error === 'object' && error !== null) {
+    try {
+      Object.defineProperty(error, ERROR_REPORTED, { value: true, configurable: true });
+    } catch {
+      // Frozen errors simply get reported again.
+    }
+  }
+}
+
+/**
+ * The generic 500 for an error no filter handled. The error is written to `console.error` (once:
+ * not when a logger already reported it), since the client only sees the generic message and the
+ * cause would otherwise be lost.
+ */
+export function createUnhandledErrorResponse(error?: unknown) {
+  if (error !== undefined && !(typeof error === 'object' && error !== null && (error as Record<symbol, unknown>)[ERROR_REPORTED])) {
+    console.error('[kivin] Unhandled error', error);
+  }
   return Response.json({ message: 'Internal Server Error' }, { status: 500 });
 }
 
@@ -229,5 +253,5 @@ export function handlePlainExecutionError(error: unknown) {
     return error;
   }
 
-  return createUnhandledErrorResponse();
+  return createUnhandledErrorResponse(error);
 }
