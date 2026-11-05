@@ -14,6 +14,8 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - tsconfig path alias resolution for module graph traversal
 - generated import alias collision avoidance
 - Valibot schema validation
+- Standard Schema adapter (Zod, ArkType, Valibot, ...)
+- compile-time route / DI contract checks (`contracts.ts`, typed `@Injectable` deps)
 - OpenAPI 3.1 generation
 - `operationId`, route description, and security scheme support
 - standardized `HttpError` helpers and `204 No Content` responses
@@ -32,6 +34,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - `@kivin/logger`: JSON line の構造化ロガーと request logger middleware
 - `@kivin/openapi`: OpenAPI ドキュメント生成
 - `@kivin/valibot`: Valibot schema adapter
+- `@kivin/standard-schema`: Standard Schema adapter（Zod / ArkType / Valibot など）
 - `@kivin/cli`: manifest と OpenAPI のコード生成 CLI
 
 ## Quick start
@@ -42,8 +45,9 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 
 ```ts
 // app.ts
-import { Controller, Get } from '@kivin/decorators';
 import { defineApplication, defineModule } from '@kivin/core';
+import { Controller, Get } from '@kivin/decorators';
+import { createValibotAdapter } from '@kivin/valibot';
 
 @Controller('/hello')
 class HelloController {
@@ -61,13 +65,16 @@ const HelloModule = defineModule({
 
 export default defineApplication({
   modules: [HelloModule],
+  schemaAdapter: createValibotAdapter(),
 });
 ```
+
+`schemaAdapter` は必須です。Zod や ArkType など Standard Schema 対応の validator を使う場合は `@kivin/standard-schema` の `createStandardSchemaAdapter()` を渡します（[docs/schema-adapter.md](docs/schema-adapter.md)）。
 
 ルートグラフと OpenAPI をビルド時に生成し、生成 manifest から実行します。
 
 ```bash
-# manifest.ts / openapi.json を生成
+# manifest.ts / contracts.ts / openapi.json を生成
 bun run packages/cli/src/bin.ts generate --entry app.ts --outDir .kivin/generated
 
 # 生成 manifest を使ってアプリを起動
@@ -77,17 +84,43 @@ bun run main.ts
 ```ts
 // main.ts
 import { createApp } from '@kivin/core';
-import { manifest } from './.kivin/generated/manifest';
+import manifest from './.kivin/generated/manifest';
+import appDefinition from './app';
 
-const app = createApp(manifest);
+const app = createApp(appDefinition, manifest);
 
-export default {
-  fetch: app.fetch,
+// manifest のルートはすべて Bun.serve の native routes に載ります
+app.listen(3000);
+```
+
+`openapi.json` や docs ページのような静的ルートも native routes として一緒に載せられます。
+
+```ts
+app.listen({
   port: 3000,
-};
+  routes: {
+    '/openapi.json': Response.json(openApiDocument),
+  },
+});
 ```
 
 single binary にするには generated manifest を静的 import したまま `bun build --compile` します（runtime scan 不要）。動く完全な例は [`examples/basic`](examples/basic) を参照してください。
+
+## Compile-time contracts
+
+decorator は型を変えられないため、schema とハンドラ引数の型は別々に書くことになります。kivin はそのズレをビルド時に検出します。
+
+- `kivin generate` は `contracts.ts` も出力します。`tsconfig` に `.kivin/generated/**/*.ts` を含めておくと、`tsc` が次の不一致をエラーにします。
+  - `@Body()` 引数と `@UseBodySchema(...)` の出力型
+  - `@QueryParam(name)` / `@PathParam(name)` と `@UseQuerySchema` / `@UseParamSchema` のフィールド（存在しないフィールド名も検出）
+  - ハンドラの戻り値と、宣言された 2xx レスポンス schema（`Response` を直接返す場合は対象外）
+- `@Injectable({ deps })` は型付きで、deps の並び・型・個数がコンストラクタ引数と合わないとコンパイルエラーになります。シンボルのトークンに型を付けたい場合は `createToken<T>('key')` を使います。
+
+```text
+contracts.ts: Type '{ contractError: "UserController.findById: @PathParam('userId') does not match @UseParamSchema"; missingField: "userId"; schemaFields: "id" }' does not satisfy the constraint 'true'.
+```
+
+型は Standard Schema の型情報から取るので、Valibot 以外の validator でも同じように効きます。
 
 ## Workflow
 
@@ -107,6 +140,7 @@ bun run bench
 `bun run generate` は TypeScript source を AST 解析して次を生成します。
 
 - `examples/basic/.kivin/generated/manifest.ts`
+- `examples/basic/.kivin/generated/contracts.ts`
 - `examples/basic/.kivin/generated/openapi.json`
 
 `bun run example:build` は generated manifest を静的 import したまま `bun build --compile` を実行します。runtime scan は不要です。

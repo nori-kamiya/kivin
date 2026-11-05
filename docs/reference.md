@@ -19,11 +19,12 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `createApp(manifest)` | function | コンパイル済み manifest から `fetch` ハンドラを持つアプリを生成する |
+| `createApp(appDefinition, manifest)` | function | アプリ定義とコンパイル済み manifest から、`fetch` と `listen(portOrOptions)` を持つアプリを生成する。`listen({ port, hostname, routes })` の `routes` は app のルートと一緒に Bun native routes に載る |
 | `buildManifest(appDefinition)` | function | アプリ定義から実行時 manifest を組み立てる（通常は生成 manifest 経由で呼ばれる） |
 | `defineApplication(input)` | function | アプリ定義（root module / OpenAPI 設定など）を宣言する |
 | `defineModule(input)` | function | モジュール（controllers / providers / imports / グローバル enhancer）を宣言する |
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
+| `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
 
 ### Dependency Injection
 
@@ -32,6 +33,8 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `Container` | class | DI コンテナ。request-scoped 解決のための child container を持つ |
 | `RequestContext` | class | リクエストスコープのコンテキスト。`inject(...)` / `jsonBody()` / パラメータ取得などを提供 |
 | `ResponseState` | class | レスポンスヘッダ等の状態を蓄積する |
+| `createToken<T>(key)` | function | 型付きの DI トークン（`InjectionToken<T>`、実体は `Symbol.for(key)`）を作る。`@Injectable({ deps })` の型チェックに使われる |
+| `InjectionToken<T>`, `TokenValue<T>`, `TokenValues<T>` | type | 型付きトークンと、トークンが解決する値の型 |
 
 ### HTTP errors / helpers
 
@@ -58,6 +61,13 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
 | `SecureHeadersOptions` | type | secure-headers 設定 |
 
+### Compile-time contracts (types)
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `InferSchemaInput<S>`, `InferSchemaOutput<S>` | type | Standard Schema 互換 schema の入力 / 出力型（非対応の schema は `any`） |
+| `RouteContract` | namespace | 生成される `contracts.ts` が使う型チェック（`Body` / `Field` / `Whole` / `Returns` / `Expect`） |
+
 ### Runtime contracts (types)
 
 `CanActivate`（guard）, `ExceptionFilter`, `NestLikeMiddleware`, `HonoLikeMiddleware`,
@@ -77,7 +87,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | Decorator | 概要 |
 | --- | --- |
 | `@Module({ ... })` | モジュール宣言 |
-| `@Injectable({ deps })` | プロバイダ宣言 |
+| `@Injectable({ deps })` | プロバイダ宣言。deps の並び・型・個数がコンストラクタ引数と合わないとコンパイルエラー |
 | `@Controller(basePath)` | コントローラ宣言 |
 
 ### Routes
@@ -113,6 +123,15 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
+## @kivin/standard-schema
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createStandardSchemaAdapter(options?)` | function | Standard Schema 対応 validator（Zod / ArkType / Valibot など）用の `SchemaAdapter`。`options.toJsonSchema` / `options.target` で OpenAPI 変換を調整できる |
+| `StandardSchema`, `StandardSchemaAdapterOptions`, `JsonSchemaTarget` | type | アダプタ関連の型 |
+
+---
+
 ## @kivin/openapi
 
 | Export | 種別 | 概要 |
@@ -131,7 +150,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | `createLogger(options?)` | function | スタンドアロンの構造化ロガーを生成する |
 | `getRequestLogger(context)` | function | `RequestContext` からリクエストスコープのロガーを取得する |
 | `RequestLoggerMiddleware` | class | リクエストログを出力するミドルウェア |
-| `LOGGER`, `LOGGER_OPTIONS` | symbol | DI トークン |
+| `LOGGER`, `LOGGER_OPTIONS` | `InjectionToken` | 型付き DI トークン |
 | `Logger`, `LogLevel`, `LogFields`, `LogRecord`, `LoggerModuleOptions` | type | ロガー関連の型 |
 
 ---
@@ -142,7 +161,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ### `generate`
 
-manifest と OpenAPI を生成する。
+manifest・contracts・OpenAPI を生成する。`contracts.ts` は型チェック専用のモジュールで、tsconfig に含めると handler と schema の不一致を `tsc` が検出する。
 
 ```
 generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>]
