@@ -17,6 +17,12 @@
 - `@kivin/cli`: `generate` が型付き HTTP クライアント `client.ts` を出力するようにした（サーバーコードは型としてのみ参照）
 - `@kivin/cli`: `dev` コマンドを追加。保存のたびに再生成してサーバーを再起動し、生成に失敗した場合は直前のサーバーを維持する
 - CI（GitHub Actions）と、base ref と同一マシンで比較する性能劣化ゲート `bun run perf:regression` を追加
+- `@kivin/core`: `defineApplication({ cors })` で CORS ヘッダと preflight 自動応答（404 / 405 にもヘッダを付与）
+- `@kivin/core`: `RequestContext` に Cookie（`cookie` / `cookies` / `setCookie` / `deleteCookie`）、`formData` / `form`、`sse` を追加。`ResponseState.appendResponseHeader` で複数の `Set-Cookie` に対応
+- `@kivin/core`: `listen({ websockets })` と `defineWebSocket` で Bun ネイティブの WebSocket ルートを追加
+- `@kivin/core`: `app.close()` による graceful shutdown と `onApplicationShutdown` フック、`listen({ shutdownSignals, maxRequestBodySize, idleTimeout })`、`app.get(token)`
+- `@kivin/core`: provider を差し替えてポートを開かずに呼べる `createTestingApp`
+- `@kivin/jwt`: Web Crypto ベースの `verifyJwt` / `signJwt` と `createJwtGuard`
 
 ### Fixed
 

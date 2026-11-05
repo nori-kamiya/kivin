@@ -1,4 +1,6 @@
+import { parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptions } from './cookies';
 import type { ContainerLike } from './metadata';
+import { createEventStream, type EventStreamHandler, type EventStreamOptions } from './sse';
 import { readNullableQueryParam } from './request-url';
 import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
 import type { Token } from './types';
@@ -15,6 +17,16 @@ class RequestContextRequestApi {
 
   query(name: string) {
     return readNullableQueryParam(this.raw.url, name);
+  }
+}
+
+function copyHeaders(source: Headers, target: Headers) {
+  for (const [name, value] of source) {
+    if (name === 'set-cookie') {
+      target.append(name, value);
+    } else {
+      target.set(name, value);
+    }
   }
 }
 
@@ -43,6 +55,19 @@ export class ResponseState {
     ]);
     this.queuedResponseHeaderName = undefined;
     this.queuedResponseHeaderValue = undefined;
+  }
+
+  /** Adds a header value without replacing earlier ones (needed for multiple `Set-Cookie`). */
+  appendResponseHeader(name: string, value: string) {
+    if (!this.queuedResponseHeaders) {
+      this.queuedResponseHeaders = new Headers();
+      if (this.queuedResponseHeaderName) {
+        this.queuedResponseHeaders.set(this.queuedResponseHeaderName, this.queuedResponseHeaderValue!);
+        this.queuedResponseHeaderName = undefined;
+        this.queuedResponseHeaderValue = undefined;
+      }
+    }
+    this.queuedResponseHeaders.append(name, value);
   }
 
   setResponseStatus(status: number, statusText?: string) {
@@ -197,9 +222,7 @@ export class ResponseState {
       return response;
     }
 
-    for (const [name, value] of this.queuedResponseHeaders!) {
-      response.headers.set(name, value);
-    }
+    copyHeaders(this.queuedResponseHeaders!, response.headers);
 
     this.clearQueuedResponseState();
     return response;
@@ -215,7 +238,11 @@ export class ResponseState {
     }
 
     for (const [name, value] of this.queuedResponseHeaders ?? []) {
-      target.setResponseHeader(name, value);
+      if (name === 'set-cookie' && 'appendResponseHeader' in target && typeof target.appendResponseHeader === 'function') {
+        target.appendResponseHeader(name, value);
+      } else {
+        target.setResponseHeader(name, value);
+      }
     }
   }
 
@@ -267,8 +294,8 @@ export class ResponseState {
       headers.set(this.queuedResponseHeaderName, this.queuedResponseHeaderValue!);
     }
 
-    for (const [name, value] of this.queuedResponseHeaders ?? []) {
-      headers.set(name, value);
+    if (this.queuedResponseHeaders) {
+      copyHeaders(this.queuedResponseHeaders, headers);
     }
 
     return {
@@ -288,6 +315,8 @@ export class RequestContext {
   private storeKey: string | undefined;
   private storeValue: unknown = undefined;
   private store: Record<string, unknown> | undefined;
+  private cookieCache: Record<string, string> | undefined;
+  private formCache: Promise<FormData> | undefined;
 
   constructor(
     readonly request: Request,
@@ -339,6 +368,60 @@ export class RequestContext {
 
   setResponseHeader(name: string, value: string) {
     this.responseState.setResponseHeader(name, value);
+  }
+
+  appendResponseHeader(name: string, value: string) {
+    this.responseState.appendResponseHeader(name, value);
+  }
+
+  /** Request cookies, parsed once per request. */
+  cookies(): Record<string, string> {
+    this.cookieCache ??= parseCookies(this.request.headers.get('cookie'));
+    return this.cookieCache;
+  }
+
+  cookie(name: string): string | undefined {
+    return this.cookies()[name];
+  }
+
+  /** Queues a `Set-Cookie` header on the response; can be called several times. */
+  setCookie(name: string, value: string, options?: CookieOptions) {
+    this.responseState.appendResponseHeader('set-cookie', serializeCookie(name, value, options));
+  }
+
+  deleteCookie(name: string, options?: Pick<CookieOptions, 'domain' | 'path' | 'secure' | 'sameSite' | 'partitioned'>) {
+    this.responseState.appendResponseHeader('set-cookie', serializeDeletedCookie(name, options));
+  }
+
+  /** The request body as `FormData` (multipart or urlencoded), read once per request. */
+  formData(): Promise<FormData> {
+    this.formCache ??= this.request.formData();
+    return this.formCache;
+  }
+
+  /**
+   * The request body as a plain object: each field is a string or `File`, and repeated fields become
+   * arrays. Validate it with your schema library (e.g. `v.object({ avatar: v.file(), name: v.string() })`).
+   */
+  async form(): Promise<Record<string, FormDataEntryValue | FormDataEntryValue[]>> {
+    const formData = await this.formData();
+    const result: Record<string, FormDataEntryValue | FormDataEntryValue[]> = Object.create(null);
+    for (const [key, value] of formData) {
+      const existing = result[key];
+      if (existing === undefined) {
+        result[key] = value;
+      } else if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        result[key] = [existing, value];
+      }
+    }
+    return result;
+  }
+
+  /** Server-Sent Events response; queued response headers (e.g. cookies) are applied to it. */
+  sse(handler: EventStreamHandler, options?: EventStreamOptions): Response {
+    return this.responseState.applyResponseHeaders(createEventStream(this.request, handler, options));
   }
 
   setResponseStatus(status: number, statusText?: string) {

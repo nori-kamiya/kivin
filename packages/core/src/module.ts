@@ -20,12 +20,14 @@ export function defineApplication<TSchema>(input: {
   schemaAdapter: SchemaAdapter<TSchema>;
   globals?: AppDefinition<TSchema>['globals'];
   openApi?: AppDefinition<TSchema>['openApi'];
+  cors?: AppDefinition<TSchema>['cors'];
 }): AppDefinition<TSchema> {
   return {
     modules: input.modules,
     schemaAdapter: input.schemaAdapter,
     globals: input.globals ?? { guards: [], middleware: [], filters: [] },
     ...(input.openApi ? { openApi: input.openApi } : {}),
+    ...(input.cors ? { cors: input.cors } : {}),
   };
 }
 

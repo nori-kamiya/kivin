@@ -25,6 +25,21 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `defineModule(input)` | function | モジュール（controllers / providers / imports / グローバル enhancer）を宣言する |
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
+| `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
+| `app.get(token)` | method | root container から provider を取り出す |
+| `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
+
+### Web features
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `defineApplication({ cors })`, `CorsOptions` | option | アプリ全体の CORS ヘッダと preflight 自動応答 |
+| `context.cookie(name)` / `cookies()` / `setCookie()` / `deleteCookie()` | method | Cookie の読み書き（複数の `Set-Cookie` に対応） |
+| `parseCookies`, `serializeCookie`, `serializeDeletedCookie`, `getCookie` | function | Cookie の単体ユーティリティ |
+| `context.formData()` / `context.form()` | method | multipart / urlencoded のボディ（`form()` はフィールドを string / File / 配列にしたオブジェクト） |
+| `context.sse(handler, options?)`, `createEventStream`, `formatEvent` | method / function | Server-Sent Events のレスポンス |
+| `defineWebSocket(route)`, `listen({ websockets })` | function / option | Bun ネイティブの WebSocket ルート（`upgrade` で認証・拒否） |
+| `listen({ maxRequestBodySize, idleTimeout, shutdownSignals })` | option | ボディサイズ上限、アイドルタイムアウト、シグナルでの graceful shutdown |
 
 ### Dependency Injection
 
@@ -129,6 +144,17 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | --- | --- | --- |
 | `createStandardSchemaAdapter(options?)` | function | Standard Schema 対応 validator（Zod / ArkType / Valibot など）用の `SchemaAdapter`。`options.toJsonSchema` / `options.target` で OpenAPI 変換を調整できる |
 | `StandardSchema`, `StandardSchemaAdapterOptions`, `JsonSchemaTarget` | type | アダプタ関連の型 |
+
+---
+
+## @kivin/jwt
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createJwtGuard(options)` | function | Bearer（または Cookie）の JWT を検証する guard。失敗時 401 + `WWW-Authenticate`、`authorize` が false なら 403 |
+| `getJwtPayload(context)` | function | guard が検証した payload |
+| `verifyJwt(token, options)`, `signJwt(payload, options)` | function | HS* / RS* / PS* / ES* / EdDSA。`algorithms` は必須、`exp` は既定で必須 |
+| `JwtError` | class | `code`: `malformed` / `algorithm` / `signature` / `expired` / `not-yet-valid` / `claim` |
 
 ---
 

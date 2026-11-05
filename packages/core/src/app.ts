@@ -1,16 +1,19 @@
 export { buildManifest } from './runtime/manifest';
 export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, ManifestRoute } from './runtime/types';
 
+import type { Server } from 'bun';
 import { Container } from './container';
+import { createCorsHandler, createCorsMiddleware } from './cors';
 import type { AppDefinition } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
 import { Router } from './router';
-import type { HttpMethod } from './types';
+import type { HttpMethod, Token } from './types';
 import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
+import { compileWebSocketRoutes } from './websocket';
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
   const container = new Container();
@@ -29,13 +32,24 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     }
   }
 
+  // CORS runs as the outermost global middleware so every route response gets the headers;
+  // preflight and 404/405 responses are handled in `fetch` below.
+  const cors = definition.cors ? createCorsHandler(definition.cors) : undefined;
+  const globalMiddlewareTokens = definition.globals?.middleware ?? [];
+  let effectiveGlobalMiddleware = globalMiddlewareTokens;
+  if (cors) {
+    const CorsMiddleware = createCorsMiddleware(cors);
+    container.register(CorsMiddleware);
+    effectiveGlobalMiddleware = [CorsMiddleware, ...globalMiddlewareTokens];
+  }
+
   for (const route of manifest.routes) {
     const compiledRoute = compileRouteExecutor({
       container,
       definition,
       globalFilterTokens: definition.globals?.filters ?? [],
       globalGuardTokens: definition.globals?.guards ?? [],
-      globalMiddlewareTokens: definition.globals?.middleware ?? [],
+      globalMiddlewareTokens: effectiveGlobalMiddleware,
       route,
     });
 
@@ -64,6 +78,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     const staticAllowed = staticAllowedMethods.get(path);
     if (staticAllowed && staticAllowed.length > 0) {
       const allowedMethods = getAllowedMethodsForList(staticAllowed);
+      if (cors) {
+        const preflight = cors.preflight(request, allowedMethods);
+        if (preflight) {
+          return preflight;
+        }
+      }
       const response = request.method === 'OPTIONS'
         ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
         : new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
@@ -73,6 +93,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
               'content-type': 'application/json; charset=utf-8',
             },
           });
+      cors?.apply(request, response.headers);
 
       return isHeadRequest ? toHeadResponse(response) : response;
     }
@@ -84,6 +105,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     if (!matched) {
       const allowedMethods = getAllowedMethods(router, path);
       if (allowedMethods.length > 0) {
+        if (cors) {
+          const preflight = cors.preflight(request, allowedMethods);
+          if (preflight) {
+            return preflight;
+          }
+        }
         const response = request.method === 'OPTIONS'
           ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
           : new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
@@ -93,20 +120,26 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
                 'content-type': 'application/json; charset=utf-8',
               },
             });
+        cors?.apply(request, response.headers);
         return isHeadRequest ? toHeadResponse(response) : response;
       }
 
-      return new Response(JSON.stringify({ message: 'Not Found' }), {
+      const notFoundResponse = new Response(JSON.stringify({ message: 'Not Found' }), {
         status: 404,
         headers: { 'content-type': 'application/json; charset=utf-8' },
       });
+      cors?.apply(request, notFoundResponse.headers);
+      return notFoundResponse;
     }
 
     const response = await matched.data.execute(request, matched.params);
     return isHeadRequest ? toHeadResponse(response) : response;
   };
 
-  return {
+  let activeServer: Server<unknown> | undefined;
+  let closing: Promise<void> | undefined;
+
+  const app = {
     fetch,
     /**
      * Starts `Bun.serve` with every manifest route compiled into Bun's native `routes` table.
@@ -114,20 +147,91 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
      * collides with a manifest route is rejected so app routes can never be shadowed silently.
      */
     listen(options: number | ListenOptions) {
-      const { routes: extraRoutes = {}, ...serveOptions } = typeof options === 'number' ? { port: options } : options;
-      const routes = createBunServeRoutes(compiledRoutes);
-      for (const [path, definition] of Object.entries(extraRoutes)) {
+      const {
+        routes: extraRoutes = {},
+        websockets,
+        shutdownSignals,
+        ...serveOptions
+      } = typeof options === 'number' ? ({ port: options } as ListenOptions) : options;
+      const routes: Record<string, unknown> = createBunServeRoutes(compiledRoutes);
+      const addRoute = (path: string, definition: unknown, source: string) => {
         if (path in routes) {
-          throw new Error(`listen({ routes }) path ${path} collides with an application route`);
+          throw new Error(`listen({ ${source} }) path ${path} collides with an application route`);
         }
         routes[path] = definition;
+      };
+      for (const [path, definition] of Object.entries(extraRoutes)) {
+        addRoute(path, definition, 'routes');
+      }
+      const compiledSockets = websockets ? compileWebSocketRoutes(websockets) : undefined;
+      for (const [path, handler] of Object.entries(compiledSockets?.handlers ?? {})) {
+        addRoute(path, handler, 'websockets');
       }
 
-      return Bun.serve({
+      const server = Bun.serve({
         ...serveOptions,
         routes,
         fetch,
-      });
+        ...(compiledSockets ? { websocket: compiledSockets.websocket } : {}),
+      } as Parameters<typeof Bun.serve>[0]) as Server<unknown>;
+      activeServer = server;
+
+      if (shutdownSignals) {
+        const signals = shutdownSignals === true ? (['SIGINT', 'SIGTERM'] as const) : shutdownSignals;
+        const onSignal = (signal: NodeJS.Signals) => {
+          for (const name of signals) {
+            process.off(name, onSignal);
+          }
+          void app.close({ signal }).finally(() => process.exit(0));
+        };
+        for (const signal of signals) {
+          process.once(signal, onSignal);
+        }
+      }
+
+      return server;
+    },
+    /**
+     * Graceful shutdown: stops accepting connections, waits up to `timeoutMs` (default 10s) for
+     * in-flight requests, then calls `onApplicationShutdown(signal)` on every singleton provider
+     * that defines it, newest first. Safe to call more than once.
+     */
+    close(options: { signal?: string; timeoutMs?: number } = {}) {
+      closing ??= (async () => {
+        const server = activeServer;
+        activeServer = undefined;
+        if (server) {
+          const drained = await Promise.race([
+            server.stop(false).then(() => true),
+            Bun.sleep(options.timeoutMs ?? 10_000).then(() => false),
+          ]);
+          if (!drained) {
+            await server.stop(true);
+          }
+        }
+
+        const errors: unknown[] = [];
+        for (const instance of [...container.singletonInstances()].reverse()) {
+          const hook = (instance as { onApplicationShutdown?: (signal?: string) => unknown } | null)?.onApplicationShutdown;
+          if (typeof hook === 'function') {
+            try {
+              await hook.call(instance, options.signal);
+            } catch (error) {
+              errors.push(error);
+            }
+          }
+        }
+        if (errors.length > 0) {
+          throw new AggregateError(errors, 'onApplicationShutdown hooks failed');
+        }
+      })();
+      return closing;
+    },
+    /** Resolves a provider from the app's root container (handy in scripts and tests). */
+    get<T>(token: Token<T>): T {
+      return container.resolve(token);
     },
   };
+
+  return app;
 }

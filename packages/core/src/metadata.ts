@@ -96,6 +96,8 @@ export interface AppDefinition<TSchema = unknown> {
   schemaAdapter: import('./types').SchemaAdapter<TSchema>;
   globals?: AppEnhancerMetadata;
   openApi?: AppOpenApiConfig;
+  /** Enables CORS headers on app routes and automatic preflight responses. */
+  cors?: import('./cors').CorsOptions;
 }
 
 export interface AppOpenApiConfig {
