@@ -42,7 +42,7 @@ export function createSpecializedRawBodyExecutor(input: {
   createBodyPayloadLoader: DeferredPayloadLoaderFactory<unknown>;
   createState: (request: Request, params: Record<string, string>) => RawExecutionState | RawResponseExecutionState;
   ensureGuardsAllowed: ((request: Request, params: Record<string, string>) => void | Promise<void>) | undefined;
-  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Promise<Response>;
+  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
   finalizeDirectResult: (result: Response, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response;
   handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
   prepareNext: (input: {
@@ -61,7 +61,11 @@ export function createSpecializedRawBodyExecutor(input: {
     const loadBodyPayload = input.createBodyPayloadLoader(state.getJsonBody, state.setBodyPayload);
 
     try {
-      await input.ensureGuardsAllowed?.(request, params);
+      // Await only an async guard: `await undefined` would still cost a microtask per request.
+      const guarded = input.ensureGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
 
       const next = input.prepareNext({
         loadBodyPayload,
@@ -71,7 +75,8 @@ export function createSpecializedRawBodyExecutor(input: {
         responseState,
       });
 
-      const resolvedDirectResult = await input.executeMiddleware(request, params, responseState, next);
+      const middlewareResult = input.executeMiddleware(request, params, responseState, next);
+      const resolvedDirectResult = isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult;
       return input.finalizeDirectResult(resolvedDirectResult, state, responseState);
     } catch (error) {
       return input.handleError(error, state, responseState);
@@ -90,7 +95,7 @@ export function createSpecializedRawHandlerExecutor(input: {
     requestUrl: string;
     responseState: ResponseState;
   }) => unknown | PromiseLike<unknown>;
-  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Promise<Response>;
+  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
   finalizeHandlerResult: (result: unknown, responseState: ResponseState) => Response;
   handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
   useRequestUrl?: boolean;
@@ -105,7 +110,11 @@ export function createSpecializedRawHandlerExecutor(input: {
     const finalize = (value: unknown, context: ResponseStateAdapter) => input.finalizeHandlerResult(value, context as ResponseState);
 
     try {
-      await input.ensureGuardsAllowed?.(request, params);
+      // Await only an async guard: `await undefined` would still cost a microtask per request.
+      const guarded = input.ensureGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
 
       const next = () => finalizeRawResult(
         input.executeHandler({
@@ -119,7 +128,8 @@ export function createSpecializedRawHandlerExecutor(input: {
         finalize,
       );
 
-      const resolvedDirectResult = await input.executeMiddleware(request, params, responseState, next);
+      const middlewareResult = input.executeMiddleware(request, params, responseState, next);
+      const resolvedDirectResult = isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult;
       return resolveRawMiddlewareResult(resolvedDirectResult, state, finalize);
     } catch (error) {
       return input.handleError(error, state, responseState);
@@ -154,7 +164,7 @@ export function createSpecializedRawHandlerBodyExecutor(input: {
   createState: (request: Request, params: Record<string, string>) => RawExecutionState | RawResponseExecutionState;
   ensureGuardsAllowed: ((request: Request, params: Record<string, string>) => void | Promise<void>) | undefined;
   executeHandler: (bodyPayload: unknown, params: Record<string, string>) => unknown | PromiseLike<unknown>;
-  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Promise<Response>;
+  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
   finalizeHandlerResult: (result: unknown, responseState: ResponseState) => Response;
   handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
 }) {
@@ -371,7 +381,10 @@ function compileRouteExecutorFor<TSchema>(input: {
       const paramPayload = resolveParamPayload(params);
       const queryPayload = resolveQueryPayload(requestUrl);
 
-      await ensureRawGuardsAllowed?.(request, params);
+      const guarded = ensureRawGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
 
       const bodyPayload = await resolveBodyPayload(request);
 
@@ -749,7 +762,10 @@ function compileRouteExecutorFor<TSchema>(input: {
       const paramPayload = resolveParamPayload(params);
       const queryPayload = resolveQueryPayload(requestUrl);
 
-      await ensureRawGuardsAllowed?.(request, params);
+      const guarded = ensureRawGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
 
       const executeHandler = async () => {
         const bodyPayload = await loadBodyPayload();
@@ -760,7 +776,8 @@ function compileRouteExecutorFor<TSchema>(input: {
         );
       };
 
-      const directResult = await dispatchRawMiddleware(request, params, state.getResponseState(), executeHandler);
+      const dispatched = dispatchRawMiddleware(request, params, state.getResponseState(), executeHandler);
+      const directResult = isPromiseLike<Response>(dispatched) ? await dispatched : dispatched;
 
       return resolveRawMiddlewareResult(directResult, state, finalizeCompiledContextResult);
     } catch (error) {
