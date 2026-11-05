@@ -33,6 +33,8 @@
 
 ### Fixed
 
+- `@kivin/core`: `setCookie` / `serializeCookie` の `path` / `domain` / `sameSite` / `priority` に `;` や改行を含む値を渡すと、属性の注入（`path: '/; Domain=evil'`）やヘッダ分割ができた問題を修正。不正な値は `TypeError` にする
+
 - `@kivin/openapi`: OpenAPI の `paths` がルート定義のまま `/users/:id` になっており、OpenAPI のパステンプレート（`/users/{id}`）として解釈されなかった（Swagger UI の Try it out・コード生成・バリデータでパスパラメータが置換されない／不整合エラー）問題を修正。末尾スラッシュも落とす（`/users/` → `/users`）
 - `@kivin/openapi`: param schema の無いルートでパス変数が `parameters` に宣言されず、`@ApiResponse` の無いルートが空の `responses` になって OpenAPI として不正だった問題を修正（パス変数は必須の string として補い、レスポンス未宣言なら `200` を出す）
 - `@kivin/core`: 同じメソッドと形のパスを持つルート（`GET /x` と `GET /x/`、`/u/:id` と `/u/:name` など）が黙って両方登録され、`app.fetch` と Bun の native routes とで別のハンドラが選ばれていた問題を修正。起動時に両方のルートを示すエラーにする

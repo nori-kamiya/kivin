@@ -106,6 +106,13 @@ describe('cookies', () => {
     expect(parseCookies('a=1; b="two"; c=x%20y; a=ignored')).toEqual({ a: '1', b: 'two', c: 'x y' });
     expect(serializeCookie('s', 'a b', { httpOnly: true, sameSite: 'None', maxAge: 60 })).toBe('s=a%20b; Max-Age=60; Path=/; HttpOnly; Secure; SameSite=None');
     expect(() => serializeCookie('bad name', 'x')).toThrow('Invalid cookie name');
+    // Attribute values cannot inject attributes or split the header.
+    expect(() => serializeCookie('a', 'v', { path: '/x; Domain=evil.example' })).toThrow('Invalid cookie path');
+    expect(() => serializeCookie('a', 'v', { domain: 'example.com\r\nSet-Cookie: x=1' })).toThrow('Invalid cookie domain');
+    expect(() => serializeCookie('a', 'v', { path: '' })).toThrow('Invalid cookie path');
+    expect(() => serializeCookie('a', 'v', { sameSite: 'Lax; Secure' as never })).toThrow('Invalid cookie sameSite');
+    expect(() => serializeCookie('a', 'v', { priority: 'High; x' as never })).toThrow('Invalid cookie priority');
+    expect(serializeCookie('a', 'v', { path: '/app/v1', domain: '.example.com', priority: 'High' })).toBe('a=v; Domain=.example.com; Path=/app/v1; Priority=High');
   });
 
   test('reads request cookies and sets several response cookies', async () => {
