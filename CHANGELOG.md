@@ -36,6 +36,7 @@
 
 ### Changed
 
+- `@kivin/core`: 引数を取らない GET ルートに global の guard / middleware がある場合も、ハンドラの結果を起動時に一度だけ計算して再利用するようにした（pipeline 自体は毎回実行）。global middleware 付きの `/health` 相当で約 +20%
 - **TC39 標準デコレータへ移行（破壊的変更）**。`experimentalDecorators` は不要になった（有効にしない）。TC39 に引数デコレータが無いため `@Body` / `@PathParam` / `@QueryParam` / `@Context` を廃止し、ハンドラは 1 つの入力オブジェクト `find({ params, query, body, context }: RouteInput<{ params: typeof S }>)` を受け取る形にした。CLI は分割代入したフィールドだけを manifest に記録し、実行時もそのフィールドだけを計算する。`contracts.ts` は `RouteInput` の型と schema デコレータのズレを検出する。古い書き方は `kivin generate` が置き換え方を示すエラーで止める
 - **JSON レスポンスの `content-type` を `application/json; charset=utf-8` から `application/json;charset=utf-8`（空白なし、Bun の `Response.json()` と同じ表記）に変更**。HTTP の意味は同じだが、ヘッダを文字列で完全一致比較しているテストなどは更新が必要。ハンドラの戻り値・`context.json()`・エラー（400 / 404 / 405 / 426 / 500 / `HttpError`）のすべてで表記をそろえ、`JSON_CONTENT_TYPE` 定数も同じ値にした。JSON レスポンスは `Response.json()` で生成するようになり、in-process で JSON を返すルートが 8〜19% 速くなった（幾何平均 +6.9%）
 - `@kivin/core`: 2,400 行あった `app.ts` を `src/runtime/` 以下の責務別モジュールに分割（公開 API は変更なし）
