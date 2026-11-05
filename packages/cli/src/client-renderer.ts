@@ -48,6 +48,12 @@ export function renderClient(controllers: AstControllerNode[], outFile: string) 
       if (body) {
         parts.push(`Part<'body', ${body}>`);
       }
+      const headerSchema = schemaType(controller, route.headerSchema);
+      if (headerSchema) {
+        // Typed (names and values) but optional: required headers are often sent for every request
+        // through createClient({ headers }), so a call does not have to repeat them.
+        parts.push(`{ headers?: HeadersInit & Partial<${inferInput}<${headerSchema}>> }`);
+      }
       const output = outputType(controller, route, handler, schemaType, inferOutput);
       const inputType = parts.length > 0 ? `ClientRequestOptions & ${parts.join(' & ')}` : 'ClientRequestOptions';
 
@@ -196,7 +202,7 @@ export type KivinClient = ReturnType<typeof createClient>;
       return `${infer}<${schema}>`;
     }
     const reads = route.parameters.some((parameter) => parameter.source === 'query' || (parameter.source === 'input' && (parameter.fields ?? ['query']).includes('query')));
-    return reads ? 'Record<string, string | undefined>' : undefined;
+    return reads ? 'Record<string, string | string[] | undefined>' : undefined;
   }
 
   function bodyType(route: AstRouteNode, handler: string, schema: string | undefined, infer: string) {

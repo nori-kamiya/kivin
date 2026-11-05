@@ -26,6 +26,7 @@
 - `@kivin/jwt`: JWKS 対応。`createRemoteJwks(url)`（TTL / `Cache-Control` キャッシュ、未知の `kid` での rate limit 付き再取得、取得失敗時は直前の鍵を継続）と `createLocalJwks`。`key` に鍵リゾルバ関数を渡せるようにし、JWKS が取得できない場合ガードは 503 を返す
 - `@kivin/decorators`: `@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded')` で入力オブジェクトの `body` にフォーム（`File` を含む）を検証して渡せるようにした。OpenAPI は該当 media type で出力し、生成クライアントは `FormData` で送信する
 - `@kivin/core`: 起動時フック `onModuleInit` / `onApplicationBootstrap` と `app.init()` を追加。フックを持つ provider があるのに `init()` 前に `listen()` するとエラーにして、フックが黙って実行されないようにした。`createTestingApp().request()` は自動で `init()` する
+- `@kivin/cli`: 生成クライアントで `@UseHeaderSchema` のルートのヘッダ名と値を型付けした（`createClient({ headers })` で毎回送れるよう呼び出しごとには任意）。schema なしクエリの型を `string | string[] | undefined` にしてサーバ側と揃えた
 - `@kivin/decorators` / `@kivin/core`: `@UseHeaderSchema` と入力オブジェクトの `headers` を追加。リクエストヘッダ（小文字名）を検証・型付けしてハンドラに渡し、OpenAPI に `in: header` として出力する。`headers` を読まない・schema の無いルートには一切コストがかからない
 - `@kivin/valibot`: `v.file()` / `v.blob()` を OpenAPI で `{ type: 'string', format: 'binary' }` として出力
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる

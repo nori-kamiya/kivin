@@ -16,6 +16,7 @@ import {
     Tag,
     UseBodySchema,
     UseFilters,
+    UseHeaderSchema,
     UseGuards,
     UseParamSchema,
     UseQuerySchema,
@@ -27,6 +28,7 @@ import {
     AvatarSchema,
     AvatarUploadSchema,
     CreateUserSchema,
+    CurrentUserHeadersSchema,
     ErrorSchema,
     PatchUserSchema,
     ReplaceUserSchema,
@@ -51,6 +53,18 @@ export class UserController {
   @ApiResponse(200, UserListSchema, 'User list')
   list({ query }: RouteInput<{ query: typeof UserSearchQuerySchema }>) {
     return this.userService.list(query.search);
+  }
+
+  @Get('/me')
+  @Summary('Current user')
+  @Description('Returns the user named by the x-user-id header (validated by a header schema).')
+  @OperationId('users.me')
+  @UseHeaderSchema(CurrentUserHeadersSchema)
+  @UseFilters(UserNotFoundFilter)
+  @ApiResponse(200, UserSchema, 'Current user')
+  @ApiResponse(404, ErrorSchema, 'User was not found')
+  me({ headers }: RouteInput<{ headers: typeof CurrentUserHeadersSchema }>) {
+    return this.userService.requireById(headers['x-user-id']);
   }
 
   @Get('/:id')
