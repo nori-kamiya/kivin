@@ -78,12 +78,14 @@ const random = seededRandom(7);
 const rows: string[] = [];
 let failed = false;
 
-for (const workload of workloads) {
+for (const [workloadIndex, workload] of workloads.entries()) {
   if (only && !only.some((name) => workload.name.startsWith(name))) {
     continue;
   }
 
-  const servers = await Promise.all(frameworks.map((framework, index) => startServer(framework, workload, 4300 + index)));
+  // Fresh ports per workload, and every server is awaited on shutdown, so a port is never reused
+  // while the previous process is still releasing it.
+  const servers = await Promise.all(frameworks.map((framework, index) => startServer(framework, workload, 4300 + workloadIndex * 10 + index)));
   try {
     for (const server of servers) {
       const response = await send(server.url, workload.request(0));
@@ -118,9 +120,7 @@ for (const workload of workloads) {
     failed = true;
     rows.push(`| ${workload.name} | ❌ ${error instanceof Error ? error.message : String(error)} | | | | |`);
   } finally {
-    for (const server of servers) {
-      server.stop();
-    }
+    await Promise.all(servers.map((server) => server.stop()));
   }
 }
 
@@ -156,7 +156,14 @@ async function startServer(framework: Framework, workload: Workload, port: numbe
     }
     const reachable = await fetch(`${url}${workload.request(0).path}`, { method: 'HEAD' }).then(() => true, () => false);
     if (reachable) {
-      return { framework, url, stop: () => child.kill() };
+      return {
+        framework,
+        url,
+        stop: async () => {
+          child.kill();
+          await child.exited;
+        },
+      };
     }
     await Bun.sleep(50);
   }
