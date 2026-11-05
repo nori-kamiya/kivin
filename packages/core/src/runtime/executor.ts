@@ -240,7 +240,11 @@ export function compileRouteExecutor<TSchema>(input: {
   const requiresGuardContext = guards.requestScoped || singletonGuards.some((guard) => typeof guard.canActivateRaw !== 'function');
   const requiresContext = hasContextParameter || middleware.entries.length > 0 || filters.entries.length > 0 || requiresGuardContext || controllerResolver.requestScoped;
   const requiresRequestScopedContainer = controllerResolver.requestScoped || guards.requestScoped || middleware.requestScoped || filters.requestScoped;
-  const nativeStaticResponse = singletonController
+  // A precomputed static response skips the whole pipeline, so it is only allowed when no guard,
+  // middleware or filter applies — including app-wide globals (the route's own lists are checked in
+  // canPrecomputeNativeStaticResponse; the compiled lists below also contain the globals).
+  const hasEnhancers = guards.entries.length > 0 || middleware.entries.length > 0 || filters.entries.length > 0;
+  const nativeStaticResponse = singletonController && !hasEnhancers
     ? createNativeStaticResponse({
         definition: input.definition,
         handler: singletonController[input.route.methodName] as (...args: unknown[]) => unknown,

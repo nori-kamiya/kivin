@@ -27,6 +27,7 @@
 
 ### Fixed
 
+- **`@kivin/core`: 引数を取らず定数を返す GET ルートで、app 全体（`globals`）の guard / middleware / filter と CORS が適用されていなかった問題を修正**。このようなルートは静的レスポンスを事前計算して pipeline を丸ごと省略していたが、判定がルート自身の enhancer しか見ていなかったため、たとえば global の認証 guard がそのルートでは素通りしていた。global を含めて enhancer が 1 つでもあれば事前計算しないようにした
 - リポジトリ直下に `tsconfig.json` を追加。Bun は作業ディレクトリの tsconfig からデコレータの方式を決めるため、ルートで `bun test` / `bun run` を実行すると TC39 デコレータとして動き、メソッド・引数デコレータのメタデータが記録されていなかった（CLI の AST 経路は影響なし）
 - README の Quick start を現行 API（`createApp(definition, manifest)`、必須の `schemaAdapter`、default export の manifest）に合わせた
 - `contracts.ts` の入力チェックで、`Pick<RouteInput<...>>` 同士の比較が型パラメータの variance で素通りしうる問題を、構造的な比較に変えて修正
