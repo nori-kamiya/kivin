@@ -68,6 +68,13 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 `createNoContentResponse` (204), `createNoContentResponseWithHeader`,
 `createTextResponse`, 定数 `JSON_CONTENT_TYPE` / `TEXT_CONTENT_TYPE`。
 
+### Handler return values
+
+- `Response`: そのまま返す（キューされたヘッダ・Cookie は付与される）
+- `Bun.file()` / `Blob` / `ReadableStream` / `ArrayBuffer` / typed array: そのままボディとして送る。`Content-Type` は Blob の型（ファイルは拡張子から）、それ以外は `application/octet-stream`。ルートの既定ステータス（POST の 201 など）とキューされたヘッダは JSON と同じく適用され、静的レスポンスとして事前計算されることはない（ファイルはリクエストごとに読む）
+- `undefined`（何も返さない）: 空ボディ。ステータスはルートの既定（GET 200、POST 201、既定が 204 のルートは 204）
+- それ以外: JSON（`Response.json()`）
+
 ### Security
 
 | Export | 種別 | 概要 |

@@ -31,6 +31,9 @@
 
 ### Fixed
 
+- `@kivin/core`: ハンドラが `Bun.file()` / `Blob` / `ReadableStream` / `ArrayBuffer` / typed array を返すと JSON 化されて `{}`（typed array は添字のオブジェクト）が返っていた問題を修正。ボディとしてそのまま送り、Content-Type は Blob の型（ファイルは拡張子から）か `application/octet-stream` にする
+- `@kivin/core`: 何も返さない（`undefined` を返す）ハンドラが常に 500 になっていた問題を修正。空ボディとルートの既定ステータス（GET 200 / POST 201 / 既定 204 のルートは 204）で応答する
+
 - `@kivin/core`: CORS を有効にしたとき、検証エラー（400）・ガードの拒否（403）・ハンドラの例外・フィルタの応答に CORS ヘッダが付かず、ブラウザがエラー本文を読めなかった問題を修正。ヘッダが変更不可のレスポンス（`fetch` の結果をそのまま返す場合など）でも 500 にならないようにした
 
 - **`@kivin/core`: 引数を取らず定数を返す GET ルートで、app 全体（`globals`）の guard / middleware / filter と CORS が適用されていなかった問題を修正**。このようなルートは静的レスポンスを事前計算して pipeline を丸ごと省略していたが、判定がルート自身の enhancer しか見ていなかったため、たとえば global の認証 guard がそのルートでは素通りしていた。global を含めて enhancer が 1 つでもあれば事前計算しないようにした

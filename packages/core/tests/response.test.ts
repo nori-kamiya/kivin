@@ -60,8 +60,15 @@ test('createJsonResponseWithStatusAndHeader preserves status and header together
   expect(await response.json()).toEqual({ created: true });
 });
 
-test('createJsonResponse throws for undefined like Response.json', () => {
-  expect(() => createJsonResponse(undefined)).toThrow('Value is not JSON serializable');
+test('createJsonResponse answers an empty body for undefined (Response.json would throw)', async () => {
+  const response = createJsonResponse(undefined, { status: 201 });
+  expect(response.status).toBe(201);
+  expect(response.headers.get('content-type')).toBeNull();
+  expect(await response.text()).toBe('');
+});
+
+test('createJsonResponse still throws for values JSON cannot serialise', () => {
+  expect(() => createJsonResponse({ big: 1n })).toThrow();
 });
 
 test('ResponseState respond uses direct JSON fast path when no response state is queued', async () => {
