@@ -8,6 +8,7 @@
     { "path": "./packages/valibot" },
     { "path": "./packages/standard-schema" },
     { "path": "./packages/cli" },
+    { "path": "./tests/types" },
     { "path": "./examples/basic" },
     { "path": "./examples/benchmark-kivin" },
     { "path": "./examples/benchmark-hono" },
