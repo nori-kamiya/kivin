@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, test, smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Typecheck (includes generated contracts and type tests)
+        run: bun run check
+      - run: bun test
+      - name: Compile the example to a single binary and smoke test it
+        run: bun run example:smoke
+
+  perf-regression:
+    name: Performance regression vs base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Compare against the PR base (blocking)
+        run: bun run perf:regression -- --base origin/${{ github.base_ref }}
+
+  bench-compare:
+    name: Hono / Elysia comparison (report only)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Cross-framework ratios on shared runners are informative but too noisy to block a merge;
+    # regressions of kivin itself are gated by perf-regression above.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run perf:check
