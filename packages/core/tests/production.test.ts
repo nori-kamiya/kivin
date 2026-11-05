@@ -277,3 +277,67 @@ describe('createTestingApp', () => {
     expect(app.get(Greeter).greet()).toBe('stubbed');
   });
 });
+
+describe('global enhancers on static routes', () => {
+  class StaticController {
+    ping() {
+      return { pong: true };
+    }
+  }
+
+  class DenyAllGuard {
+    canActivateRaw() {
+      return false;
+    }
+
+    canActivate() {
+      return false;
+    }
+  }
+
+  class StampMiddleware {
+    async handle(_context: unknown, next: () => Promise<Response>) {
+      const response = await next();
+      response.headers.set('x-stamp', 'global');
+      return response;
+    }
+  }
+
+  const staticManifest: AppManifest = {
+    routes: [{
+      method: 'GET', fullPath: '/ping', controller: StaticController, methodName: 'ping',
+      parameters: [], guards: [], middleware: [], filters: [],
+      docs: { tags: [], security: [], responses: [] },
+    }],
+  };
+
+  const build = (globals: { guards?: unknown[]; middleware?: unknown[] }, cors?: Parameters<typeof defineApplication>[0]['cors']) => createApp(defineApplication({
+    modules: [defineModule({ providers: [DenyAllGuard, StampMiddleware], controllers: [StaticController], imports: [] })],
+    schemaAdapter: createValibotAdapter(),
+    globals: { guards: (globals.guards ?? []) as never[], middleware: (globals.middleware ?? []) as never[], filters: [] },
+    ...(cors ? { cors } : {}),
+  }), staticManifest);
+
+  test('a global guard is enforced on a parameterless GET route (in-process and native routes)', async () => {
+    const app = build({ guards: [DenyAllGuard] });
+    expect((await app.fetch(new Request('http://x/ping'))).status).toBe(403);
+    const server = app.listen({ port: 0, hostname: '127.0.0.1' });
+    try {
+      expect((await fetch(new URL('/ping', server.url))).status).toBe(403);
+    } finally {
+      await app.close();
+    }
+  });
+
+  test('global middleware and CORS run on a parameterless GET route', async () => {
+    const app = build({ middleware: [StampMiddleware] }, { origin: '*' });
+    const response = await app.fetch(new Request('http://x/ping', { headers: { origin: 'https://a.example' } }));
+    expect(response.headers.get('x-stamp')).toBe('global');
+    expect(response.headers.get('access-control-allow-origin')).toBe('*');
+  });
+
+  test('without any enhancer the route is still served as a precomputed static response', async () => {
+    const app = build({});
+    expect(await (await app.fetch(new Request('http://x/ping'))).json()).toEqual({ pong: true });
+  });
+});
