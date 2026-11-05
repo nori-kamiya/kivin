@@ -74,3 +74,4 @@ export { compileWebSocketRoutes, defineWebSocket, type KivinWebSocket, type WebS
 export { SecureHeadersMiddleware, createSecureHeadersMiddleware, type SecureHeadersOptions } from './security';
 export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, SchemaAdapter, Token } from './types';
 
+export { toValidationIssues, type ValidationIssue } from './runtime/payload';
