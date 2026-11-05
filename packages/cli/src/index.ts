@@ -48,7 +48,7 @@ export async function loadAppDefinition(entry: string): Promise<AppDefinition<un
   return candidate as AppDefinition<unknown>;
 }
 
-export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string }) {
+export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string; aot?: boolean }) {
   const outDir = resolve(input.outDir);
   const manifestPath = resolve(outDir, 'manifest.ts');
   const contractsPath = resolve(outDir, 'contracts.ts');
@@ -60,6 +60,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     outFile: manifestPath,
     contractsOutFile: contractsPath,
     clientOutFile: clientPath,
+    ...(input.aot === false ? { aot: false } : {}),
   });
   await writeFile(manifestPath, generated.source, 'utf8');
   await writeFile(contractsPath, generated.contractsSource ?? 'export {};\n', 'utf8');

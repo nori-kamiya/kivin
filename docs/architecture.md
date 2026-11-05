@@ -33,6 +33,7 @@
 | `runtime/pipeline.ts` | guard / middleware / exception filter のコンパイルと実行 |
 | `runtime/routing.ts` | path lookup、allowed methods、Bun native `routes` テーブル |
 | `runtime/executor.ts` | route ごとに特化 executor を選んで組み立てる |
+| `runtime/aot.ts` | `kivin generate` が出力する AOT executor の実行時部品（`AotRouteRuntime`） |
 
 ### `@kivin/decorators`
 

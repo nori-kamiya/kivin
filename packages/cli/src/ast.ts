@@ -18,6 +18,7 @@ import type {
   VariableDeclarator,
 } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
+import { renderAotFactory } from './aot-renderer';
 import { renderClient } from './client-renderer';
 
 interface AstImportBinding {
@@ -134,14 +135,15 @@ const resolver = new ResolverFactory({
   },
 });
 
-export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string }): Promise<GeneratedManifestResult> {
+export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string; aot?: boolean }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
   const moduleRefs = await readAppModules(entryFile);
   const controllerRefs = await collectControllerRefs(moduleRefs);
   const controllers = await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name)));
   const renderer = new ImportRenderer(resolve(input.outFile));
   renderer.addTypeImport('@kivin/core', 'AppManifest');
-  const routeEntries = controllers.flatMap((controller) => controller.routes.map((route) => renderRoute(controller, route, renderer)));
+  const aot = input.aot !== false;
+  const routeEntries = controllers.flatMap((controller) => controller.routes.map((route) => renderRoute(controller, route, renderer, aot)));
   const imports = renderer.render();
 
   return {
@@ -1065,7 +1067,7 @@ function renderImportGroup(entries: RenderImportEntry[]) {
   return `import${first.isType ? ' type' : ''} { ${specifiers.join(', ')} } from '${first.moduleSpecifier}';`;
 }
 
-function renderRoute(controller: AstControllerNode, route: AstRouteNode, renderer: ImportRenderer) {
+function renderRoute(controller: AstControllerNode, route: AstRouteNode, renderer: ImportRenderer, aot: boolean) {
   const controllerLocalName = renderer.addNamedImport(controller.filePath, controller.className);
   const docsEntries = [
     route.summary ? `summary: ${JSON.stringify(route.summary)}` : undefined,
@@ -1083,7 +1085,11 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
   const routeMiddleware = renderExpressionList(controller.filePath, [...controller.middleware, ...route.middleware], renderer);
   const routeFilters = renderExpressionList(controller.filePath, [...controller.filters, ...route.filters], renderer);
 
-  return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },\n    }`;
+  const aotFactory = aot
+    ? renderAotFactory(route, controllerLocalName, renderer.addTypeImport('@kivin/core', 'AotRouteRuntime'), renderer.addTypeImport('@kivin/core', 'RequestContext'))
+    : undefined;
+
+  return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },${aotFactory ? `\n      aot: ${aotFactory},` : ''}\n    }`;
 }
 
 export function renderExpression(fromFile: string, expression: AstExpressionRef, renderer: ImportRenderer) {

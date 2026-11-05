@@ -41,6 +41,7 @@ async function main() {
       outDir,
       ...(title ? { title } : {}),
       ...(version ? { version } : {}),
+      ...(process.argv.includes('--no-aot') ? { aot: false } : {}),
     });
 
     console.log(`manifest: ${result.manifestPath}`);

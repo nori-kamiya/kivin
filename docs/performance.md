@@ -21,6 +21,30 @@
 - それぞれについて `--compile` 実行と `bun run` 実行を比較する
 - `health` / `users` / `patch` を個別 variant として比較する
 
+## AOT executors
+
+`kivin generate` は manifest の各ルートに `aot` ファクトリを書き出します。ルートの引数に合わせて特化した直線的な async 関数で、次の特徴があります。
+
+- メソッドを直接呼び出し、引数リストもリテラルで組み立てる
+- リクエストごとのクロージャを作らない（middleware の `next` だけは例外）
+- guard が同期的に返す間は await を挟まない
+
+検証・guard・middleware・filter・レスポンスの確定・エラーの変換は、実行時にコンパイルされる executor と同じ部品（`runtime/aot.ts` の `AotRouteRuntime`）に任せています。そのため挙動は変わりません。
+
+- **適用範囲**: 実行時のコンパイラが汎用パスを選んだルートだけを置き換えます。すでに特化 executor（raw guard / raw middleware など）があるルートはそのまま使います。さらに controller / guard / middleware / filter がすべて singleton のルートに限ります。
+- **同一性の担保**: `packages/cli/tests/aot.test.ts` で、さまざまな形のルート（guard / middleware 1〜2 段 / filter / 各種 schema / request-scoped / 204 / 例外 / global enhancer あり・なし）に 37 種類のリクエストを送り、AOT と実行時 executor のレスポンス（status・ヘッダ・body）が完全に一致することを確認しています。
+- **無効化**: `kivin generate --no-aot` で生成しない、または実行時に `KIVIN_AOT=0` で使わないようにできます。
+
+効果（in-process、同一プロセスでのペア計測、base は AOT なし）:
+
+| scenario | 変化 |
+| --- | ---: |
+| context-json | +25% |
+| delete-204 | +19% |
+| request-scoped | +19% |
+| create-body-guard-mw | +4% |
+| その他（特化 executor のルート） | ±0 |
+
 ## Regression gate
 
 `bun run perf:regression` は「この変更で kivin 自身が遅くなっていないか」を、同じマシン上で base ref（既定は `origin/main`）と比較して判定します。CI では PR ごとに PR の base と比較し、劣化があればマージをブロックします。
@@ -31,7 +55,7 @@ bun run perf:regression -- --base HEAD~1
 PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 ```
 
-- **計測対象**: `scripts/perf/bench-app.ts` の 11 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403）。base 側も同じファイルを使い、`@kivin/*` だけを base の worktree に向けます。
+- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 11 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403）。base 側も同じソースを使い、`@kivin/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
 - **in-process（ブロッキング）**: base と current の 2 つのアプリを 1 プロセスに読み込み、短い計測ブロックを A→B / B→A と交互に回して、隣り合うペアの比を取ります（`scripts/perf/paired.ts`）。CPU クロックや他プロセスの影響が両側に等しく乗るので、2 コアの共有 VM でも同一コード同士の差は ±1% 程度に収まります。
 - **判定**:
   - いずれかのシナリオで中央値が **4% 以上** 遅く、かつ bootstrap 95% 信頼区間が全体として 1 を下回る。疑わしいシナリオは 2 倍のラウンドで再計測し、それでも該当する場合のみ失敗にします。

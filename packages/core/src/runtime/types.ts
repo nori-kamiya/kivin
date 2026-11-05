@@ -16,6 +16,8 @@ export interface CompiledRoute<TSchema> {
   nativeStaticResponse?: Response;
   route: ManifestRoute<TSchema>;
   execute: (request: Request, params: Record<string, string>) => Promise<Response>;
+  /** True when the executor came from a generated (`kivin generate`) AOT factory. */
+  aot?: boolean;
 }
 
 export type CompiledRouteExecutor<TSchema> = CompiledRoute<TSchema>['execute'];
@@ -139,6 +141,8 @@ export interface ManifestRoute<TSchema = unknown> {
     security: Array<{ scheme: string; scopes: string[] }>;
     responses: Array<{ status: number; description: string; schema?: TSchema }>;
   };
+  /** Generated ahead-of-time executor factory (see `runtime/aot.ts`). Optional; hand-written manifests omit it. */
+  aot?: import('./aot').AotExecutorFactory;
 }
 
 export interface AppManifest<TSchema = unknown> {
