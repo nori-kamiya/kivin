@@ -1,5 +1,5 @@
-import type { RequestContext } from '@kivin/core';
-import { ApiResponse, Body, Context, Controller, Delete, Get, Injectable, Patch, PathParam, Post, QueryParam, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import type { RouteInput } from '@kivin/core';
+import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
 import { ApiKeyGuard, REQUEST_STAMP, RequestIdMiddleware, UserNotFoundFilter, UserStore } from './providers';
 import { CreateUserSchema, IdParamSchema, PatchUserSchema, SearchQuerySchema, UserSchema } from './schemas';
 
@@ -11,7 +11,7 @@ export class HealthController {
   }
 
   @Get('/context')
-  contextJson(@Context() context: RequestContext) {
+  contextJson({ context }: RouteInput) {
     return context.json({ ok: true, path: '/context' });
   }
 }
@@ -23,24 +23,24 @@ export class UsersController {
 
   @Get('/')
   @UseQuerySchema(SearchQuerySchema)
-  list(@QueryParam('search') search?: string) {
-    return this.store.list(search);
+  list({ query }: RouteInput<{ query: typeof SearchQuerySchema }>) {
+    return this.store.list(query.search);
   }
 
   @Get('/:id')
   @UseParamSchema(IdParamSchema)
   @UseFilters(UserNotFoundFilter)
   @ApiResponse(200, UserSchema, 'user')
-  find(@PathParam('id') id: string) {
-    return this.store.find(id);
+  find({ params }: RouteInput<{ params: typeof IdParamSchema }>) {
+    return this.store.find(params.id);
   }
 
   @Post('/')
   @UseGuards(ApiKeyGuard)
   @UseMiddleware(RequestIdMiddleware)
   @UseBodySchema(CreateUserSchema)
-  create(@Body() input: { name: string; email: string }, @Context() context: RequestContext) {
-    return context.json({ id: '999', ...input }, { status: 201 });
+  create({ body, context }: RouteInput<{ body: typeof CreateUserSchema }>) {
+    return context.json({ id: '999', ...body }, { status: 201 });
   }
 
   @Patch('/:id')
@@ -48,17 +48,17 @@ export class UsersController {
   @UseFilters(UserNotFoundFilter)
   @UseParamSchema(IdParamSchema)
   @UseBodySchema(PatchUserSchema)
-  patch(@PathParam('id') id: string, @Body() input: { name?: string; email?: string }) {
-    const user = this.store.find(id);
-    return { ...user, ...input };
+  patch({ params, body }: RouteInput<{ params: typeof IdParamSchema; body: typeof PatchUserSchema }>) {
+    const user = this.store.find(params.id);
+    return { ...user, ...body };
   }
 
   @Delete('/:id')
   @UseGuards(ApiKeyGuard)
   @UseFilters(UserNotFoundFilter)
   @UseParamSchema(IdParamSchema)
-  remove(@PathParam('id') id: string, @Context() context: RequestContext) {
-    this.store.find(id);
+  remove({ params, context }: RouteInput<{ params: typeof IdParamSchema }>) {
+    this.store.find(params.id);
     return context.noContent();
   }
 }
@@ -66,7 +66,7 @@ export class UsersController {
 @Controller('/scoped')
 export class ScopedController {
   @Get('/')
-  scoped(@Context() context: RequestContext) {
+  scoped({ context }: RouteInput) {
     return { stamp: context.inject<{ value: number }>(REQUEST_STAMP).value };
   }
 }

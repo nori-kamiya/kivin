@@ -8,7 +8,7 @@
 
 ### Added
 
-- `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、`@Body` / `@QueryParam` / `@PathParam` の引数型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
+- `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、ハンドラの入力型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
 - `@kivin/decorators`: `@Injectable({ deps })` を型付けし、deps の並び・型・個数がコンストラクタ引数と合わない場合にコンパイルエラーにした
 - `@kivin/core`: 型付きトークン `createToken<T>()` / `InjectionToken<T>`、`InferSchemaInput` / `InferSchemaOutput` / `RouteContract` 型を追加
 - `@kivin/core`: `app.listen()` が `{ port, hostname, routes }` を受け取り、追加の native route を app のルートと一緒に `Bun.serve` へ載せられるようにした（app のルートと衝突するパスはエラー）
@@ -29,11 +29,13 @@
 
 - リポジトリ直下に `tsconfig.json` を追加。Bun は作業ディレクトリの tsconfig からデコレータの方式を決めるため、ルートで `bun test` / `bun run` を実行すると TC39 デコレータとして動き、メソッド・引数デコレータのメタデータが記録されていなかった（CLI の AST 経路は影響なし）
 - README の Quick start を現行 API（`createApp(definition, manifest)`、必須の `schemaAdapter`、default export の manifest）に合わせた
+- `contracts.ts` の入力チェックで、`Pick<RouteInput<...>>` 同士の比較が型パラメータの variance で素通りしうる問題を、構造的な比較に変えて修正
 
 - `@kivin/core`: クエリ schema を持つルートで、クエリ文字列が無いリクエストが `400 query validation failed` になっていた問題を修正（optional なフィールドだけの schema でも空オブジェクトとして検証する）
 
 ### Changed
 
+- **TC39 標準デコレータへ移行（破壊的変更）**。`experimentalDecorators` は不要になった（有効にしない）。TC39 に引数デコレータが無いため `@Body` / `@PathParam` / `@QueryParam` / `@Context` を廃止し、ハンドラは 1 つの入力オブジェクト `find({ params, query, body, context }: RouteInput<{ params: typeof S }>)` を受け取る形にした。CLI は分割代入したフィールドだけを manifest に記録し、実行時もそのフィールドだけを計算する。`contracts.ts` は `RouteInput` の型と schema デコレータのズレを検出する。古い書き方は `kivin generate` が置き換え方を示すエラーで止める
 - **JSON レスポンスの `content-type` を `application/json; charset=utf-8` から `application/json;charset=utf-8`（空白なし、Bun の `Response.json()` と同じ表記）に変更**。HTTP の意味は同じだが、ヘッダを文字列で完全一致比較しているテストなどは更新が必要。ハンドラの戻り値・`context.json()`・エラー（400 / 404 / 405 / 426 / 500 / `HttpError`）のすべてで表記をそろえ、`JSON_CONTENT_TYPE` 定数も同じ値にした。JSON レスポンスは `Response.json()` で生成するようになり、in-process で JSON を返すルートが 8〜19% 速くなった（幾何平均 +6.9%）
 - `@kivin/core`: 2,400 行あった `app.ts` を `src/runtime/` 以下の責務別モジュールに分割（公開 API は変更なし）
 - `@kivin/logger`: `LOGGER` / `LOGGER_OPTIONS` を型付きトークンにした

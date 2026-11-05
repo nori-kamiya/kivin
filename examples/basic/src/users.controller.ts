@@ -1,8 +1,6 @@
-import type { RequestContext } from '@kivin/core';
+import type { RouteInput } from '@kivin/core';
 import {
     ApiResponse,
-    Body,
-    Context,
     Controller,
     Delete,
     Description,
@@ -10,10 +8,8 @@ import {
     Injectable,
     OperationId,
     Patch,
-    PathParam,
     Post,
     Put,
-    QueryParam,
     Security,
     Summary,
     Tag,
@@ -35,9 +31,6 @@ import {
     UserListSchema,
     UserSchema,
     UserSearchQuerySchema,
-    type CreateUserInput,
-    type PatchUserInput,
-    type ReplaceUserInput,
 } from './users.schemas';
 import { UserService } from './users.service';
 
@@ -53,8 +46,8 @@ export class UserController {
   @OperationId('users.list')
   @UseQuerySchema(UserSearchQuerySchema)
   @ApiResponse(200, UserListSchema, 'User list')
-  list(@QueryParam('search') search?: string) {
-    return this.userService.list(search);
+  list({ query }: RouteInput<{ query: typeof UserSearchQuerySchema }>) {
+    return this.userService.list(query.search);
   }
 
   @Get('/:id')
@@ -65,8 +58,8 @@ export class UserController {
   @UseFilters(UserNotFoundFilter)
   @ApiResponse(200, UserSchema, 'User detail')
   @ApiResponse(404, ErrorSchema, 'User was not found')
-  findById(@PathParam('id') id: string) {
-    return this.userService.requireById(id);
+  findById({ params }: RouteInput<{ params: typeof UserIdParamSchema }>) {
+    return this.userService.requireById(params.id);
   }
 
   @Post('/')
@@ -78,9 +71,9 @@ export class UserController {
   @UseGuards(ApiKeyGuard)
   @ApiResponse(201, UserSchema, 'Created user')
   @ApiResponse(409, ErrorSchema, 'User email conflict')
-  create(@Body() input: CreateUserInput, @Context() context: RequestContext) {
-    getRequestLogger(context).info('users.create.requested', { email: input.email });
-    const created = this.userService.create(input);
+  create({ body, context }: RouteInput<{ body: typeof CreateUserSchema }>) {
+    getRequestLogger(context).info('users.create.requested', { email: body.email });
+    const created = this.userService.create(body);
     return context.json(created, { status: 201 });
   }
 
@@ -96,9 +89,9 @@ export class UserController {
   @ApiResponse(200, UserSchema, 'Replaced user')
   @ApiResponse(404, ErrorSchema, 'User was not found')
   @ApiResponse(409, ErrorSchema, 'User email conflict')
-  replace(@PathParam('id') id: string, @Body() input: ReplaceUserInput, @Context() context: RequestContext) {
-    getRequestLogger(context).info('users.replace.requested', { id, email: input.email });
-    return this.userService.replace(id, input);
+  replace({ params, body, context }: RouteInput<{ params: typeof UserIdParamSchema; body: typeof ReplaceUserSchema }>) {
+    getRequestLogger(context).info('users.replace.requested', { id: params.id, email: body.email });
+    return this.userService.replace(params.id, body);
   }
 
   @Patch('/:id')
@@ -113,9 +106,9 @@ export class UserController {
   @ApiResponse(200, UserSchema, 'Patched user')
   @ApiResponse(404, ErrorSchema, 'User was not found')
   @ApiResponse(409, ErrorSchema, 'User email conflict')
-  patch(@PathParam('id') id: string, @Body() input: PatchUserInput, @Context() context: RequestContext) {
-    getRequestLogger(context).info('users.patch.requested', { id, email: input.email ?? null });
-    return this.userService.patch(id, input);
+  patch({ params, body, context }: RouteInput<{ params: typeof UserIdParamSchema; body: typeof PatchUserSchema }>) {
+    getRequestLogger(context).info('users.patch.requested', { id: params.id, email: body.email ?? null });
+    return this.userService.patch(params.id, body);
   }
 
   @Delete('/:id')
@@ -128,9 +121,9 @@ export class UserController {
   @UseFilters(UserNotFoundFilter)
   @ApiResponse(204, 'User deleted')
   @ApiResponse(404, ErrorSchema, 'User was not found')
-  delete(@PathParam('id') id: string, @Context() context: RequestContext) {
-    getRequestLogger(context).info('users.delete.requested', { id });
-    this.userService.remove(id);
+  delete({ params, context }: RouteInput<{ params: typeof UserIdParamSchema }>) {
+    getRequestLogger(context).info('users.delete.requested', { id: params.id });
+    this.userService.remove(params.id);
     return context.noContent();
   }
 }

@@ -34,8 +34,8 @@ describe('buildManifestSourceFromAst', () => {
     const snapshot = await readFile(contractsOutFile, 'utf8');
 
     expect(result.contractsSource).toBe(snapshot);
-    expect(result.contractsSource).toContain('RouteContract.Body<typeof CreateUserSchema, Parameters<UserController["create"]>[0]');
-    expect(result.contractsSource).toContain('RouteContract.Field<typeof UserIdParamSchema, "id", Parameters<UserController["findById"]>[0]');
+    expect(result.contractsSource).toContain('RouteContract.Input<{ body: typeof CreateUserSchema }, Parameters<UserController["create"]>[0]');
+    expect(result.contractsSource).toContain('RouteContract.Input<{ params: typeof UserIdParamSchema }, Parameters<UserController["findById"]>[0]');
     expect(result.contractsSource).toContain('RouteContract.Returns<typeof UserListSchema, ReturnType<UserController["list"]>');
   });
 

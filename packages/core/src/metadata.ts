@@ -52,12 +52,17 @@ export interface RouteEnhancerMetadata {
   filters: Token[];
 }
 
-export type ParameterSource = 'context' | 'path' | 'query' | 'body';
+export type ParameterSource = 'context' | 'path' | 'query' | 'body' | 'input';
+
+/** Fields of the single input object a handler receives (`find({ params, context })`). */
+export type InputField = 'params' | 'query' | 'body' | 'context';
 
 export interface ParameterMetadata {
   index: number;
   source: ParameterSource;
   name?: string;
+  /** For `source: 'input'`: the fields the handler reads. Only these are computed per request. */
+  fields?: InputField[];
 }
 
 export type ProviderScope = 'singleton' | 'request';
@@ -254,8 +259,22 @@ export function updateRouteEnhancers(
   enhancerMap.set(propertyKey, updater(current));
 }
 
+/**
+ * TC39 decorators share one metadata object per class (`context.metadata`, exposed as
+ * `Class[Symbol.metadata]`). Method decorators key route metadata on it. Runtimes without native
+ * `Symbol.metadata` (Bun today) get the well-known symbol the spec and TypeScript agree on.
+ */
+const symbolWithMetadata = Symbol as unknown as { metadata?: symbol };
+symbolWithMetadata.metadata ??= Symbol.for('Symbol.metadata');
+export const METADATA_SYMBOL: symbol = symbolWithMetadata.metadata;
+
+/** The object route metadata is keyed on: the class's decorator metadata, else its prototype. */
+export function getRouteMetadataOwner(controller: Constructor): object {
+  return ((controller as unknown as Record<symbol, object | undefined>)[METADATA_SYMBOL]) ?? controller.prototype;
+}
+
 export function getRouteDescriptors(controller: Constructor): RouteDescriptor[] {
-  const prototype = controller.prototype;
+  const prototype = getRouteMetadataOwner(controller);
   const routeMap = routeMetadataStore.get(prototype) ?? new Map<string | symbol, RouteMetadata>();
   const docsMap = routeDocsStore.get(prototype) ?? new Map<string | symbol, RouteDocsMetadata>();
   const parameterMap = routeParameterStore.get(prototype) ?? new Map<string | symbol, ParameterMetadata[]>();

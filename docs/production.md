@@ -25,14 +25,14 @@ defineApplication({
 ## Cookie
 
 ```ts
-login(@Context() context: RequestContext) {
+login({ context }: RouteInput) {
   const lang = context.cookie('lang');           // 1 リクエストにつき 1 回だけパース
   context.setCookie('session', token, { httpOnly: true, sameSite: 'Lax', maxAge: 3600 });
   context.setCookie('theme', 'dark');            // 複数の Set-Cookie を出せる
   return { ok: true };
 }
 
-logout(@Context() context: RequestContext) {
+logout({ context }: RouteInput) {
   context.deleteCookie('session');
   return context.noContent();
 }
@@ -58,7 +58,7 @@ export const AuthGuard = createJwtGuard({
 
 @Get('/me')
 @UseGuards(AuthGuard)
-me(@Context() context: RequestContext) {
+me({ context }: RouteInput) {
   return getJwtPayload(context);
 }
 
@@ -97,7 +97,7 @@ Bun ネイティブの WebSocket サーバーをそのまま使います（pub/s
 
 ```ts
 @Get('/events')
-events(@Context() context: RequestContext) {
+events({ context }: RouteInput) {
   return context.sse(async (stream) => {
     while (!stream.signal.aborted) {
       stream.send({ event: 'tick', data: { at: Date.now() } });
@@ -113,14 +113,14 @@ events(@Context() context: RequestContext) {
 
 ```ts
 @Post('/avatar')
-async upload(@Context() context: RequestContext) {
+async upload({ context }: RouteInput) {
   const form = await context.form(); // { name: string, avatar: File, tag: string[] ... }
   const input = v.parse(AvatarSchema, form);
   // ...
 }
 ```
 
-`context.formData()` は生の `FormData` を返します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。`@Body()` で multipart を直接受ける形と OpenAPI の multipart 記述は今後の課題です。
+`context.formData()` は生の `FormData` を返します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。入力オブジェクトの `body` で multipart を直接受ける形と、OpenAPI の multipart 記述は今後の課題です。
 
 ## Graceful shutdown
 

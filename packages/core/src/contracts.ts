@@ -1,3 +1,4 @@
+import type { RequestContext } from './context';
 import type { Constructor } from './types';
 
 /**
@@ -38,6 +39,32 @@ export type InferSchemaOutput<TSchema> = TSchema extends StandardSchemaLike<unkn
 /** Input type of a Standard Schema compatible schema. Unknown schemas yield `any`. */
 export type InferSchemaInput<TSchema> = TSchema extends StandardSchemaLike<infer TInput, unknown> ? TInput : any;
 
+/** Which schemas a route declares, for typing its handler input. */
+export interface RouteInputSpec {
+  params?: unknown;
+  query?: unknown;
+  body?: unknown;
+}
+
+/**
+ * The single argument every route handler receives. Destructure only what you need; kivin computes
+ * just those fields per request.
+ *
+ * ```ts
+ * @Get('/:id')
+ * @UseParamSchema(IdParams)
+ * find({ params, context }: RouteInput<{ params: typeof IdParams }>) {}
+ * ```
+ *
+ * Without a schema, `params` and `query` are the raw string records and `body` is `unknown`.
+ */
+export interface RouteInput<TSpec extends RouteInputSpec = {}> {
+  params: TSpec extends { params: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string>;
+  query: TSpec extends { query: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string | undefined>;
+  body: TSpec extends { body: infer TSchema } ? InferSchemaOutput<TSchema> : unknown;
+  context: RequestContext;
+}
+
 /**
  * Compile-time route contract checks emitted by `kivin generate` into `contracts.ts`.
  * Each helper resolves to `true` or to a descriptive error object that fails `ExpectContract`.
@@ -58,6 +85,18 @@ export namespace RouteContract {
       ? Assignable<TOutput[TKey], TParameter, TLabel>
       : { readonly contractError: TLabel; readonly missingField: TKey; readonly schemaFields: keyof TOutput }
     : never;
+
+  /**
+   * The input kivin passes (built from the route's declared schemas) must satisfy the handler's
+   * parameter type. Only the fields the handler declares are compared.
+   */
+  export type Input<TSpec extends RouteInputSpec, TParameter, TLabel extends string> = [TParameter] extends [undefined]
+    ? true
+    : Assignable<InputFields<TSpec, Extract<keyof RouteInput<TSpec>, keyof NonNullable<TParameter>>>, NonNullable<TParameter>, TLabel>;
+
+  // A fresh mapped type (not `Pick<RouteInput<...>>`) so TypeScript compares the fields structurally
+  // instead of shortcutting through the variance of `RouteInput`'s type parameter.
+  type InputFields<TSpec extends RouteInputSpec, TKeys extends keyof RouteInput<TSpec>> = { [K in TKeys]: RouteInput<TSpec>[K] };
 
   /** Handler return value (ignoring a raw `Response`) must satisfy the declared success response schema. */
   export type Returns<TSchema, TReturn, TLabel extends string> = Assignable<Exclude<Awaited<TReturn>, Response | void | undefined>, InferSchemaInput<TSchema>, TLabel>;

@@ -142,18 +142,42 @@ await api.users.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // 
 - 2xx 以外は `KivinClientError`（`status` とパース済みの `body` を持つ）を投げます。
 - `fetch` オプションに `app.fetch` を渡すと、サーバーを立てずにテストからそのまま呼べます。
 
+## Handlers and decorators
+
+kivin は TC39 標準デコレータ（TypeScript 5+ の既定、`experimentalDecorators` 不要）を使います。標準には引数デコレータが無いので、ハンドラは 1 つの入力オブジェクトを受け取ります。使うフィールドだけを分割代入すると、kivin はリクエストごとにそのフィールドだけを計算します。
+
+```ts
+import type { RouteInput } from '@kivin/core';
+
+@Controller('/users')
+export class UserController {
+  @Get('/:id')
+  @UseParamSchema(UserIdParamSchema)
+  findById({ params }: RouteInput<{ params: typeof UserIdParamSchema }>) {
+    return this.users.find(params.id); // schema の出力型
+  }
+
+  @Post('/')
+  @UseBodySchema(CreateUserSchema)
+  create({ body, context }: RouteInput<{ body: typeof CreateUserSchema }>) {
+    return context.json(this.users.create(body), { status: 201 });
+  }
+}
+```
+
+フィールドは `params` / `query` / `body` / `context` の 4 つです。schema を宣言していない場合、`params` と `query` は文字列のレコード、`body` は `unknown` になります。
+
 ## Compile-time contracts
 
-decorator は型を変えられないため、schema とハンドラ引数の型は別々に書くことになります。kivin はそのズレをビルド時に検出します。
+decorator は型を変えられないため、schema とハンドラの入力型は別々に書くことになります。kivin はそのズレをビルド時に検出します。
 
 - `kivin generate` は `contracts.ts` も出力します。`tsconfig` に `.kivin/generated/**/*.ts` を含めておくと、`tsc` が次の不一致をエラーにします。
-  - `@Body()` 引数と `@UseBodySchema(...)` の出力型
-  - `@QueryParam(name)` / `@PathParam(name)` と `@UseQuerySchema` / `@UseParamSchema` のフィールド（存在しないフィールド名も検出）
+  - ハンドラの入力型（`RouteInput<{ params; query; body }>`）と、ルートの `@UseParamSchema` / `@UseQuerySchema` / `@UseBodySchema`
   - ハンドラの戻り値と、宣言された 2xx レスポンス schema（`Response` を直接返す場合は対象外）
 - `@Injectable({ deps })` は型付きで、deps の並び・型・個数がコンストラクタ引数と合わないとコンパイルエラーになります。シンボルのトークンに型を付けたい場合は `createToken<T>('key')` を使います。
 
 ```text
-contracts.ts: Type '{ contractError: "UserController.findById: @PathParam('userId') does not match @UseParamSchema"; missingField: "userId"; schemaFields: "id" }' does not satisfy the constraint 'true'.
+contracts.ts: Type '{ contractError: "UserController.findById: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema"; ... }' does not satisfy the constraint 'true'.
 ```
 
 型は Standard Schema の型情報から取るので、Valibot 以外の validator でも同じように効きます。

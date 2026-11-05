@@ -46,7 +46,7 @@ import { SharedSchema as __SharedSchema_0 } from '../feature-b/schemas';
 - `defineApplication({ modules: [UsersModule] })`
 - `@Module({ controllers: [...], imports: [...] })`
 - controller / route decorators
-- parameter decorators `@Context`, `@Body`, `@PathParam`, `@QueryParam`
+- handler input の分割代入（`find({ params, context })`）。分割代入したキーだけを manifest の `fields` に記録し、分割代入しない場合は全フィールド
 - schema / guard / filter / middleware に imported identifier を渡す書き方
 
 ## Current constraints

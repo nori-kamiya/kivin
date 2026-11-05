@@ -41,7 +41,7 @@
 - `@Injectable`
 - `@Controller`
 - `@Get`, `@Head`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@Options`
-- `@PathParam`, `@QueryParam`, `@Body`
+- handler input: `find({ params, query, body, context }: RouteInput<...>)`（引数デコレータは使わない）
 - `@Tag`, `@Summary`, `@Response`
 - `@UseBodySchema`, `@UseQuerySchema`, `@UseParamSchema`
 

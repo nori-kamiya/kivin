@@ -12,10 +12,12 @@ export function renderAotFactory(route: AstRouteNode, controllerType: string, ru
   }
 
   const parameters = [...route.parameters].sort((left, right) => left.index - right.index);
-  const hasContextParameter = parameters.some((parameter) => parameter.source === 'context');
-  const hasBodyParameter = parameters.some((parameter) => parameter.source === 'body');
-  const needsParamPayload = Boolean(route.paramSchema) || parameters.some((parameter) => parameter.source === 'path' && !parameter.name);
-  const needsQueryPayload = Boolean(route.querySchema) || parameters.some((parameter) => parameter.source === 'query' && !parameter.name);
+  const inputFields = (parameter: AstRouteNode['parameters'][number]) => parameter.fields ?? ['params', 'query', 'body', 'context'];
+  const inputReads = (field: string) => parameters.some((parameter) => parameter.source === 'input' && inputFields(parameter).includes(field as never));
+  const hasContextParameter = parameters.some((parameter) => parameter.source === 'context') || inputReads('context');
+  const hasBodyParameter = parameters.some((parameter) => parameter.source === 'body') || inputReads('body');
+  const needsParamPayload = Boolean(route.paramSchema) || inputReads('params') || parameters.some((parameter) => parameter.source === 'path' && !parameter.name);
+  const needsQueryPayload = Boolean(route.querySchema) || inputReads('query') || parameters.some((parameter) => parameter.source === 'query' && !parameter.name);
   const readsBody = (hasBodyParameter || Boolean(route.bodySchema)) && route.method !== 'GET' && route.method !== 'HEAD';
   const method = JSON.stringify(route.methodName);
 
@@ -31,6 +33,10 @@ export function renderAotFactory(route: AstRouteNode, controllerType: string, ru
 
   const argumentExpression = (parameter: AstRouteNode['parameters'][number], contextExpression: string) => {
     switch (parameter.source) {
+      case 'input': {
+        const values: Record<string, string> = { params: 'paramValue ?? {}', query: 'queryValue ?? {}', body: readsBody ? 'body' : 'undefined', context: contextExpression };
+        return `{ ${inputFields(parameter).map((field) => `${field}: ${values[field]}`).join(', ')} }`;
+      }
       case 'context':
         return contextExpression;
       case 'body':

@@ -65,7 +65,7 @@ const opsBySide: Record<Side, Map<string, number[]>> = { base: new Map(), curren
 async function measureInProcess(roundCount: number, scenarioFilter?: string[]) {
   for (let round = 0; round < roundCount; round += 1) {
     const output = await run(
-      [process.execPath, join(runners.current.dir, 'paired.ts'), join(runners.base.dir, 'bench-app.ts'), join(runners.current.dir, 'bench-app.ts')],
+      [process.execPath, join(runners.current.dir, 'paired.ts'), join(runners.base.dir, 'bench-app.bundle.js'), join(runners.current.dir, 'bench-app.bundle.js')],
       runners.current.dir,
       scenarioFilter ? { PERF_SCENARIOS: scenarioFilter.join(',') } : {},
     );
@@ -224,6 +224,13 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
   await mkdir(dir, { recursive: true });
   // The benchmark files always come from the current tree so both sides run identical code.
   await cp(join(repoRoot, 'scripts/perf'), dir, { recursive: true, filter: (source) => !source.includes(`${join('scripts', 'perf', 'generated')}`) });
+  // The app source is written against each tree's own API (e.g. legacy vs TC39 decorators), so it
+  // comes from that tree when it has one; scenarios and harness always come from the current tree.
+  if (tree !== repoRoot && existsSync(join(tree, 'scripts/perf/app'))) {
+    await rm(join(dir, 'app'), { recursive: true, force: true });
+    await cp(join(tree, 'scripts/perf/app'), join(dir, 'app'), { recursive: true });
+  }
+  const legacyDecorators = /"experimentalDecorators"\s*:\s*true/.test(await Bun.file(join(tree, 'tsconfig.base.json')).text());
   const paths = Object.fromEntries(
     ['core', 'decorators', 'logger', 'openapi', 'valibot'].map((name) => [`@kivin/${name}`, [join(tree, `packages/${name}/src/index.ts`)]]),
   );
@@ -233,7 +240,7 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
       target: 'ES2022',
       module: 'ESNext',
       moduleResolution: 'Bundler',
-      experimentalDecorators: true,
+      experimentalDecorators: legacyDecorators,
       emitDecoratorMetadata: false,
       verbatimModuleSyntax: true,
       paths,
@@ -245,6 +252,9 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
     [process.execPath, join(tree, 'packages/cli/src/bin.ts'), 'generate', '--entry', join(dir, 'app/app.ts'), '--outDir', join(dir, 'generated')],
     dir,
   );
+  // Bun picks the decorator semantics per process, so each side is pre-bundled (decorators already
+  // transpiled with its own settings) and the paired benchmark loads two plain JS bundles.
+  await run([process.execPath, 'build', join(dir, 'bench-app.ts'), '--target', 'bun', '--outfile', join(dir, 'bench-app.bundle.js')], dir);
   return { side, tree, dir };
 }
 

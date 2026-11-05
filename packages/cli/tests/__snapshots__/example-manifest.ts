@@ -11,7 +11,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/",
       controller: UserController,
       methodName: "list",
-      parameters: [{ index: 0, source: "query", name: "search" }],
+      parameters: [{ index: 0, source: "input", fields: ["query"] }],
       guards: [],
       middleware: [],
       filters: [],
@@ -31,10 +31,10 @@ export const manifest: AppManifest = {
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
-                return controller["list"]((typeof queryValue === 'object' && queryValue ? (queryValue as Record<string, unknown>)["search"] : rt.readQueryParam(request.url, "search")) as never);
+                return controller["list"]({ query: queryValue ?? {} } as never);
               });
             }
-            const result = controller["list"]((typeof queryValue === 'object' && queryValue ? (queryValue as Record<string, unknown>)["search"] : rt.readQueryParam(request.url, "search")) as never);
+            const result = controller["list"]({ query: queryValue ?? {} } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
           } catch (error) {
             return rt.handleError(error, context, request, params);
@@ -47,7 +47,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/:id",
       controller: UserController,
       methodName: "findById",
-      parameters: [{ index: 0, source: "path", name: "id" }],
+      parameters: [{ index: 0, source: "input", fields: ["params"] }],
       guards: [],
       middleware: [],
       filters: [UserNotFoundFilter],
@@ -67,10 +67,10 @@ export const manifest: AppManifest = {
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
-                return controller["findById"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never);
+                return controller["findById"]({ params: paramValue ?? {} } as never);
               });
             }
-            const result = controller["findById"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never);
+            const result = controller["findById"]({ params: paramValue ?? {} } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
           } catch (error) {
             return rt.handleError(error, context, request, params);
@@ -83,7 +83,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/",
       controller: UserController,
       methodName: "create",
-      parameters: [{ index: 0, source: "body" }, { index: 1, source: "context" }],
+      parameters: [{ index: 0, source: "input", fields: ["body", "context"] }],
       guards: [ApiKeyGuard],
       middleware: [],
       filters: [],
@@ -103,12 +103,12 @@ export const manifest: AppManifest = {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
                 const body = await rt.readBody(request, ctx);
-                return controller["create"](body as never, ctx as never);
+                return controller["create"]({ body: body, context: ctx } as never);
               });
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
-            const result = controller["create"](body as never, ctx as never);
+            const result = controller["create"]({ body: body, context: ctx } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, ctx);
           } catch (error) {
             return rt.handleError(error, context, request, params);
@@ -121,7 +121,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/:id",
       controller: UserController,
       methodName: "replace",
-      parameters: [{ index: 0, source: "path", name: "id" }, { index: 1, source: "body" }, { index: 2, source: "context" }],
+      parameters: [{ index: 0, source: "input", fields: ["params", "body", "context"] }],
       guards: [ApiKeyGuard],
       middleware: [],
       filters: [UserNotFoundFilter],
@@ -142,12 +142,12 @@ export const manifest: AppManifest = {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
                 const body = await rt.readBody(request, ctx);
-                return controller["replace"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, body as never, ctx as never);
+                return controller["replace"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
               });
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
-            const result = controller["replace"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, body as never, ctx as never);
+            const result = controller["replace"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, ctx);
           } catch (error) {
             return rt.handleError(error, context, request, params);
@@ -160,7 +160,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/:id",
       controller: UserController,
       methodName: "patch",
-      parameters: [{ index: 0, source: "path", name: "id" }, { index: 1, source: "body" }, { index: 2, source: "context" }],
+      parameters: [{ index: 0, source: "input", fields: ["params", "body", "context"] }],
       guards: [ApiKeyGuard],
       middleware: [],
       filters: [UserNotFoundFilter],
@@ -181,12 +181,12 @@ export const manifest: AppManifest = {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
                 const body = await rt.readBody(request, ctx);
-                return controller["patch"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, body as never, ctx as never);
+                return controller["patch"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
               });
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
-            const result = controller["patch"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, body as never, ctx as never);
+            const result = controller["patch"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, ctx);
           } catch (error) {
             return rt.handleError(error, context, request, params);
@@ -199,7 +199,7 @@ export const manifest: AppManifest = {
       fullPath: "/users/:id",
       controller: UserController,
       methodName: "delete",
-      parameters: [{ index: 0, source: "path", name: "id" }, { index: 1, source: "context" }],
+      parameters: [{ index: 0, source: "input", fields: ["params", "context"] }],
       guards: [ApiKeyGuard],
       middleware: [],
       filters: [UserNotFoundFilter],
@@ -219,11 +219,11 @@ export const manifest: AppManifest = {
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
               return await rt.runMiddleware(ctx, async () => {
-                return controller["delete"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, ctx as never);
+                return controller["delete"]({ params: paramValue ?? {}, context: ctx } as never);
               });
             }
             const ctx = (context ??= rt.createContext(request, params));
-            const result = controller["delete"]((typeof paramValue === 'object' && paramValue ? (paramValue as Record<string, unknown>)["id"] : params["id"]) as never, ctx as never);
+            const result = controller["delete"]({ params: paramValue ?? {}, context: ctx } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, ctx);
           } catch (error) {
             return rt.handleError(error, context, request, params);
