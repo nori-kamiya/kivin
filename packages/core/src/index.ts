@@ -70,7 +70,7 @@ export {
 export type { CanActivate, ExceptionFilter, HonoLikeMiddleware, NestLikeMiddleware } from './runtime-types';
 export { createEventStream, formatEvent, type EventStream, type EventStreamHandler, type EventStreamOptions, type ServerSentEvent } from './sse';
 export { createTestingApp, type TestingAppOptions } from './testing';
-export { compileWebSocketRoutes, defineWebSocket, type KivinWebSocket, type WebSocketData, type WebSocketRoute } from './websocket';
+export { compileWebSocketRoutes, defineWebSocket, type KivinWebSocket, type WebSocketData, type WebSocketPhase, type WebSocketRoute } from './websocket';
 export { SecureHeadersMiddleware, createSecureHeadersMiddleware, type SecureHeadersOptions } from './security';
 export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, SchemaAdapter, Token } from './types';
 

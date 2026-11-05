@@ -185,6 +185,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       }
 
       const server = Bun.serve({
+        // Safety net for errors outside kivin's own handling (e.g. a user-supplied native route):
+        // a generic 500 instead of Bun's default error page, which shows the stack in development.
+        error(error: Error) {
+          console.error('[kivin] Unhandled server error', error);
+          return Response.json({ message: 'Internal Server Error' }, { status: 500 });
+        },
         ...serveOptions,
         routes,
         fetch,

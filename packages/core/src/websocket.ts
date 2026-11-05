@@ -21,7 +21,15 @@ export interface WebSocketRoute<TData = undefined> {
   message?(socket: KivinWebSocket<TData>, message: string | Buffer): void | Promise<void>;
   close?(socket: KivinWebSocket<TData>, code: number, reason: string): void | Promise<void>;
   drain?(socket: KivinWebSocket<TData>): void | Promise<void>;
+  /**
+   * Called when `open` / `message` / `close` / `drain` throws or rejects. Without it the error is
+   * logged with `console.error`. The socket stays open, except after a failed `open`, which closes
+   * it with 1011 (internal error).
+   */
+  error?(socket: KivinWebSocket<TData>, error: unknown, phase: WebSocketPhase): void;
 }
+
+export type WebSocketPhase = 'open' | 'message' | 'close' | 'drain';
 
 /** Identity helper that infers `TData` from `upgrade`. */
 export function defineWebSocket<TData = undefined>(route: WebSocketRoute<TData>): WebSocketRoute<TData> {
@@ -41,7 +49,14 @@ export function compileWebSocketRoutes(routes: Record<string, WebSocketRoute<any
       if (definition.upgrade) {
         // Bun's route handlers already carry `params` (read-only); only plain requests need it added.
         const routed = request.params ? (request as Request & { params: Record<string, string> }) : Object.assign(request, { params });
-        const result = await definition.upgrade(routed);
+        let result: unknown;
+        try {
+          result = await definition.upgrade(routed);
+        } catch (error) {
+          // Never let it reach Bun's default error page (which shows the stack in development).
+          console.error(`[kivin] WebSocket upgrade failed for ${route}`, error);
+          return Response.json({ message: 'Internal Server Error' }, { status: 500 });
+        }
         if (result instanceof Response) {
           return result;
         }
@@ -55,18 +70,49 @@ export function compileWebSocketRoutes(routes: Record<string, WebSocketRoute<any
   }
 
   const routeOf = (socket: ServerWebSocket<WebSocketData<unknown>>) => routes[socket.data.route] as AnyRoute | undefined;
+  // A throwing or rejecting handler would otherwise become an unhandled rejection (Bun reports it
+  // and the process exits non-zero). Errors go to the route's `error` hook or the console.
+  const guarded = (phase: WebSocketPhase, socket: ServerWebSocket<WebSocketData<unknown>>, run: (route: AnyRoute) => void | Promise<void>) => {
+    const route = routeOf(socket);
+    if (!route) {
+      return;
+    }
+    const report = (error: unknown) => {
+      try {
+        if (route.error) {
+          route.error(socket, error, phase);
+        } else {
+          console.error(`[kivin] WebSocket ${phase} handler failed for ${socket.data.route}`, error);
+        }
+      } catch (hookError) {
+        console.error(`[kivin] WebSocket error hook failed for ${socket.data.route}`, hookError);
+      }
+      if (phase === 'open') {
+        socket.close(1011, 'Internal Error');
+      }
+    };
+    try {
+      const result = run(route);
+      if (result && typeof (result as Promise<void>).then === 'function') {
+        return (result as Promise<void>).then(undefined, report);
+      }
+      return result;
+    } catch (error) {
+      report(error);
+    }
+  };
   const websocket: WebSocketHandler<WebSocketData<unknown>> = {
     open(socket) {
-      return routeOf(socket)?.open?.(socket);
+      return guarded('open', socket, (route) => route.open?.(socket));
     },
     message(socket, message) {
-      return routeOf(socket)?.message?.(socket, message);
+      return guarded('message', socket, (route) => route.message?.(socket, message));
     },
     close(socket, code, reason) {
-      return routeOf(socket)?.close?.(socket, code, reason);
+      return guarded('close', socket, (route) => route.close?.(socket, code, reason));
     },
     drain(socket) {
-      return routeOf(socket)?.drain?.(socket);
+      return guarded('drain', socket, (route) => route.drain?.(socket));
     },
   };
 
