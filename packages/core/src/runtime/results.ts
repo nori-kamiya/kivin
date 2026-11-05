@@ -158,10 +158,7 @@ export function finalizeRawResult(
 }
 
 export function createUnhandledErrorResponse() {
-  return new Response(JSON.stringify({ message: 'Internal Server Error' }), {
-    status: 500,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
+  return Response.json({ message: 'Internal Server Error' }, { status: 500 });
 }
 
 export function toHeadResponse(response: Response) {

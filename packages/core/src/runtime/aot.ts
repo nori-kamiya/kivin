@@ -169,10 +169,7 @@ export function createAotRuntime(input: {
       if (error instanceof Response) {
         return withQueuedHeaders(error, current);
       }
-      return withQueuedHeaders(new Response(JSON.stringify({ message: 'Internal Server Error' }), {
-        status: 500,
-        headers: { 'content-type': 'application/json; charset=utf-8' },
-      }), current);
+      return withQueuedHeaders(Response.json({ message: 'Internal Server Error' }, { status: 500 }), current);
   }
 
   function afterMiddleware(result: unknown, context: RequestContext): Response {

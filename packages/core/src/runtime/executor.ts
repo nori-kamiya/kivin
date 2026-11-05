@@ -1038,10 +1038,7 @@ export function compileRouteExecutor<TSchema>(input: {
             : error;
         }
 
-        const response = new Response(JSON.stringify({ message: 'Internal Server Error' }), {
-          status: 500,
-          headers: { 'content-type': 'application/json; charset=utf-8' },
-        });
+        const response = Response.json({ message: 'Internal Server Error' }, { status: 500 });
 
         if (!context) {
           return response;

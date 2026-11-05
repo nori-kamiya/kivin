@@ -34,6 +34,7 @@
 
 ### Changed
 
+- **JSON レスポンスの `content-type` を `application/json; charset=utf-8` から `application/json;charset=utf-8`（空白なし、Bun の `Response.json()` と同じ表記）に変更**。HTTP の意味は同じだが、ヘッダを文字列で完全一致比較しているテストなどは更新が必要。ハンドラの戻り値・`context.json()`・エラー（400 / 404 / 405 / 426 / 500 / `HttpError`）のすべてで表記をそろえ、`JSON_CONTENT_TYPE` 定数も同じ値にした。JSON レスポンスは `Response.json()` で生成するようになり、in-process で JSON を返すルートが 8〜19% 速くなった（幾何平均 +6.9%）
 - `@kivin/core`: 2,400 行あった `app.ts` を `src/runtime/` 以下の責務別モジュールに分割（公開 API は変更なし）
 - `@kivin/logger`: `LOGGER` / `LOGGER_OPTIONS` を型付きトークンにした
 - example は `/openapi.json` と `/docs` を `app.listen({ routes })` の native route として配信するようにした

@@ -86,13 +86,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       }
       const response = request.method === 'OPTIONS'
         ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-        : new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
-            status: 405,
-            headers: {
-              allow: allowedMethods.join(', '),
-              'content-type': 'application/json; charset=utf-8',
-            },
-          });
+        : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
       cors?.apply(request, response.headers);
 
       return isHeadRequest ? toHeadResponse(response) : response;
@@ -113,21 +107,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         }
         const response = request.method === 'OPTIONS'
           ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-          : new Response(JSON.stringify({ message: 'Method Not Allowed' }), {
-              status: 405,
-              headers: {
-                allow: allowedMethods.join(', '),
-                'content-type': 'application/json; charset=utf-8',
-              },
-            });
+          : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
         cors?.apply(request, response.headers);
         return isHeadRequest ? toHeadResponse(response) : response;
       }
 
-      const notFoundResponse = new Response(JSON.stringify({ message: 'Not Found' }), {
-        status: 404,
-        headers: { 'content-type': 'application/json; charset=utf-8' },
-      });
+      const notFoundResponse = Response.json({ message: 'Not Found' }, { status: 404 });
       cors?.apply(request, notFoundResponse.headers);
       return notFoundResponse;
     }
