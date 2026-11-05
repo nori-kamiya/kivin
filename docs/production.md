@@ -113,6 +113,10 @@ app.listen({
 
 Bun ネイティブの WebSocket サーバーをそのまま使います（pub/sub も利用可能）。パスは Bun のルート構文で、アプリのルートと衝突するとエラーになります。
 
+- `upgrade` が例外を投げると `500 { message: 'Internal Server Error' }` を返します（スタックトレースは返しません）
+- `open` / `message` / `close` / `drain` の例外（async の reject を含む）は、ルートの `error(socket, error, phase)` フックに渡されます。フックが無ければ `console.error` に出力します。接続は維持されますが、`open` が失敗した場合だけ 1011 で閉じます
+- kivin の外で起きたエラー（`listen({ routes })` に渡した native route など）も、Bun の既定エラーページではなく汎用の 500 になります（`listen({ error })` で上書きできます）
+
 ## Server-Sent Events
 
 ```ts
