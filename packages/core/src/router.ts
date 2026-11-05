@@ -27,7 +27,16 @@ interface FastParamRoute {
 }
 
 function decodePathParam(value: string) {
-  return value.includes('%') ? decodeURIComponent(value) : value;
+  return value.includes('%') ? safeDecodeURIComponent(value) : value;
+}
+
+/** Malformed percent-encoding (`%ZZ`) keeps the raw text instead of throwing out of the router. */
+export function safeDecodeURIComponent(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }
 
 function normalizePath(path: string): string {

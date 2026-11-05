@@ -31,6 +31,7 @@
 
 ### Fixed
 
+- `@kivin/core`: パスパラメータやクエリに不正なパーセントエンコーディング（`/users/%ZZ`、`?q=50%`）があると `URIError` がルーターから投げられ、`app.fetch` が例外になる（HTTP では 500）問題を修正。デコードできない部分は元の文字列のまま渡す
 - `@kivin/core`: ハンドラが `Bun.file()` / `Blob` / `ReadableStream` / `ArrayBuffer` / typed array を返すと JSON 化されて `{}`（typed array は添字のオブジェクト）が返っていた問題を修正。ボディとしてそのまま送り、Content-Type は Blob の型（ファイルは拡張子から）か `application/octet-stream` にする
 - `@kivin/core`: 何も返さない（`undefined` を返す）ハンドラが常に 500 になっていた問題を修正。空ボディとルートの既定ステータス（GET 200 / POST 201 / 既定 204 のルートは 204）で応答する
 
