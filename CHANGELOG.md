@@ -32,6 +32,7 @@
 
 ### Fixed
 
+- `@kivin/core`: 同じメソッドと形のパスを持つルート（`GET /x` と `GET /x/`、`/u/:id` と `/u/:name` など）が黙って両方登録され、`app.fetch` と Bun の native routes とで別のハンドラが選ばれていた問題を修正。起動時に両方のルートを示すエラーにする
 - `@kivin/core`: provider の循環依存が `RangeError: Maximum call stack size exceeded` になっていたのを、`Circular dependency: A -> B -> C -> A` と経路を示すエラーにした。未登録 provider のエラーにも `(required by Repo <- Service)` と依存元を付けた
 
 - `@kivin/core`: パスパラメータやクエリに不正なパーセントエンコーディング（`/users/%ZZ`、`?q=50%`）があると `URIError` がルーターから投げられ、`app.fetch` が例外になる（HTTP では 500）問題を修正。デコードできない部分は元の文字列のまま渡す
