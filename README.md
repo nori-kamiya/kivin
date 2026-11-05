@@ -18,6 +18,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - compile-time route / DI contract checks (`contracts.ts`, typed `@Injectable` deps)
 - generated typed HTTP client (`client.ts`)
 - `kivin dev` watch mode (regenerate + restart)
+- ahead-of-time route executors generated into the manifest (`--no-aot` / `KIVIN_AOT=0` to opt out)
 - CORS, cookies, JWT auth guard (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
 - graceful shutdown with `onApplicationShutdown` hooks, `createTestingApp` with provider overrides
 - OpenAPI 3.1 generation
@@ -195,6 +196,7 @@ full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:
 
 - [docs/reference.md](docs/reference.md) — API reference
 - [docs/production.md](docs/production.md) — CORS / Cookie / JWT / WebSocket / SSE / multipart / graceful shutdown / テスト
+- [docs/decorators-roadmap.md](docs/decorators-roadmap.md) — レガシー / TC39 デコレータの調査と移行方針
 - [docs/architecture.md](docs/architecture.md)
 - [docs/development-guide.md](docs/development-guide.md)
 - [docs/ast-generator.md](docs/ast-generator.md)

@@ -23,6 +23,7 @@
 - `@kivin/core`: `app.close()` による graceful shutdown と `onApplicationShutdown` フック、`listen({ shutdownSignals, maxRequestBodySize, idleTimeout })`、`app.get(token)`
 - `@kivin/core`: provider を差し替えてポートを開かずに呼べる `createTestingApp`
 - `@kivin/jwt`: Web Crypto ベースの `verifyJwt` / `signJwt` と `createJwtGuard`
+- `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
 
 ### Fixed
 
@@ -36,6 +37,7 @@
 - `@kivin/core`: 2,400 行あった `app.ts` を `src/runtime/` 以下の責務別モジュールに分割（公開 API は変更なし）
 - `@kivin/logger`: `LOGGER` / `LOGGER_OPTIONS` を型付きトークンにした
 - example は `/openapi.json` と `/docs` を `app.listen({ routes })` の native route として配信するようにした
+- 性能劣化ゲートのベンチアプリをデコレータで書いたソースにし、比較する両側でそれぞれの `kivin generate` を使って manifest を生成するようにした
 - 依存関係を更新（hono 4.13 / elysia 1.4.30 / valibot 1.5 ほか）。`@kivin/valibot` の valibot 下限を `^1.5.0` に引き上げ
 - `@kivin/cli`: AST 解析と module 解決を TypeScript Compiler API から oxc-parser / oxc-resolver に置き換え、`typescript` への依存を削除。生成される manifest / OpenAPI は従来と同一で、生成は約 5 倍速い（example で 310ms → 64ms）
 - 開発用の TypeScript を 7.0（ネイティブ版 `tsc`）に更新。出力される JS は同一で、`.d.ts` は推論型のプロパティ順などの表記差のみ

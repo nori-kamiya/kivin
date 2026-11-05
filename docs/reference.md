@@ -190,7 +190,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 manifest・contracts・client・OpenAPI を生成する。`client.ts` はサーバーコードを型としてのみ参照する型付き HTTP クライアント（`createClient` / `KivinClientError` / `Operations`）。`contracts.ts` は型チェック専用のモジュールで、tsconfig に含めると handler と schema の不一致を `tsc` が検出する。
 
 ```
-generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>]
+generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
 ```
 
 ### `dev`

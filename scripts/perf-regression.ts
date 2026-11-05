@@ -223,7 +223,7 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
   await rm(dir, { recursive: true, force: true });
   await mkdir(dir, { recursive: true });
   // The benchmark files always come from the current tree so both sides run identical code.
-  await cp(join(repoRoot, 'scripts/perf'), dir, { recursive: true });
+  await cp(join(repoRoot, 'scripts/perf'), dir, { recursive: true, filter: (source) => !source.includes(`${join('scripts', 'perf', 'generated')}`) });
   const paths = Object.fromEntries(
     ['core', 'decorators', 'logger', 'openapi', 'valibot'].map((name) => [`@kivin/${name}`, [join(tree, `packages/${name}/src/index.ts`)]]),
   );
@@ -240,6 +240,11 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
     },
   }, null, 2));
   await linkNodeModules(dir);
+  // Each side builds the benchmark manifest with its own CLI, so generator changes are measured too.
+  await run(
+    [process.execPath, join(tree, 'packages/cli/src/bin.ts'), 'generate', '--entry', join(dir, 'app/app.ts'), '--outDir', join(dir, 'generated')],
+    dir,
+  );
   return { side, tree, dir };
 }
 
@@ -248,8 +253,6 @@ async function linkNodeModules(dir: string) {
   if (resolve(dir) === repoRoot) {
     return;
   }
-  // Bun's isolated installs keep workspace dependencies in packages/*/node_modules, so those are
-  // linked too (e.g. @valibot/to-json-schema for packages/valibot).
   const links: Array<[string, string]> = [[join(repoRoot, 'node_modules'), join(dir, 'node_modules')]];
   if (existsSync(join(dir, 'packages'))) {
     for (const entry of await readdir(join(repoRoot, 'packages'))) {
