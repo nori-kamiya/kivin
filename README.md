@@ -196,6 +196,7 @@ full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:
 
 - [docs/reference.md](docs/reference.md) — API reference
 - [docs/production.md](docs/production.md) — CORS / Cookie / JWT / WebSocket / SSE / multipart / graceful shutdown / テスト
+- [docs/decorators-roadmap.md](docs/decorators-roadmap.md) — レガシー / TC39 デコレータの調査と移行方針
 - [docs/architecture.md](docs/architecture.md)
 - [docs/development-guide.md](docs/development-guide.md)
 - [docs/ast-generator.md](docs/ast-generator.md)
