@@ -29,6 +29,14 @@ function getProviderScope(provider: ProviderDefinition): ProviderScope {
   return provider.scope ?? 'singleton';
 }
 
+// Tokens currently being created, outermost first. Construction is synchronous, so one shared stack
+// is enough (and it spans root and request containers).
+const resolutionStack: Token[] = [];
+
+function describe(token: Token) {
+  return String(typeof token === 'function' ? token.name : token);
+}
+
 export class Container implements ContainerLike {
   private readonly providers = new Map<Token, ProviderDefinition>();
   private readonly singletons = new Map<Token, unknown>();
@@ -56,9 +64,44 @@ export class Container implements ContainerLike {
     return provider ? getProviderScope(provider) : undefined;
   }
 
-  /** Singleton instances created so far, oldest first. */
+  /** Singleton instances created so far, oldest first (dependencies before their dependents). */
   singletonInstances(): readonly unknown[] {
     return this.singletonOrder;
+  }
+
+  /**
+   * Names of singleton providers that define one of `hooks`, found without creating providers that
+   * do not exist yet (class prototypes, `useValue` objects, already created instances). Factory
+   * providers that were never created cannot be inspected and are not reported.
+   */
+  findHookOwners(hooks: readonly string[]): string[] {
+    const defines = (target: unknown) => typeof target === 'object' && target !== null && hooks.some((hook) => typeof (target as Record<string, unknown>)[hook] === 'function');
+    const names = new Set<string>();
+    for (const instance of this.singletonOrder) {
+      if (defines(instance)) {
+        names.add((instance as object).constructor?.name ?? 'provider');
+      }
+    }
+    for (const provider of this.providers.values()) {
+      if (getProviderScope(provider) !== 'singleton' || typeof provider === 'function') {
+        continue;
+      }
+      if ('useClass' in provider && defines(provider.useClass.prototype)) {
+        names.add(provider.useClass.name);
+      } else if ('useValue' in provider && defines(provider.useValue)) {
+        names.add(String(typeof provider.provide === 'function' ? provider.provide.name : provider.provide));
+      }
+    }
+    return [...names];
+  }
+
+  /** Creates every registered singleton provider that does not exist yet (for lifecycle hooks). */
+  resolveAllSingletons() {
+    for (const [token, provider] of this.providers) {
+      if (getProviderScope(provider) === 'singleton') {
+        this.resolve(token);
+      }
+    }
   }
 
   createRequestContainer() {
@@ -68,7 +111,8 @@ export class Container implements ContainerLike {
   resolve<T>(token: Token<T>): T {
     const provider = this.lookupProvider(token);
     if (!provider) {
-      throw new Error(`Provider not found: ${String(typeof token === 'function' ? token.name : token)}`);
+      const requiredBy = resolutionStack.length > 0 ? ` (required by ${[...resolutionStack].reverse().map(describe).join(' <- ')})` : '';
+      throw new Error(`Provider not found: ${describe(token)}${requiredBy}`);
     }
 
     const scope = getProviderScope(provider);
@@ -80,7 +124,7 @@ export class Container implements ContainerLike {
       return this.requestScoped.get(token) as T;
     }
 
-    const instance = this.instantiateProvider(provider);
+    const instance = this.instantiateTracked(token, provider);
     this.requestScoped.set(token, instance);
     return instance as T;
   }
@@ -91,7 +135,7 @@ export class Container implements ContainerLike {
       return owner.singletons.get(token) as T;
     }
 
-    const instance = owner.instantiateProvider(provider);
+    const instance = owner.instantiateTracked(token, provider);
     owner.singletons.set(token, instance);
     owner.singletonOrder.push(instance);
     return instance as T;
@@ -112,6 +156,23 @@ export class Container implements ContainerLike {
     }
 
     return this.parent?.lookupProvider(token);
+  }
+
+  /**
+   * Creates an instance while tracking the chain being resolved, so a cycle is reported as
+   * `A -> B -> A` instead of a stack overflow. Only runs on creation; cached instances skip it.
+   */
+  private instantiateTracked<T>(token: Token<T>, provider: ProviderDefinition<T>): T {
+    if (resolutionStack.includes(token)) {
+      const cycle = [...resolutionStack.slice(resolutionStack.indexOf(token)), token].map(describe).join(' -> ');
+      throw new Error(`Circular dependency: ${cycle}`);
+    }
+    resolutionStack.push(token);
+    try {
+      return this.instantiateProvider(provider);
+    } finally {
+      resolutionStack.pop();
+    }
   }
 
   private instantiateProvider<T>(provider: ProviderDefinition<T>) {
