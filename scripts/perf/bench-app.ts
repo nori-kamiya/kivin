@@ -5,9 +5,17 @@
 // users would build them, including whatever the generator emits (e.g. AOT executors).
 import { createApp } from '@kivin/core';
 import appDefinition from './app/app';
+import { RequestIdMiddleware } from './app/providers';
 import manifest from './generated/manifest';
 
-export function createBenchApp() {
+export type BenchAppVariant = 'default' | 'global-middleware';
+
+export function createBenchApp(variant: BenchAppVariant = 'default') {
+  if (variant === 'global-middleware') {
+    // Same app with an app-wide middleware: every route, including precomputed static ones, must run it.
+    // Built from the shared app source so base trees without this variant still measure it.
+    return createApp({ ...appDefinition, globals: { guards: [], middleware: [RequestIdMiddleware], filters: [] } }, manifest);
+  }
   return createApp(appDefinition, manifest);
 }
 
@@ -16,6 +24,10 @@ export interface BenchScenario {
   /** Expected status, asserted once before timing so a broken route cannot look "fast". */
   status: number;
   request: () => Request;
+  /** App variant the scenario runs against (default: 'default'). In-process only; the HTTP pass skips other variants. */
+  app?: BenchAppVariant;
+  /** Response header that must be present, asserted once before timing (proves an enhancer ran). */
+  header?: string;
 }
 
 const BASE = 'http://bench.local';
@@ -40,6 +52,7 @@ export const scenarios: BenchScenario[] = [
   { name: 'delete-204', status: 204, request: () => new Request(`${BASE}/users/5`, { method: 'DELETE', headers: { 'x-api-key': 'secret' } }) },
   { name: 'request-scoped', status: 200, request: () => new Request(`${BASE}/scoped`) },
   { name: 'unknown-404', status: 404, request: () => new Request(`${BASE}/nope`) },
+  { name: 'health-global-mw', status: 200, app: 'global-middleware', header: 'x-request-id', request: () => new Request(`${BASE}/health`) },
   { name: 'guard-403', status: 403, request: () => new Request(`${BASE}/users`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }) },
 ];
 

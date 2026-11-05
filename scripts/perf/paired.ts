@@ -6,7 +6,8 @@
 // Prints one JSON line: { results: [{ name, base: ops[], current: ops[], ratios: number[] }] }.
 import type { BenchScenario } from './bench-app';
 
-type BenchModule = { createBenchApp: () => { fetch: (request: Request) => Response | Promise<Response> }; scenarios: BenchScenario[] };
+type BenchApp = { fetch: (request: Request) => Response | Promise<Response> };
+type BenchModule = { createBenchApp: (variant?: BenchScenario['app']) => BenchApp; scenarios: BenchScenario[] };
 
 const [basePath, currentPath] = process.argv.slice(2);
 if (!basePath || !currentPath) {
@@ -20,12 +21,22 @@ const only = process.env.PERF_SCENARIOS?.split(',');
 
 const baseModule = (await import(basePath)) as BenchModule;
 const currentModule = (await import(currentPath)) as BenchModule;
-const sides = [
-  { app: baseModule.createBenchApp(), scenarios: baseModule.scenarios },
-  { app: currentModule.createBenchApp(), scenarios: currentModule.scenarios },
-] as const;
+// One app per side and variant, created lazily. Both bundles share the harness (scenarios, bench-app.ts)
+// from the current tree, so every variant exists on both sides.
+const modules = [baseModule, currentModule] as const;
+const apps = [new Map<string, BenchApp>(), new Map<string, BenchApp>()] as const;
+function appFor(sideIndex: 0 | 1, scenario: BenchScenario) {
+  const variant = scenario.app ?? 'default';
+  let app = apps[sideIndex].get(variant);
+  if (!app) {
+    app = modules[sideIndex].createBenchApp(variant);
+    apps[sideIndex].set(variant, app);
+  }
+  return app;
+}
+const sides = [{ scenarios: baseModule.scenarios }, { scenarios: currentModule.scenarios }] as const;
 
-async function block(app: BenchModule extends { createBenchApp: () => infer A } ? A : never, scenario: BenchScenario) {
+async function block(app: BenchApp, scenario: BenchScenario) {
   let ops = 0;
   const startedAt = performance.now();
   let elapsed = 0;
@@ -50,16 +61,23 @@ for (const [index, scenario] of sides[0].scenarios.entries()) {
     throw new Error(`scenario mismatch: ${scenario.name} vs ${scenarioPerSide[1].name}`);
   }
 
-  for (const [sideIndex, side] of sides.entries()) {
+  const sideApps = [appFor(0, scenarioPerSide[0]), appFor(1, scenarioPerSide[1])] as const;
+  for (const sideIndex of [0, 1] as const) {
     const current = scenarioPerSide[sideIndex]!;
-    const first = await side.app.fetch(current.request());
+    const app = sideApps[sideIndex];
+    const label = sideIndex === 0 ? 'base' : 'current';
+    const first = await app.fetch(current.request());
     await first.arrayBuffer();
     if (first.status !== current.status) {
-      console.error(`${current.name} (${sideIndex === 0 ? 'base' : 'current'}): expected status ${current.status}, got ${first.status}`);
+      console.error(`${current.name} (${label}): expected status ${current.status}, got ${first.status}`);
+      process.exit(2);
+    }
+    if (current.header && !first.headers.has(current.header)) {
+      console.error(`${current.name} (${label}): expected response header ${current.header}`);
       process.exit(2);
     }
     for (let op = 0; op < warmupOps; op += 1) {
-      await (await side.app.fetch(current.request())).arrayBuffer();
+      await (await app.fetch(current.request())).arrayBuffer();
     }
   }
 
@@ -69,14 +87,14 @@ for (const [index, scenario] of sides[0].scenarios.entries()) {
   for (let pair = 0; pair < pairs; pair += 1) {
     // Alternate which side goes first so neither always benefits from a warmer cache.
     if (pair % 2 === 0) {
-      const b = await block(sides[0].app, scenarioPerSide[0]);
-      const c = await block(sides[1].app, scenarioPerSide[1]);
+      const b = await block(sideApps[0], scenarioPerSide[0]);
+      const c = await block(sideApps[1], scenarioPerSide[1]);
       base.push(b);
       current.push(c);
       ratios.push(c / b);
     } else {
-      const c = await block(sides[1].app, scenarioPerSide[1]);
-      const b = await block(sides[0].app, scenarioPerSide[0]);
+      const c = await block(sideApps[1], scenarioPerSide[1]);
+      const b = await block(sideApps[0], scenarioPerSide[0]);
       base.push(b);
       current.push(c);
       ratios.push(c / b);
