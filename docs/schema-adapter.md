@@ -25,6 +25,23 @@ export interface SchemaAdapter<TSchema = unknown> {
 - `parse` は `safeParse` ベース
 - `toOpenApiSchema` は `@valibot/to-json-schema` を利用
 
+## Standard Schema adapter
+
+`@kivin/standard-schema` は [Standard Schema](https://standardschema.dev) に対応した任意の validator（Zod / ArkType / Valibot など）をそのまま使えるアダプタです。
+
+```ts
+import { createStandardSchemaAdapter } from '@kivin/standard-schema';
+
+export default defineApplication({
+  modules: [UsersModule],
+  schemaAdapter: createStandardSchemaAdapter(),
+});
+```
+
+- `parse` は `schema['~standard'].validate` を呼びます。kivin はリクエスト経路で同期的に検証するため、`validate` が Promise を返す schema（async refinement など）はエラーにします。
+- `toOpenApiSchema` は schema が [Standard JSON Schema](https://standardschema.dev/json-schema) を実装していれば `~standard.jsonSchema.input({ target: 'draft-2020-12' })` を使います（Zod 4.2+ / ArkType はそのまま、Valibot は `@valibot/to-json-schema` の `toStandardJsonSchema()` 経由）。実装していない schema は `{}` になるので、`createStandardSchemaAdapter({ toJsonSchema })` で変換関数を渡してください。
+- ルート引数と schema の型整合チェック（`kivin generate` が出力する `contracts.ts`）も Standard Schema の型情報で行うため、どの validator でも同じように効きます。
+
 ## Swap strategy
 
-将来 `@kivin/zod` を追加しても core の API は変えずに差し替えられます。
+core は `SchemaAdapter` にしか依存しないので、validator を替えてもアプリ側は `schemaAdapter` を差し替えるだけです。

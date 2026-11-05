@@ -33,6 +33,8 @@ export class Container implements ContainerLike {
   private readonly providers = new Map<Token, ProviderDefinition>();
   private readonly singletons = new Map<Token, unknown>();
   private readonly requestScoped = new Map<Token, unknown>();
+  /** Singletons in creation order, for shutdown hooks. Only touched when a singleton is first created. */
+  private readonly singletonOrder: unknown[] = [];
 
   constructor(private readonly parent?: Container) {}
 
@@ -52,6 +54,11 @@ export class Container implements ContainerLike {
   getProviderScope(token: Token): ProviderScope | undefined {
     const provider = this.lookupProvider(token);
     return provider ? getProviderScope(provider) : undefined;
+  }
+
+  /** Singleton instances created so far, oldest first. */
+  singletonInstances(): readonly unknown[] {
+    return this.singletonOrder;
   }
 
   createRequestContainer() {
@@ -86,6 +93,7 @@ export class Container implements ContainerLike {
 
     const instance = owner.instantiateProvider(provider);
     owner.singletons.set(token, instance);
+    owner.singletonOrder.push(instance);
     return instance as T;
   }
 

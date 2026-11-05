@@ -19,11 +19,27 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `createApp(manifest)` | function | コンパイル済み manifest から `fetch` ハンドラを持つアプリを生成する |
+| `createApp(appDefinition, manifest)` | function | アプリ定義とコンパイル済み manifest から、`fetch` と `listen(portOrOptions)` を持つアプリを生成する。`listen({ port, hostname, routes })` の `routes` は app のルートと一緒に Bun native routes に載る |
 | `buildManifest(appDefinition)` | function | アプリ定義から実行時 manifest を組み立てる（通常は生成 manifest 経由で呼ばれる） |
 | `defineApplication(input)` | function | アプリ定義（root module / OpenAPI 設定など）を宣言する |
 | `defineModule(input)` | function | モジュール（controllers / providers / imports / グローバル enhancer）を宣言する |
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
+| `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
+| `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
+| `app.get(token)` | method | root container から provider を取り出す |
+| `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
+
+### Web features
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `defineApplication({ cors })`, `CorsOptions` | option | アプリ全体の CORS ヘッダと preflight 自動応答 |
+| `context.cookie(name)` / `cookies()` / `setCookie()` / `deleteCookie()` | method | Cookie の読み書き（複数の `Set-Cookie` に対応） |
+| `parseCookies`, `serializeCookie`, `serializeDeletedCookie`, `getCookie` | function | Cookie の単体ユーティリティ |
+| `context.formData()` / `context.form()` | method | multipart / urlencoded のボディ（`form()` はフィールドを string / File / 配列にしたオブジェクト） |
+| `context.sse(handler, options?)`, `createEventStream`, `formatEvent` | method / function | Server-Sent Events のレスポンス |
+| `defineWebSocket(route)`, `listen({ websockets })` | function / option | Bun ネイティブの WebSocket ルート（`upgrade` で認証・拒否） |
+| `listen({ maxRequestBodySize, idleTimeout, shutdownSignals })` | option | ボディサイズ上限、アイドルタイムアウト、シグナルでの graceful shutdown |
 
 ### Dependency Injection
 
@@ -32,6 +48,8 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `Container` | class | DI コンテナ。request-scoped 解決のための child container を持つ |
 | `RequestContext` | class | リクエストスコープのコンテキスト。`inject(...)` / `jsonBody()` / パラメータ取得などを提供 |
 | `ResponseState` | class | レスポンスヘッダ等の状態を蓄積する |
+| `createToken<T>(key)` | function | 型付きの DI トークン（`InjectionToken<T>`、実体は `Symbol.for(key)`）を作る。`@Injectable({ deps })` の型チェックに使われる |
+| `InjectionToken<T>`, `TokenValue<T>`, `TokenValues<T>` | type | 型付きトークンと、トークンが解決する値の型 |
 
 ### HTTP errors / helpers
 
@@ -58,6 +76,13 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
 | `SecureHeadersOptions` | type | secure-headers 設定 |
 
+### Compile-time contracts (types)
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `InferSchemaInput<S>`, `InferSchemaOutput<S>` | type | Standard Schema 互換 schema の入力 / 出力型（非対応の schema は `any`） |
+| `RouteContract` | namespace | 生成される `contracts.ts` が使う型チェック（`Body` / `Field` / `Whole` / `Returns` / `Expect`） |
+
 ### Runtime contracts (types)
 
 `CanActivate`（guard）, `ExceptionFilter`, `NestLikeMiddleware`, `HonoLikeMiddleware`,
@@ -77,7 +102,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | Decorator | 概要 |
 | --- | --- |
 | `@Module({ ... })` | モジュール宣言 |
-| `@Injectable({ deps })` | プロバイダ宣言 |
+| `@Injectable({ deps })` | プロバイダ宣言。deps の並び・型・個数がコンストラクタ引数と合わないとコンパイルエラー |
 | `@Controller(basePath)` | コントローラ宣言 |
 
 ### Routes
@@ -88,9 +113,12 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 `@UseGuards(...)`, `@UseMiddleware(...)`, `@UseFilters(...)`。
 
-### Parameters
+### Handler input
 
-`@Context()`, `@PathParam(name)`, `@QueryParam(name?)`, `@Body()`。
+引数デコレータはありません（TC39 標準デコレータには存在しないため）。ハンドラは 1 つの入力オブジェクト `{ params, query, body, context }` を受け取り、型は `RouteInput<{ params?: typeof S; query?: typeof S; body?: typeof S }>` で付けます。分割代入したフィールドだけがリクエストごとに計算されます。
+
+- デコレータは TC39 標準で動きます。`experimentalDecorators` は不要です（有効にしないでください）。
+- メソッドのメタデータは `Class[Symbol.metadata]` に保存されます。`Symbol.metadata` が無い実行環境では `@kivin/core` が well-known symbol を補います。
 
 ### Validation schemas
 
@@ -113,6 +141,26 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
+## @kivin/standard-schema
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createStandardSchemaAdapter(options?)` | function | Standard Schema 対応 validator（Zod / ArkType / Valibot など）用の `SchemaAdapter`。`options.toJsonSchema` / `options.target` で OpenAPI 変換を調整できる |
+| `StandardSchema`, `StandardSchemaAdapterOptions`, `JsonSchemaTarget` | type | アダプタ関連の型 |
+
+---
+
+## @kivin/jwt
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createJwtGuard(options)` | function | Bearer（または Cookie）の JWT を検証する guard。失敗時 401 + `WWW-Authenticate`、`authorize` が false なら 403 |
+| `getJwtPayload(context)` | function | guard が検証した payload |
+| `verifyJwt(token, options)`, `signJwt(payload, options)` | function | HS* / RS* / PS* / ES* / EdDSA。`algorithms` は必須、`exp` は既定で必須 |
+| `JwtError` | class | `code`: `malformed` / `algorithm` / `signature` / `expired` / `not-yet-valid` / `claim` |
+
+---
+
 ## @kivin/openapi
 
 | Export | 種別 | 概要 |
@@ -131,7 +179,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | `createLogger(options?)` | function | スタンドアロンの構造化ロガーを生成する |
 | `getRequestLogger(context)` | function | `RequestContext` からリクエストスコープのロガーを取得する |
 | `RequestLoggerMiddleware` | class | リクエストログを出力するミドルウェア |
-| `LOGGER`, `LOGGER_OPTIONS` | symbol | DI トークン |
+| `LOGGER`, `LOGGER_OPTIONS` | `InjectionToken` | 型付き DI トークン |
 | `Logger`, `LogLevel`, `LogFields`, `LogRecord`, `LoggerModuleOptions` | type | ロガー関連の型 |
 
 ---
@@ -142,10 +190,18 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ### `generate`
 
-manifest と OpenAPI を生成する。
+manifest・contracts・client・OpenAPI を生成する。`client.ts` はサーバーコードを型としてのみ参照する型付き HTTP クライアント（`createClient` / `KivinClientError` / `Operations`）。`contracts.ts` は型チェック専用のモジュールで、tsconfig に含めると handler と schema の不一致を `tsc` が検出する。
 
 ```
-generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>]
+generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
+```
+
+### `dev`
+
+ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する。
+
+```
+dev --entry <app.ts> --outDir <dir> --main <main.ts> [--watch <dir>]...
 ```
 
 ### `openapi`

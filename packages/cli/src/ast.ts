@@ -18,6 +18,8 @@ import type {
   VariableDeclarator,
 } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
+import { renderAotFactory } from './aot-renderer';
+import { renderClient } from './client-renderer';
 
 interface AstImportBinding {
   kind: 'named' | 'default' | 'namespace';
@@ -60,7 +62,7 @@ interface AstModuleNode {
   imports: AstModuleRef[];
 }
 
-interface AstControllerNode {
+export interface AstControllerNode {
   filePath: string;
   className: string;
   basePath: string;
@@ -71,7 +73,7 @@ interface AstControllerNode {
   routes: AstRouteNode[];
 }
 
-interface AstRouteNode {
+export interface AstRouteNode {
   methodName: string;
   method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
   path: string;
@@ -84,26 +86,32 @@ interface AstRouteNode {
   paramSchema?: AstExpressionRef;
   security: Array<{ scheme: string; scopes: string[] }>;
   responses: Array<{ status: number; description: string; schema?: AstExpressionRef }>;
-  parameters: Array<{ index: number; source: 'context' | 'path' | 'query' | 'body'; name?: string }>;
+  parameters: RouteParameterDescriptor[];
   guards: AstExpressionRef[];
   middleware: AstExpressionRef[];
   filters: AstExpressionRef[];
 }
 
-type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body'; name?: string };
+export type InputField = 'params' | 'query' | 'body' | 'context';
+export type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body' | 'input'; name?: string; fields?: InputField[] };
+const INPUT_FIELDS: readonly InputField[] = ['params', 'query', 'body', 'context'];
 
 interface AstSymbolRef {
   name: string;
   filePath: string;
 }
 
-interface AstExpressionRef {
+export interface AstExpressionRef {
   text: string;
   bindings: AstImportBinding[];
 }
 
 interface GeneratedManifestResult {
   source: string;
+  /** Type-only route contract checks; present when `contractsOutFile` is given. */
+  contractsSource?: string;
+  /** Typed HTTP client; present when `clientOutFile` is given. */
+  clientSource?: string;
 }
 
 interface RenderImportEntry {
@@ -129,19 +137,83 @@ const resolver = new ResolverFactory({
   },
 });
 
-export async function buildManifestSourceFromAst(input: { entry: string; outFile: string }): Promise<GeneratedManifestResult> {
+export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string; aot?: boolean }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
   const moduleRefs = await readAppModules(entryFile);
   const controllerRefs = await collectControllerRefs(moduleRefs);
   const controllers = await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name)));
   const renderer = new ImportRenderer(resolve(input.outFile));
   renderer.addTypeImport('@kivin/core', 'AppManifest');
-  const routeEntries = controllers.flatMap((controller) => controller.routes.map((route) => renderRoute(controller, route, renderer)));
+  const aot = input.aot !== false;
+  const routeEntries = controllers.flatMap((controller) => controller.routes.map((route) => renderRoute(controller, route, renderer, aot)));
   const imports = renderer.render();
 
   return {
     source: `${imports}\nexport const manifest: AppManifest = {\n  routes: [\n${routeEntries.join(',\n')}\n  ],\n};\n\nexport default manifest;\n`,
+    ...(input.contractsOutFile ? { contractsSource: renderContracts(controllers, resolve(input.contractsOutFile)) } : {}),
+    ...(input.clientOutFile ? { clientSource: renderClient(controllers, resolve(input.clientOutFile)) } : {}),
   };
+}
+
+export const TYPEOF_EXPRESSION_PATTERN = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
+
+/**
+ * Emits a type-only module that fails `tsc` when a route's handler signature drifts from its schemas:
+ * - `@Body()` parameter vs `@UseBodySchema(...)` output
+ * - `@QueryParam(name?)` / `@PathParam(name)` parameters vs `@UseQuerySchema` / `@UseParamSchema` output
+ * - the handler return value vs the single declared 2xx response schema
+ * Schemas are compared through Standard Schema types, so any compliant validator works.
+ */
+function renderContracts(controllers: AstControllerNode[], outFile: string) {
+  const renderer = new ImportRenderer(outFile);
+  const contract = renderer.addTypeImport('@kivin/core', 'RouteContract');
+  const checks: string[] = [];
+
+  const schemaType = (controller: AstControllerNode, expression: AstExpressionRef | undefined) => {
+    if (!expression) {
+      return undefined;
+    }
+    const rendered = renderExpression(controller.filePath, expression, renderer);
+    return TYPEOF_EXPRESSION_PATTERN.test(rendered) ? `typeof ${rendered}` : undefined;
+  };
+
+  for (const controller of controllers) {
+    for (const route of controller.routes) {
+      if (route.methodName.startsWith('[')) {
+        continue;
+      }
+
+      const controllerType = renderer.addNamedImport(controller.filePath, controller.className);
+      const handler = `${controllerType}[${JSON.stringify(route.methodName)}]`;
+      const label = `${controller.className}.${route.methodName}`;
+      const add = (check: string) => checks.push(`export type Check${checks.length} = ${contract}.Expect<${check}>;`);
+
+      const inputParameter = route.parameters.find((parameter) => parameter.source === 'input');
+      if (inputParameter) {
+        // The input kivin builds from the declared schemas must satisfy the handler's parameter type,
+        // e.g. `RouteInput<{ params: typeof IdParams }>` while the route says `@UseParamSchema(IdParams)`.
+        const spec = (['params', 'query', 'body'] as const)
+          .map((field) => {
+            const schema = schemaType(controller, field === 'params' ? route.paramSchema : field === 'query' ? route.querySchema : route.bodySchema);
+            return schema ? `${field}: ${schema}` : undefined;
+          })
+          .filter(Boolean);
+        const specType = spec.length > 0 ? `{ ${spec.join('; ')} }` : '{}';
+        add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema`)}>`);
+      }
+
+      const successResponses = route.responses.filter((response) => response.status >= 200 && response.status < 300 && response.schema);
+      if (successResponses.length === 1) {
+        const schema = schemaType(controller, successResponses[0]!.schema);
+        if (schema) {
+          add(`${contract}.Returns<${schema}, ReturnType<${handler}>, ${JSON.stringify(`${label}: return value does not match the ${successResponses[0]!.status} response schema`)}>`);
+        }
+      }
+    }
+  }
+
+  const header = '// Generated by kivin. Type-only route contract checks: `tsc` fails here when a handler drifts from its schemas.\n// This module is never imported at runtime.\n';
+  return `${header}${renderer.render()}\n${checks.length > 0 ? checks.join('\n') : 'export {};'}\n`;
 }
 
 async function readAppModules(filePath: string): Promise<AstModuleRef[]> {
@@ -285,7 +357,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   const middleware = readExpressionListDecoratorValues(context, source, decorators, 'UseMiddleware');
   const filters = readExpressionListDecoratorValues(context, source, decorators, 'UseFilters');
   const responses = readResponseDecorators(context, source, decorators);
-  const parameters = method.value.params.flatMap((parameter, index) => readParameter(parameter, filePath, index));
+  const parameters = readHandlerInput(method.value.params, filePath, getPropertyKeyText(source, method.key, method.computed));
 
   return [{
     methodName: getPropertyKeyText(source, method.key, method.computed),
@@ -307,37 +379,40 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   }];
 }
 
-function readParameter(parameter: ParamPattern, filePath: string, index: number): RouteParameterDescriptor[] {
-  const decorators = parameter.decorators ?? [];
-  const result: RouteParameterDescriptor[] = [];
-
-  for (const decorator of decorators) {
-    const expression = getDecoratorCallExpression(decorator);
-    if (!expression || expression.callee.type !== 'Identifier') {
-      continue;
-    }
-
-    const decoratorName = expression.callee.name;
-    if (decoratorName === 'Context') {
-      result.push({ index, source: 'context' });
-      continue;
-    }
-    if (decoratorName === 'Body') {
-      result.push({ index, source: 'body' });
-      continue;
-    }
-    if (decoratorName === 'PathParam') {
-      result.push({ index, source: 'path', name: readStringLiteral(expression.arguments[0], filePath, 'PathParam value') });
-      continue;
-    }
-    if (decoratorName === 'QueryParam') {
-      const name = expression.arguments[0] ? readStringLiteral(expression.arguments[0], filePath, 'QueryParam value') : undefined;
-      result.push(name ? { index, source: 'query', name } : { index, source: 'query' });
-    }
-
+/**
+ * Handlers receive one input object (`find({ params, context }: RouteInput<...>)`). When it is
+ * destructured, only those fields are recorded so the runtime computes nothing else per request.
+ */
+function readHandlerInput(parameters: ParamPattern[], filePath: string, methodName: string): RouteParameterDescriptor[] {
+  if (parameters.length === 0) {
+    return [];
+  }
+  if (parameters.length > 1) {
+    throw new Error(`${methodName} in ${filePath}: route handlers take a single input object, e.g. ${methodName}({ params, body, context }: RouteInput<...>)`);
   }
 
-  return result;
+  const parameter = parameters[0]!;
+  if ((parameter.decorators ?? []).length > 0) {
+    throw new Error(`${methodName} in ${filePath}: parameter decorators (@Body, @PathParam, @QueryParam, @Context) were removed with the move to TC39 decorators; destructure the input object instead, e.g. ${methodName}({ params, body }: RouteInput<...>)`);
+  }
+
+  const pattern = parameter.type === 'AssignmentPattern' ? parameter.left : parameter;
+  if (pattern.type !== 'ObjectPattern') {
+    return [{ index: 0, source: 'input' }];
+  }
+
+  const fields: InputField[] = [];
+  for (const property of pattern.properties) {
+    if (property.type === 'RestElement') {
+      return [{ index: 0, source: 'input' }];
+    }
+    const key = property.computed ? undefined : property.key.type === 'Identifier' ? property.key.name : property.key.type === 'Literal' ? String(property.key.value) : undefined;
+    if (!key || !INPUT_FIELDS.includes(key as InputField)) {
+      throw new Error(`${methodName} in ${filePath}: unknown input field "${key ?? '?'}"; available fields are ${INPUT_FIELDS.join(', ')}`);
+    }
+    fields.push(key as InputField);
+  }
+  return [{ index: 0, source: 'input', fields: INPUT_FIELDS.filter((field) => fields.includes(field)) }];
 }
 
 function readResponseDecorators(context: AstImportContext, source: ParsedSource, decorators: Decorator[]) {
@@ -831,12 +906,13 @@ function probeFile(basePath: string, extensions: string[]) {
   return undefined;
 }
 
-class ImportRenderer {
+export class ImportRenderer {
   private readonly imports = new Map<string, RenderImportEntry>();
   private readonly localNames = new Map<string, string>();
   private counter = 0;
 
-  constructor(private readonly outFile: string) {}
+  /** `typeOnly` renders every import as `import type`, for modules that must not pull in runtime code. */
+  constructor(private readonly outFile: string, private readonly typeOnly = false) {}
 
   addNamedImport(filePath: string, importedName: string, localName = importedName) {
     const moduleSpecifier = toModuleSpecifier(this.outFile, filePath);
@@ -847,7 +923,7 @@ class ImportRenderer {
       kind: 'named',
       localName: actualLocalName,
       importedName,
-      isType: false,
+      isType: this.typeOnly,
     });
     return actualLocalName;
   }
@@ -878,7 +954,7 @@ class ImportRenderer {
         moduleSpecifier,
         kind: binding.kind,
         localName: actualLocalName,
-        isType: false,
+        isType: this.typeOnly,
       };
       if (binding.importedName) {
         entry.importedName = binding.importedName;
@@ -966,11 +1042,11 @@ function renderImportGroup(entries: RenderImportEntry[]) {
   }
 
   if (first.kind === 'default') {
-    return `import ${first.localName} from '${first.moduleSpecifier}';`;
+    return `import${first.isType ? ' type' : ''} ${first.localName} from '${first.moduleSpecifier}';`;
   }
 
   if (first.kind === 'namespace') {
-    return `import * as ${first.localName} from '${first.moduleSpecifier}';`;
+    return `import${first.isType ? ' type' : ''} * as ${first.localName} from '${first.moduleSpecifier}';`;
   }
 
   const specifiers = [...entries]
@@ -987,7 +1063,7 @@ function renderImportGroup(entries: RenderImportEntry[]) {
   return `import${first.isType ? ' type' : ''} { ${specifiers.join(', ')} } from '${first.moduleSpecifier}';`;
 }
 
-function renderRoute(controller: AstControllerNode, route: AstRouteNode, renderer: ImportRenderer) {
+function renderRoute(controller: AstControllerNode, route: AstRouteNode, renderer: ImportRenderer, aot: boolean) {
   const controllerLocalName = renderer.addNamedImport(controller.filePath, controller.className);
   const docsEntries = [
     route.summary ? `summary: ${JSON.stringify(route.summary)}` : undefined,
@@ -1005,10 +1081,14 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
   const routeMiddleware = renderExpressionList(controller.filePath, [...controller.middleware, ...route.middleware], renderer);
   const routeFilters = renderExpressionList(controller.filePath, [...controller.filters, ...route.filters], renderer);
 
-  return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },\n    }`;
+  const aotFactory = aot
+    ? renderAotFactory(route, controllerLocalName, renderer.addTypeImport('@kivin/core', 'AotRouteRuntime'), renderer.addTypeImport('@kivin/core', 'RequestContext'))
+    : undefined;
+
+  return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },${aotFactory ? `\n      aot: ${aotFactory},` : ''}\n    }`;
 }
 
-function renderExpression(fromFile: string, expression: AstExpressionRef, renderer: ImportRenderer) {
+export function renderExpression(fromFile: string, expression: AstExpressionRef, renderer: ImportRenderer) {
   const replacements = new Map<string, string>();
   for (const binding of expression.bindings) {
     const actualLocalName = binding.resolvedFilePath === fromFile
@@ -1030,14 +1110,23 @@ function renderStringArray(values: string[]) {
 }
 
 function renderParameters(parameters: AstRouteNode['parameters']) {
-  return `[${parameters.map((parameter) => parameter.name ? `{ index: ${parameter.index}, source: ${JSON.stringify(parameter.source)}, name: ${JSON.stringify(parameter.name)} }` : `{ index: ${parameter.index}, source: ${JSON.stringify(parameter.source)} }`).join(', ')}]`;
+  return `[${parameters.map((parameter) => {
+    const entries = [`index: ${parameter.index}`, `source: ${JSON.stringify(parameter.source)}`];
+    if (parameter.name) {
+      entries.push(`name: ${JSON.stringify(parameter.name)}`);
+    }
+    if (parameter.fields) {
+      entries.push(`fields: ${renderStringArray(parameter.fields)}`);
+    }
+    return `{ ${entries.join(', ')} }`;
+  }).join(', ')}]`;
 }
 
 function renderSecurity(security: AstRouteNode['security']) {
   return `[${security.map((entry) => `{ scheme: ${JSON.stringify(entry.scheme)}, scopes: ${renderStringArray(entry.scopes)} }`).join(', ')}]`;
 }
 
-function joinPaths(basePath: string, routePath: string) {
+export function joinPaths(basePath: string, routePath: string) {
   const cleanedBase = basePath === '/' ? '' : basePath.replace(/\/$/, '');
   const cleanedRoute = routePath === '/' ? '' : routePath.replace(/^\//, '');
   const combined = `${cleanedBase}/${cleanedRoute}`.replace(/\/+/g, '/');

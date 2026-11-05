@@ -58,7 +58,7 @@ production に近づけるため、最低でも次を毎回通す前提にしま
 
 日常運用ではこれらを個別に叩くより、`bun run release:check` を canonical な release gate として使う想定です。
 
-性能退行も見たい場合は `bun run perf:check` を supplement として追加します。これは full benchmark より軽く、`bench:health` と `bench:stack` の一部比較だけを使って、短時間で meaningful な退行を検知するための gate です。default は `PERF_GATE_ITERATIONS=5` にして、少ない iteration で出やすかった cold-start と run-to-run noise を抑えています。
+性能退行は `bun run perf:regression`（base ref との同一マシン比較、CI でブロッキング）で見ます。Hono / Elysia との位置関係は `bun run perf:check`（ペア計測の参考値）で確認します。
 
 cross-framework の現状確認や docs 更新に使う基準値を作るなら、`5` iteration より `10` iteration の `bench:stack` / `bench:stack:delete` を優先します。2026-03-12 の `10` iteration rerun では full stack で `kivin` が `Hono` を安定して上回り、`Elysia` とは `health` と一部 delete path を除く main routes で strongest tier を維持しました。
 

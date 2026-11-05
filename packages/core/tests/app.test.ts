@@ -157,7 +157,7 @@ class RawStopMiddleware implements NestLikeMiddleware {
   handleRaw() {
     return new Response(JSON.stringify({ stopped: true }), {
       status: 202,
-      headers: { 'content-type': 'application/json; charset=utf-8' },
+      headers: { 'content-type': 'application/json;charset=utf-8' },
     });
   }
 }
@@ -1952,7 +1952,7 @@ describe('createApp pipeline', () => {
       method: 'HEAD',
     }));
     expect(headResponse.status).toBe(200);
-    expect(headResponse.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(headResponse.headers.get('content-type')).toBe('application/json;charset=utf-8');
     expect(await headResponse.text()).toBe('');
 
     const optionsResponse = await app.fetch(new Request('http://localhost/test/static', {
@@ -2632,7 +2632,7 @@ describe('createApp pipeline', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
     expect(await response.text()).toBe('');
   });
 
@@ -2795,7 +2795,7 @@ describe('createApp pipeline', () => {
     const response = await app.fetch(new Request('http://localhost/unknown/path'));
 
     expect(response.status).toBe(404);
-    expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
     expect(await response.json()).toEqual({ message: 'Not Found' });
   });
 
@@ -2807,7 +2807,7 @@ describe('createApp pipeline', () => {
     }));
 
     expect(response.status).toBe(500);
-    expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
     const payload = await response.json();
     expect(payload.message).toBe('Internal Server Error');
   });
@@ -2819,7 +2819,7 @@ describe('createApp pipeline', () => {
 
     expect(response.status).toBe(405);
     expect(response.headers.get('allow')).toBe('GET, HEAD, DELETE, OPTIONS');
-    expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
     expect(await response.json()).toEqual({ message: 'Method Not Allowed' });
   });
 
@@ -2829,7 +2829,7 @@ describe('createApp pipeline', () => {
     }));
 
     expect(response.status).toBe(200);
-    expect(response.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
     expect(await response.text()).toBe('');
   });
 });

@@ -23,6 +23,31 @@ describe('buildManifestSourceFromAst', () => {
     expect(result.source).toBe(snapshot);
   });
 
+  test('emits route contract checks for the example app', async () => {
+    const outFile = join(testsDir, '__snapshots__/example-manifest.ts');
+    const contractsOutFile = join(testsDir, '__snapshots__/example-contracts.ts');
+    const result = await buildManifestSourceFromAst({
+      entry: exampleApp,
+      outFile,
+      contractsOutFile,
+    });
+    const snapshot = await readFile(contractsOutFile, 'utf8');
+
+    expect(result.contractsSource).toBe(snapshot);
+    expect(result.contractsSource).toContain('RouteContract.Input<{ body: typeof CreateUserSchema }, Parameters<UserController["create"]>[0]');
+    expect(result.contractsSource).toContain('RouteContract.Input<{ params: typeof UserIdParamSchema }, Parameters<UserController["findById"]>[0]');
+    expect(result.contractsSource).toContain('RouteContract.Returns<typeof UserListSchema, ReturnType<UserController["list"]>');
+  });
+
+  test('omits contract checks when no contracts file is requested', async () => {
+    const result = await buildManifestSourceFromAst({
+      entry: exampleApp,
+      outFile: join(testsDir, '__snapshots__/example-manifest.ts'),
+    });
+
+    expect(result.contractsSource).toBeUndefined();
+  });
+
   test('resolves path aliases and avoids import collisions', async () => {
     const outFile = join(testsDir, '__snapshots__/path-alias-manifest.ts');
     const result = await buildManifestSourceFromAst({
@@ -84,6 +109,8 @@ describe('generateArtifacts', () => {
     expect(manifest.routes).toHaveLength(6);
     expect(manifest.routes[2].docs.operationId).toBe('users.create');
     expect(manifest.routes[5].docs.operationId).toBe('users.delete');
+    expect(result.contractsPath).toBe(join(outDir, 'contracts.ts'));
+    expect(await readFile(result.contractsPath, 'utf8')).toContain('RouteContract.Expect<');
   });
 
   test('generated OpenAPI stays aligned with manifest request and response contracts', async () => {

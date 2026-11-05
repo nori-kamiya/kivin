@@ -59,6 +59,7 @@
       "name": "kivin-example-benchmark-stack-kivin",
       "dependencies": {
         "@kivin/core": "workspace:*",
+        "@kivin/decorators": "workspace:*",
         "@kivin/logger": "workspace:*",
         "@kivin/valibot": "workspace:*",
         "valibot": "^1.5.0",
@@ -88,6 +89,13 @@
         "@kivin/core": "workspace:*",
       },
     },
+    "packages/jwt": {
+      "name": "@kivin/jwt",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
     "packages/logger": {
       "name": "@kivin/logger",
       "version": "0.0.1",
@@ -98,6 +106,13 @@
     },
     "packages/openapi": {
       "name": "@kivin/openapi",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
+    "packages/standard-schema": {
+      "name": "@kivin/standard-schema",
       "version": "0.0.1",
       "dependencies": {
         "@kivin/core": "workspace:*",
@@ -128,9 +143,13 @@
 
     "@kivin/decorators": ["@kivin/decorators@workspace:packages/decorators"],
 
+    "@kivin/jwt": ["@kivin/jwt@workspace:packages/jwt"],
+
     "@kivin/logger": ["@kivin/logger@workspace:packages/logger"],
 
     "@kivin/openapi": ["@kivin/openapi@workspace:packages/openapi"],
+
+    "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
 
     "@kivin/valibot": ["@kivin/valibot@workspace:packages/valibot"],
 

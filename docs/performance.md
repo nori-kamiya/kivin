@@ -21,6 +21,51 @@
 - それぞれについて `--compile` 実行と `bun run` 実行を比較する
 - `health` / `users` / `patch` を個別 variant として比較する
 
+## AOT executors
+
+`kivin generate` は manifest の各ルートに `aot` ファクトリを書き出します。ルートの引数に合わせて特化した直線的な async 関数で、次の特徴があります。
+
+- メソッドを直接呼び出し、引数リストもリテラルで組み立てる
+- リクエストごとのクロージャを作らない（middleware の `next` だけは例外）
+- guard が同期的に返す間は await を挟まない
+
+検証・guard・middleware・filter・レスポンスの確定・エラーの変換は、実行時にコンパイルされる executor と同じ部品（`runtime/aot.ts` の `AotRouteRuntime`）に任せています。そのため挙動は変わりません。
+
+- **適用範囲**: 実行時のコンパイラが汎用パスを選んだルートだけを置き換えます。すでに特化 executor（raw guard / raw middleware など）があるルートはそのまま使います。さらに controller / guard / middleware / filter がすべて singleton のルートに限ります。
+- **同一性の担保**: `packages/cli/tests/aot.test.ts` で、さまざまな形のルート（guard / middleware 1〜2 段 / filter / 各種 schema / request-scoped / 204 / 例外 / global enhancer あり・なし）に 37 種類のリクエストを送り、AOT と実行時 executor のレスポンス（status・ヘッダ・body）が完全に一致することを確認しています。
+- **無効化**: `kivin generate --no-aot` で生成しない、または実行時に `KIVIN_AOT=0` で使わないようにできます。
+
+効果（in-process、同一プロセスでのペア計測、base は AOT なし）:
+
+| scenario | 変化 |
+| --- | ---: |
+| context-json | +25% |
+| delete-204 | +19% |
+| request-scoped | +19% |
+| create-body-guard-mw | +4% |
+| その他（特化 executor のルート） | ±0 |
+
+## Regression gate
+
+`bun run perf:regression` は「この変更で kivin 自身が遅くなっていないか」を、同じマシン上で base ref（既定は `origin/main`）と比較して判定します。CI では PR ごとに PR の base と比較し、劣化があればマージをブロックします。
+
+```bash
+bun run perf:regression                      # base = origin/main
+bun run perf:regression -- --base HEAD~1
+PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
+```
+
+- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 11 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403）。base 側も同じソースを使い、`@kivin/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
+- **in-process（ブロッキング）**: base と current の 2 つのアプリを 1 プロセスに読み込み、短い計測ブロックを A→B / B→A と交互に回して、隣り合うペアの比を取ります（`scripts/perf/paired.ts`）。CPU クロックや他プロセスの影響が両側に等しく乗るので、2 コアの共有 VM でも同一コード同士の差は ±1% 程度に収まります。
+- **判定**:
+  - いずれかのシナリオで中央値が **4% 以上** 遅く、かつ bootstrap 95% 信頼区間が全体として 1 を下回る。疑わしいシナリオは 2 倍のラウンドで再計測し、それでも該当する場合のみ失敗にします。
+  - 全シナリオの幾何平均が **1.5% 以上** 遅く、同じく信頼区間が 1 を下回る。
+  - compiled binary のサイズが **5% 以上** 増える、または起動時間が 10ms かつ 25% 以上悪化する。
+- **HTTP（参考値）**: 2 つの compiled binary を同時に起動し、load client がブロックを交互に流します。client とサーバーが CPU を取り合うためノイズが大きく（同一コードでも ±10〜20%）、10% 超の明確な低下は警告として表示しますがブロックはしません。
+- **検出力の確認**: リクエスト経路に約 3% の処理を足すと幾何平均で検出され、同一コード同士の比較では誤検出しないことを確認しています。閾値は `PERF_SCENARIO_THRESHOLD` / `PERF_GEOMEAN_THRESHOLD` / `PERF_SIZE_THRESHOLD` で調整できます。
+
+Hono / Elysia との比較（`bun run perf:check`）は CI で参考値としてペア計測し、結果を job summary に出します。
+
 ## Commands
 
 ```bash
@@ -79,9 +124,13 @@ BENCH_VARIANTS=users,create BENCH_ITERATIONS=3 bun run bench:stack:spot
 
 `bun run bench:health` は minimal `GET /health` だけを対象に、`kivin` の `context-json` / `plain-response` / `static-object` 実装差を切り分けて測る suite です。Bun route path 上で何が勝ち、何が負けているかを isolated に確認するために使います。
 
-`bun run perf:check` は release candidate 前の lightweight perf gate です。`bench:health` と `bench:stack` を少ない iteration で再実行し、短時間でも比較的安定している勝ち筋だけを見て退行を止めます。stack 側は noise を減らすため `docs,patch,create` に絞って回します。default は `PERF_GATE_ITERATIONS=5` です。
+`bun run perf:check` は kivin / Hono / Elysia の比較です（`scripts/bench-compare.ts`）。`examples/benchmark-stack-*` の compiled binary を 3 つ同時に起動し、load client が短いブロックを Latin square の順番（全員が同じ回数ずつ 1 番目・2 番目・3 番目になる）で流して、ローテーションごとに kivin/Hono・kivin/Elysia の比を取ります。結果は中央値と bootstrap 95% CI で出します。
 
-full benchmark の比較対象は `kivin` / `hono` / `elysia` ですが、`perf:check` は今のところ安定性重視で `kivin` 対 `hono` の regression gate に留めています。Elysia は target/runtime として full benchmark では追いますが、gate 条件にはまだ含めていません。
+- 対象: health / docs / read-users（query validation）/ create・patch（guard + body validation）/ delete（guard）
+- 調整: `COMPARE_ROTATIONS`（既定 8）/ `COMPARE_BLOCK_MS`（既定 300）/ `COMPARE_CONCURRENCY`（既定 32）/ `COMPARE_WORKLOADS`
+- 合否: 数値では落としません。サーバーが起動しない、または想定外の status を返した場合だけ失敗します。
+
+以前の `perf:check` は、手元の環境で決めた固定の閾値（例: 「Hono の 105% 以上」）で判定していました。しかし GitHub の共有ランナーでは同じ測定が実行ごとに 13k〜52k req/s と揺れ、変更と無関係に失敗し続けていたため、ペア計測による参考値に置き換えました。kivin 自身の劣化は `perf:regression` が判定します。
 
 既定では `BENCH_ITERATIONS=5` です。回数を変えたい場合は次のように実行します。
 
@@ -89,7 +138,7 @@ full benchmark の比較対象は `kivin` / `hono` / `elysia` ですが、`perf:
 BENCH_ITERATIONS=7 bun run bench
 BENCH_ITERATIONS=7 bun run bench:health
 BENCH_ITERATIONS=7 bun run bench:stack
-PERF_GATE_ITERATIONS=5 bun run perf:check
+COMPARE_ROTATIONS=12 bun run perf:check
 ```
 
 cross-framework の順位を更新したい時は `10` iteration を基準にする方が安全です。

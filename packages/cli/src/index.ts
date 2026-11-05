@@ -48,16 +48,23 @@ export async function loadAppDefinition(entry: string): Promise<AppDefinition<un
   return candidate as AppDefinition<unknown>;
 }
 
-export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string }) {
+export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string; aot?: boolean }) {
   const outDir = resolve(input.outDir);
   const manifestPath = resolve(outDir, 'manifest.ts');
+  const contractsPath = resolve(outDir, 'contracts.ts');
+  const clientPath = resolve(outDir, 'client.ts');
 
   await mkdir(outDir, { recursive: true });
   const generated = await buildManifestSourceFromAst({
     entry: input.entry,
     outFile: manifestPath,
+    contractsOutFile: contractsPath,
+    clientOutFile: clientPath,
+    ...(input.aot === false ? { aot: false } : {}),
   });
   await writeFile(manifestPath, generated.source, 'utf8');
+  await writeFile(contractsPath, generated.contractsSource ?? 'export {};\n', 'utf8');
+  await writeFile(clientPath, generated.clientSource ?? 'export {};\n', 'utf8');
 
   const appDefinition = await loadAppDefinition(input.entry);
   const manifest = await loadManifest(manifestPath);
@@ -75,6 +82,8 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
 
   return {
     manifestPath,
+    contractsPath,
+    clientPath,
     openApiPath: resolve(outDir, 'openapi.json'),
   };
 }
@@ -322,7 +331,7 @@ function describeExecutionMode(
     return 'native-static';
   }
 
-  const requiresContextParameter = route.parameters.some((parameter) => parameter.source === 'context');
+  const requiresContextParameter = route.parameters.some((parameter) => parameter.source === 'context' || (parameter.source === 'input' && (parameter.fields ?? ['context']).includes('context')));
   const requiresContextGuards = guardTokens.some((token) => !tokenSupportsRawGuard(token, state));
   if (requiresContextParameter || middlewareTokens.length > 0 || filterTokens.length > 0 || requiresContextGuards) {
     return 'context-runtime';
