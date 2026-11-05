@@ -291,16 +291,15 @@ export function createResolvedRawMiddlewareInvoker(invokeRawMiddleware: RawMiddl
     return undefined;
   }
 
-  return async (
+  // Not async: a middleware that answers synchronously (or returns next()'s promise) adds no extra tick.
+  return (
     request: Request,
     params: Record<string, string>,
     responseState: ResponseState,
     next: NextResponseFactory,
-  ) => {
+  ): Response | Promise<Response> => {
     const result = invokeRawMiddleware(request, params, responseState, next);
-    return isPromiseLike<Response>(result)
-      ? await result
-      : result;
+    return isPromiseLike<Response>(result) ? Promise.resolve(result) : result;
   };
 }
 
@@ -328,7 +327,7 @@ export function createRawGuardsAllowChecker(
 }
 
 export function createRawMiddlewareDispatcher(
-  singleRawMiddlewareInvoker: ((request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Promise<Response>) | undefined,
+  singleRawMiddlewareInvoker: ((request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>) | undefined,
   middleware: RouteMiddleware,
   route: ManifestRoute<unknown>,
 ) {
