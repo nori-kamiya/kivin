@@ -20,7 +20,8 @@ export function buildOpenApiDocument<TSchema>(input: {
   }
 
   for (const route of input.manifest.routes) {
-    const pathItem = (paths[route.fullPath] ??= {});
+    const openApiPath = toOpenApiPath(route.fullPath);
+    const pathItem = (paths[openApiPath] ??= {});
     const routeTags = route.docs.tags.length > 0 ? route.docs.tags : ['default'];
     const routeSecurity = route.docs.security ?? [];
     routeTags.forEach((tag) => {
@@ -35,7 +36,7 @@ export function buildOpenApiDocument<TSchema>(input: {
       description: route.docs.description,
       operationId: route.docs.operationId,
       parameters: [
-        ...buildParameters('path', route.docs.paramSchema, input.schemaAdapter),
+        ...withTemplateParameters(openApiPath, buildParameters('path', route.docs.paramSchema, input.schemaAdapter)),
         ...buildParameters('query', route.docs.querySchema, input.schemaAdapter),
         ...buildParameters('header', route.docs.headerSchema, input.schemaAdapter),
       ],
@@ -48,7 +49,8 @@ export function buildOpenApiDocument<TSchema>(input: {
             content: requestBodyContent(route.docs.consumes, input.schemaAdapter.toOpenApiSchema(route.docs.bodySchema)),
           }
         : undefined,
-      responses: Object.fromEntries(
+      // An operation needs at least one response; routes without @ApiResponse document a plain 200.
+      responses: route.docs.responses.length === 0 ? { '200': { description: 'Success' } } : Object.fromEntries(
         route.docs.responses.map((response) => [
           String(response.status),
           {
@@ -88,6 +90,26 @@ export function buildOpenApiDocument<TSchema>(input: {
       : {}),
     paths,
   };
+}
+
+/**
+ * OpenAPI path template for a route path: `:id` parameters become `{id}` (OpenAPI path templating;
+ * Swagger UI, generators and validators do not understand `:id`) and a trailing slash is dropped,
+ * as the router serves `/users/` and `/users` alike.
+ */
+export function toOpenApiPath(path: string) {
+  const templated = path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+  return templated.length > 1 && templated.endsWith('/') ? templated.slice(0, -1) : templated;
+}
+
+/**
+ * Every `{name}` in the path must be declared as a path parameter (OpenAPI requires it). Parameters
+ * the route's param schema does not describe are added as required strings.
+ */
+function withTemplateParameters(path: string, declared: Array<{ in: string; name: string; required: boolean; schema: Record<string, unknown> }>) {
+  const names = [...path.matchAll(/\{([^}]+)\}/g)].map((match) => match[1]!);
+  const missing = names.filter((name) => !declared.some((parameter) => parameter.name === name));
+  return [...declared, ...missing.map((name) => ({ in: 'path', name, required: true, schema: { type: 'string' } }))];
 }
 
 /** Request body content for the route's `@Consumes` media type (JSON when unset). */
