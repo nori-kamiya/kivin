@@ -238,37 +238,55 @@ export function createRawExecutionState(
   };
 }
 
-export function createRawResponseExecutionState(request: Request): RawResponseExecutionState {
-  let parsedBody: unknown;
-  let parsedBodyLoaded = false;
-  const responseState = new ResponseState();
+/**
+ * Per-request state for the raw (context-free) executors. A class with prototype methods: the body
+ * readers are only materialised (as bound functions) for routes that read a body, so a route without
+ * one allocates just this object and its `ResponseState`.
+ */
+class RawResponseExecution implements RawResponseExecutionState {
+  private readonly responseState = new ResponseState();
+  private parsedBody: unknown;
+  private parsedBodyLoaded = false;
+  private boundGetJsonBody: (() => Promise<unknown>) | undefined;
+  private boundSetBodyPayload: ((value: unknown) => void) | undefined;
 
-  const getJsonBody = async () => {
-    if (!parsedBodyLoaded) {
-      try {
-        parsedBody = await request.json();
-      } catch (error) {
-        rethrowJsonBodyError(error);
+  constructor(private readonly request: Request) {}
+
+  applyQueuedState(response: Response) {
+    return this.responseState.hasQueuedResponseState()
+      ? this.responseState.applyResponseHeaders(response)
+      : response;
+  }
+
+  getResponseState() {
+    return this.responseState;
+  }
+
+  get getJsonBody() {
+    return (this.boundGetJsonBody ??= async () => {
+      if (!this.parsedBodyLoaded) {
+        try {
+          this.parsedBody = await this.request.json();
+        } catch (error) {
+          rethrowJsonBodyError(error);
+        }
+        this.parsedBodyLoaded = true;
       }
-      parsedBodyLoaded = true;
-    }
 
-    return parsedBody;
-  };
+      return this.parsedBody;
+    });
+  }
 
-  return {
-    applyQueuedState(response: Response) {
-      return responseState.hasQueuedResponseState()
-        ? responseState.applyResponseHeaders(response)
-        : response;
-    },
-    getJsonBody,
-    getResponseState: () => responseState,
-    setBodyPayload(value: unknown) {
-      parsedBody = value;
-      parsedBodyLoaded = true;
-    },
-  };
+  get setBodyPayload() {
+    return (this.boundSetBodyPayload ??= (value: unknown) => {
+      this.parsedBody = value;
+      this.parsedBodyLoaded = true;
+    });
+  }
+}
+
+export function createRawResponseExecutionState(request: Request): RawResponseExecutionState {
+  return new RawResponseExecution(request);
 }
 
 export function createSingleRawGuardAllowChecker(
