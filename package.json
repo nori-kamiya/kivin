@@ -38,7 +38,7 @@
     "test": "bun test",
     "example:build": "bun run generate && bun build examples/basic/src/main.ts --compile --outfile examples/basic/bin/basic-app",
     "example:smoke": "bun run example:build && bun run scripts/example-smoke.ts",
-    "example:dev": "bun run generate && bun run examples/basic/src/main.ts"
+    "example:dev": "bun run packages/cli/src/bin.ts dev --entry examples/basic/src/app.ts --outDir examples/basic/.kivin/generated --main examples/basic/src/main.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

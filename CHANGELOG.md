@@ -14,6 +14,9 @@
 - `@kivin/core`: `app.listen()` が `{ port, hostname, routes }` を受け取り、追加の native route を app のルートと一緒に `Bun.serve` へ載せられるようにした（app のルートと衝突するパスはエラー）
 - `@kivin/standard-schema`: Standard Schema 対応 validator（Zod / ArkType / Valibot など）用の schema adapter を追加
 - decorators / openapi / valibot / listen のテストと、`tests/types` のコンパイル時テストを追加
+- `@kivin/cli`: `generate` が型付き HTTP クライアント `client.ts` を出力するようにした（サーバーコードは型としてのみ参照）
+- `@kivin/cli`: `dev` コマンドを追加。保存のたびに再生成してサーバーを再起動し、生成に失敗した場合は直前のサーバーを維持する
+- CI（GitHub Actions）と、base ref と同一マシンで比較する性能劣化ゲート `bun run perf:regression` を追加
 
 ### Fixed
 

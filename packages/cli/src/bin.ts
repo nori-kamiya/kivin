@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { startDev } from './dev';
 import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
 
 function readFlag(name: string): string | undefined {
@@ -13,6 +14,10 @@ function readFlag(name: string): string | undefined {
     return undefined;
   }
   return process.argv[index + 1];
+}
+
+function readFlags(name: string): string[] {
+  return process.argv.flatMap((arg, index) => (arg === name && process.argv[index + 1] ? [process.argv[index + 1]!] : []));
 }
 
 function readFormatFlag() {
@@ -40,7 +45,29 @@ async function main() {
 
     console.log(`manifest: ${result.manifestPath}`);
     console.log(`contracts: ${result.contractsPath}`);
+    console.log(`client: ${result.clientPath}`);
     console.log(`openapi: ${result.openApiPath}`);
+    return;
+  }
+
+  if (command === 'dev') {
+    const entry = readFlag('--entry');
+    const outDir = readFlag('--outDir');
+    const main = readFlag('--main');
+    if (!entry || !outDir || !main) {
+      throw new Error('dev requires --entry, --outDir and --main');
+    }
+
+    const dev = startDev({ entry, outDir, main, watch: readFlags('--watch') });
+    const shutdown = async () => {
+      await dev.stop();
+      process.exit(0);
+    };
+    process.on('SIGINT', shutdown);
+    process.on('SIGTERM', shutdown);
+    await dev.ready;
+    // Keep the process alive; the watchers drive everything from here.
+    await new Promise(() => undefined);
     return;
   }
 
@@ -91,7 +118,7 @@ async function main() {
     throw new Error('inspect supports: routes, modules');
   }
 
-  throw new Error('supported commands: generate, openapi, inspect');
+  throw new Error('supported commands: generate, dev, openapi, inspect');
 }
 
 function renderRoutes(routes: RouteInspection[]) {

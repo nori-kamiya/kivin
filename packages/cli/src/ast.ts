@@ -18,6 +18,7 @@ import type {
   VariableDeclarator,
 } from 'oxc-parser';
 import { ResolverFactory } from 'oxc-resolver';
+import { renderClient } from './client-renderer';
 
 interface AstImportBinding {
   kind: 'named' | 'default' | 'namespace';
@@ -60,7 +61,7 @@ interface AstModuleNode {
   imports: AstModuleRef[];
 }
 
-interface AstControllerNode {
+export interface AstControllerNode {
   filePath: string;
   className: string;
   basePath: string;
@@ -71,7 +72,7 @@ interface AstControllerNode {
   routes: AstRouteNode[];
 }
 
-interface AstRouteNode {
+export interface AstRouteNode {
   methodName: string;
   method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'OPTIONS';
   path: string;
@@ -97,7 +98,7 @@ interface AstSymbolRef {
   filePath: string;
 }
 
-interface AstExpressionRef {
+export interface AstExpressionRef {
   text: string;
   bindings: AstImportBinding[];
 }
@@ -106,6 +107,8 @@ interface GeneratedManifestResult {
   source: string;
   /** Type-only route contract checks; present when `contractsOutFile` is given. */
   contractsSource?: string;
+  /** Typed HTTP client; present when `clientOutFile` is given. */
+  clientSource?: string;
 }
 
 interface RenderImportEntry {
@@ -131,7 +134,7 @@ const resolver = new ResolverFactory({
   },
 });
 
-export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string }): Promise<GeneratedManifestResult> {
+export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
   const moduleRefs = await readAppModules(entryFile);
   const controllerRefs = await collectControllerRefs(moduleRefs);
@@ -144,10 +147,11 @@ export async function buildManifestSourceFromAst(input: { entry: string; outFile
   return {
     source: `${imports}\nexport const manifest: AppManifest = {\n  routes: [\n${routeEntries.join(',\n')}\n  ],\n};\n\nexport default manifest;\n`,
     ...(input.contractsOutFile ? { contractsSource: renderContracts(controllers, resolve(input.contractsOutFile)) } : {}),
+    ...(input.clientOutFile ? { clientSource: renderClient(controllers, resolve(input.clientOutFile)) } : {}),
   };
 }
 
-const TYPEOF_EXPRESSION_PATTERN = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
+export const TYPEOF_EXPRESSION_PATTERN = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
 
 /**
  * Emits a type-only module that fails `tsc` when a route's handler signature drifts from its schemas:
@@ -904,12 +908,13 @@ function probeFile(basePath: string, extensions: string[]) {
   return undefined;
 }
 
-class ImportRenderer {
+export class ImportRenderer {
   private readonly imports = new Map<string, RenderImportEntry>();
   private readonly localNames = new Map<string, string>();
   private counter = 0;
 
-  constructor(private readonly outFile: string) {}
+  /** `typeOnly` renders every import as `import type`, for modules that must not pull in runtime code. */
+  constructor(private readonly outFile: string, private readonly typeOnly = false) {}
 
   addNamedImport(filePath: string, importedName: string, localName = importedName) {
     const moduleSpecifier = toModuleSpecifier(this.outFile, filePath);
@@ -920,7 +925,7 @@ class ImportRenderer {
       kind: 'named',
       localName: actualLocalName,
       importedName,
-      isType: false,
+      isType: this.typeOnly,
     });
     return actualLocalName;
   }
@@ -951,7 +956,7 @@ class ImportRenderer {
         moduleSpecifier,
         kind: binding.kind,
         localName: actualLocalName,
-        isType: false,
+        isType: this.typeOnly,
       };
       if (binding.importedName) {
         entry.importedName = binding.importedName;
@@ -1039,11 +1044,11 @@ function renderImportGroup(entries: RenderImportEntry[]) {
   }
 
   if (first.kind === 'default') {
-    return `import ${first.localName} from '${first.moduleSpecifier}';`;
+    return `import${first.isType ? ' type' : ''} ${first.localName} from '${first.moduleSpecifier}';`;
   }
 
   if (first.kind === 'namespace') {
-    return `import * as ${first.localName} from '${first.moduleSpecifier}';`;
+    return `import${first.isType ? ' type' : ''} * as ${first.localName} from '${first.moduleSpecifier}';`;
   }
 
   const specifiers = [...entries]
@@ -1081,7 +1086,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
   return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },\n    }`;
 }
 
-function renderExpression(fromFile: string, expression: AstExpressionRef, renderer: ImportRenderer) {
+export function renderExpression(fromFile: string, expression: AstExpressionRef, renderer: ImportRenderer) {
   const replacements = new Map<string, string>();
   for (const binding of expression.bindings) {
     const actualLocalName = binding.resolvedFilePath === fromFile
@@ -1110,7 +1115,7 @@ function renderSecurity(security: AstRouteNode['security']) {
   return `[${security.map((entry) => `{ scheme: ${JSON.stringify(entry.scheme)}, scopes: ${renderStringArray(entry.scopes)} }`).join(', ')}]`;
 }
 
-function joinPaths(basePath: string, routePath: string) {
+export function joinPaths(basePath: string, routePath: string) {
   const cleanedBase = basePath === '/' ? '' : basePath.replace(/\/$/, '');
   const cleanedRoute = routePath === '/' ? '' : routePath.replace(/^\//, '');
   const combined = `${cleanedBase}/${cleanedRoute}`.replace(/\/+/g, '/');

@@ -16,6 +16,8 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - Valibot schema validation
 - Standard Schema adapter (Zod, ArkType, Valibot, ...)
 - compile-time route / DI contract checks (`contracts.ts`, typed `@Injectable` deps)
+- generated typed HTTP client (`client.ts`)
+- `kivin dev` watch mode (regenerate + restart)
 - OpenAPI 3.1 generation
 - `operationId`, route description, and security scheme support
 - standardized `HttpError` helpers and `204 No Content` responses
@@ -74,7 +76,7 @@ export default defineApplication({
 ルートグラフと OpenAPI をビルド時に生成し、生成 manifest から実行します。
 
 ```bash
-# manifest.ts / contracts.ts / openapi.json を生成
+# manifest.ts / contracts.ts / client.ts / openapi.json を生成
 bun run packages/cli/src/bin.ts generate --entry app.ts --outDir .kivin/generated
 
 # 生成 manifest を使ってアプリを起動
@@ -105,6 +107,36 @@ app.listen({
 ```
 
 single binary にするには generated manifest を静的 import したまま `bun build --compile` します（runtime scan 不要）。動く完全な例は [`examples/basic`](examples/basic) を参照してください。
+
+## Dev mode
+
+```bash
+bun run packages/cli/src/bin.ts dev --entry app.ts --outDir .kivin/generated --main main.ts
+```
+
+ソースを保存するたびに manifest / contracts / client を再生成してサーバーを再起動します。生成に失敗した場合（書きかけの構文エラーなど）は直前のサーバーを動かしたままにするので、編集中にアプリが落ちることはありません。`--watch <dir>` で監視対象を追加できます。
+
+## Typed client
+
+`generate` は `client.ts` も出力します。schema とハンドラの型から作られた型付き HTTP クライアントで、サーバー側のコードは `import type` でしか参照しないため、そのままフロントエンドにバンドルできます。
+
+```ts
+import { createClient, KivinClientError } from './.kivin/generated/client';
+
+const api = createClient({
+  baseUrl: 'https://api.example.com',
+  headers: () => ({ authorization: `Bearer ${token}` }),
+});
+
+const users = await api.users.list({ query: { search: 'ada' } }); // 型は UserListSchema の出力
+const user = await api.users.findById({ params: { id: '1' } });
+await api.users.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // body の型を検査
+```
+
+- メソッドは `@OperationId('users.list')` から `client.users.list` になります（無い場合はコントローラ名とメソッド名）。
+- 入力の型は query / param / body の schema 入力、出力の型は 2xx レスポンス schema の出力から取ります。schema が無いルートはハンドラの引数・戻り値の型を使います（`Response` を直接返すルートは `unknown`）。
+- 2xx 以外は `KivinClientError`（`status` とパース済みの `body` を持つ）を投げます。
+- `fetch` オプションに `app.fetch` を渡すと、サーバーを立てずにテストからそのまま呼べます。
 
 ## Compile-time contracts
 
@@ -141,6 +173,7 @@ bun run bench
 
 - `examples/basic/.kivin/generated/manifest.ts`
 - `examples/basic/.kivin/generated/contracts.ts`
+- `examples/basic/.kivin/generated/client.ts`
 - `examples/basic/.kivin/generated/openapi.json`
 
 `bun run example:build` は generated manifest を静的 import したまま `bun build --compile` を実行します。runtime scan は不要です。
