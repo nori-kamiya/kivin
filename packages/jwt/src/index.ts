@@ -1,5 +1,5 @@
 // JSON Web Tokens on Web Crypto (no dependencies) and a bearer-token guard for kivin.
-import { unauthorized, type CanActivate, type RequestContext } from '@kivin/core';
+import { HttpError, unauthorized, type CanActivate, type RequestContext } from '@kivin/core';
 
 export type JwtAlgorithm =
   | 'HS256' | 'HS384' | 'HS512'
@@ -22,8 +22,20 @@ export interface JwtPayload {
 /** Key material: a shared secret for HS*, otherwise a `CryptoKey` or JWK (public to verify, private to sign). */
 export type JwtKey = string | Uint8Array | CryptoKey | JsonWebKey;
 
+/** Protected header fields a key resolver can use to pick the key. */
+export interface JwtHeader {
+  alg: JwtAlgorithm;
+  kid?: string;
+  typ?: string;
+  [parameter: string]: unknown;
+}
+
+/** Picks the verification key for a token (e.g. from a JWKS by `kid`); see `createRemoteJwks`. */
+export type JwtKeyResolver = (header: JwtHeader) => JwtKey | Promise<JwtKey>;
+
 export interface VerifyJwtOptions {
-  key: JwtKey;
+  /** Verification key, or a resolver that picks one per token (JWKS). */
+  key: JwtKey | JwtKeyResolver;
   /** Accepted algorithms. Required, so a token can never choose a weaker algorithm (or `none`). */
   algorithms: readonly JwtAlgorithm[];
   issuer?: string | readonly string[];
@@ -52,7 +64,7 @@ export interface SignJwtOptions {
   now?: () => number;
 }
 
-export type JwtErrorCode = 'malformed' | 'algorithm' | 'signature' | 'expired' | 'not-yet-valid' | 'claim';
+export type JwtErrorCode = 'malformed' | 'algorithm' | 'signature' | 'expired' | 'not-yet-valid' | 'claim' | 'key';
 
 export class JwtError extends Error {
   constructor(readonly code: JwtErrorCode, message: string) {
@@ -158,7 +170,7 @@ export async function verifyJwt<TPayload extends JwtPayload = JwtPayload>(token:
     throw new JwtError('malformed', 'Token must have three parts');
   }
   const [encodedHeader, encodedPayload, encodedSignature] = parts as [string, string, string];
-  const header = decodeJson<{ alg?: string; crit?: unknown }>(encodedHeader, 'header');
+  const header = decodeJson<{ alg?: string; crit?: unknown; kid?: unknown }>(encodedHeader, 'header');
   const algorithm = header.alg as JwtAlgorithm | undefined;
   if (!algorithm || !(algorithm in ALGORITHMS) || !options.algorithms.includes(algorithm)) {
     throw new JwtError('algorithm', `Algorithm ${String(header.alg)} is not allowed`);
@@ -167,7 +179,12 @@ export async function verifyJwt<TPayload extends JwtPayload = JwtPayload>(token:
     throw new JwtError('malformed', 'Unsupported critical header parameters');
   }
 
-  const key = await importKey(options.key, algorithm, 'verify');
+  if (header.kid !== undefined && typeof header.kid !== 'string') {
+    throw new JwtError('malformed', 'Invalid kid header');
+  }
+
+  const keyMaterial = typeof options.key === 'function' ? await options.key(header as JwtHeader) : options.key;
+  const key = await importKey(keyMaterial, algorithm, 'verify');
   const valid = await crypto.subtle.verify(
     ALGORITHMS[algorithm].sign,
     key,
@@ -220,6 +237,170 @@ function validateClaims(payload: JwtPayload, options: VerifyJwtOptions) {
   }
 }
 
+// ---- JWKS ---------------------------------------------------------------------------------
+
+export interface JsonWebKeySet {
+  keys: Array<JsonWebKey & { kid?: string; use?: string; alg?: string }>;
+}
+
+/** The JWKS endpoint could not be fetched (network, status, invalid body). The guard answers 503. */
+export class JwksFetchError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    this.name = 'JwksFetchError';
+  }
+}
+
+export interface RemoteJwksOptions {
+  /** How long a fetched key set is used before it is refreshed. Default 600s. */
+  cacheTtlSec?: number;
+  /** Use the response's `Cache-Control: max-age` as the TTL when present. Default true. */
+  respectCacheControl?: boolean;
+  /**
+   * Minimum time between refreshes triggered by an unknown `kid` (key rotation). Bounds how often
+   * tokens with random `kid`s can make the server refetch. Default 30s.
+   */
+  cooldownSec?: number;
+  /** Abort a fetch after this many milliseconds. Default 5000. */
+  timeoutMs?: number;
+  /** Custom fetch (proxies, tests). */
+  fetch?: (request: Request) => Promise<Response>;
+  /** Current time in milliseconds, for tests. */
+  now?: () => number;
+}
+
+/** Key resolver over a fixed JWKS (e.g. loaded from config). */
+export function createLocalJwks(jwks: JsonWebKeySet): JwtKeyResolver {
+  const keys = validateJwks(jwks);
+  return (header) => {
+    const key = selectJwk(keys, header);
+    if (!key) {
+      throw new JwtError('key', header.kid ? `No key with kid "${header.kid}"` : 'No matching key');
+    }
+    return key;
+  };
+}
+
+/**
+ * Key resolver over a remote JWKS endpoint (OIDC providers such as Auth0, Cognito, Entra ID, Google).
+ * The key set is fetched lazily, cached for `cacheTtlSec`, refreshed once (rate limited by
+ * `cooldownSec`) when a token names an unknown `kid`, and concurrent fetches are shared. When a
+ * refresh fails the previous key set keeps being used, so a provider outage does not log everyone out.
+ */
+export function createRemoteJwks(url: string | URL, options: RemoteJwksOptions = {}): JwtKeyResolver & { refresh(): Promise<void> } {
+  const ttlMs = (options.cacheTtlSec ?? 600) * 1000;
+  const cooldownMs = (options.cooldownSec ?? 30) * 1000;
+  const timeoutMs = options.timeoutMs ?? 5000;
+  const now = options.now ?? Date.now;
+  const doFetch = options.fetch ?? ((request: Request) => fetch(request));
+  let keys: JsonWebKeySet['keys'] | undefined;
+  let expiresAt = 0;
+  let lastFetchAt = Number.NEGATIVE_INFINITY;
+  let pending: Promise<void> | undefined;
+
+  const load = () => {
+    pending ??= (async () => {
+      lastFetchAt = now();
+      try {
+        const response = await doFetch(new Request(url, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(timeoutMs) }));
+        if (!response.ok) {
+          throw new JwksFetchError(`JWKS request failed with ${response.status}`);
+        }
+        let body: unknown;
+        try {
+          body = await response.json();
+        } catch (error) {
+          throw new JwksFetchError('JWKS response is not JSON', { cause: error });
+        }
+        keys = validateJwks(body);
+        const maxAge = options.respectCacheControl === false ? undefined : readMaxAge(response.headers.get('cache-control'));
+        expiresAt = now() + (maxAge !== undefined ? maxAge * 1000 : ttlMs);
+      } catch (error) {
+        if (keys) {
+          // Keep serving the stale set; try again after the cooldown.
+          expiresAt = now() + cooldownMs;
+          return;
+        }
+        throw error instanceof JwksFetchError || error instanceof JwtError ? error : new JwksFetchError(`JWKS request failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+      } finally {
+        pending = undefined;
+      }
+    })();
+    return pending;
+  };
+
+  const resolver = async (header: JwtHeader) => {
+    if (!keys || now() >= expiresAt) {
+      await load();
+    }
+    let key = selectJwk(keys!, header);
+    if (!key && header.kid !== undefined && now() - lastFetchAt >= cooldownMs) {
+      // Unknown kid: the provider may have rotated keys.
+      await load();
+      key = selectJwk(keys!, header);
+    }
+    if (!key) {
+      throw new JwtError('key', header.kid ? `No key with kid "${header.kid}"` : 'No matching key');
+    }
+    return key;
+  };
+
+  return Object.assign(resolver, {
+    async refresh() {
+      await load();
+    },
+  });
+}
+
+const KEY_TYPES: Record<string, (jwk: JsonWebKey) => boolean> = {
+  HS: (jwk) => jwk.kty === 'oct',
+  RS: (jwk) => jwk.kty === 'RSA',
+  PS: (jwk) => jwk.kty === 'RSA',
+  ES256: (jwk) => jwk.kty === 'EC' && jwk.crv === 'P-256',
+  ES384: (jwk) => jwk.kty === 'EC' && jwk.crv === 'P-384',
+  ES512: (jwk) => jwk.kty === 'EC' && jwk.crv === 'P-521',
+  EdDSA: (jwk) => jwk.kty === 'OKP' && jwk.crv === 'Ed25519',
+};
+
+function selectJwk(keys: JsonWebKeySet['keys'], header: JwtHeader) {
+  const fits = KEY_TYPES[header.alg] ?? KEY_TYPES[header.alg.slice(0, 2)];
+  const candidates = keys.filter((jwk) =>
+    (jwk.use === undefined || jwk.use === 'sig')
+    && (jwk.alg === undefined || jwk.alg === header.alg)
+    && (fits ? fits(jwk) : false)
+    && (jwk.key_ops === undefined || jwk.key_ops.includes('verify')));
+  if (header.kid !== undefined) {
+    return candidates.find((jwk) => jwk.kid === header.kid);
+  }
+  // Without a kid only an unambiguous key is used.
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function validateJwks(value: unknown): JsonWebKeySet['keys'] {
+  if (typeof value !== 'object' || value === null || !Array.isArray((value as JsonWebKeySet).keys)) {
+    throw new JwksFetchError('JWKS must be an object with a "keys" array');
+  }
+  // Private parts are dropped: a JWKS only ever needs public keys for verification.
+  return (value as JsonWebKeySet).keys
+    .filter((jwk): jwk is JsonWebKeySet['keys'][number] => typeof jwk === 'object' && jwk !== null && typeof jwk.kty === 'string')
+    .map((jwk) => {
+      if (jwk.kty === 'oct') {
+        return jwk;
+      }
+      if (jwk.d === undefined) {
+        return jwk;
+      }
+      // A private JWK's key_ops describe the private key (sign), not the public half.
+      const { d: _d, p: _p, q: _q, dp: _dp, dq: _dq, qi: _qi, oth: _oth, key_ops: _keyOps, ...publicKey } = jwk;
+      return publicKey;
+    });
+}
+
+function readMaxAge(cacheControl: string | null) {
+  const match = cacheControl ? /(?:^|,)\s*max-age=(\d+)/i.exec(cacheControl) : null;
+  return match ? Number(match[1]) : undefined;
+}
+
 export interface JwtGuardOptions extends VerifyJwtOptions {
   /** Where to read the token. Default: `Authorization: Bearer <token>`. */
   getToken?: (request: Request, context: RequestContext) => string | null | undefined;
@@ -248,6 +429,9 @@ export function createJwtGuard(options: JwtGuardOptions) {
       try {
         payload = await verifyJwt(token, options);
       } catch (error) {
+        if (error instanceof JwksFetchError) {
+          throw new HttpError(503, 'Token keys are unavailable', { headers: { 'retry-after': '5' } });
+        }
         const reason = error instanceof JwtError ? error.code : 'invalid';
         throw unauthorized('Invalid token', { headers: { 'www-authenticate': `Bearer error="invalid_token", error_description="${reason}"` } });
       }

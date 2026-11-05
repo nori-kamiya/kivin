@@ -23,6 +23,7 @@
 - `@kivin/core`: `app.close()` による graceful shutdown と `onApplicationShutdown` フック、`listen({ shutdownSignals, maxRequestBodySize, idleTimeout })`、`app.get(token)`
 - `@kivin/core`: provider を差し替えてポートを開かずに呼べる `createTestingApp`
 - `@kivin/jwt`: Web Crypto ベースの `verifyJwt` / `signJwt` と `createJwtGuard`
+- `@kivin/jwt`: JWKS 対応。`createRemoteJwks(url)`（TTL / `Cache-Control` キャッシュ、未知の `kid` での rate limit 付き再取得、取得失敗時は直前の鍵を継続）と `createLocalJwks`。`key` に鍵リゾルバ関数を渡せるようにし、JWKS が取得できない場合ガードは 503 を返す
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
 
 ### Fixed

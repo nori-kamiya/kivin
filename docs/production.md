@@ -67,7 +67,27 @@ const token = await signJwt({ role: 'admin' }, { key: secret, algorithm: 'HS256'
 
 - トークンが無い・不正な場合は `401` と `WWW-Authenticate: Bearer ...`、`authorize` が false を返した場合は `403` になります。
 - `exp` は既定で必須です（期限の無いトークンを許す場合は `requiredClaims: []`）。`nbf` / `iss` / `aud` / `sub` / `maxAgeSec` / `clockToleranceSec` も検証できます。
-- JWKS（リモート鍵セット）の取得は今後の課題です。現状は鍵を直接渡してください。
+
+### JWKS（OIDC プロバイダの公開鍵）
+
+Auth0 / Cognito / Entra ID / Google など、鍵をローテーションするプロバイダには `createRemoteJwks` を `key` に渡します。
+
+```ts
+import { createJwtGuard, createRemoteJwks } from '@kivin/jwt';
+
+export const AuthGuard = createJwtGuard({
+  key: createRemoteJwks('https://auth.example.com/.well-known/jwks.json'),
+  algorithms: ['RS256'],
+  issuer: 'https://auth.example.com/',
+  audience: 'api',
+});
+```
+
+- 鍵は初回の検証時に取得し、`cacheTtlSec`（既定 600 秒。レスポンスの `Cache-Control: max-age` があればそちら）の間キャッシュします。同時に来たリクエストの取得は 1 回にまとめます
+- トークンの `kid` が見つからない場合は、ローテーションとみなして 1 回だけ再取得します。再取得の間隔は `cooldownSec`（既定 30 秒）以上空けるので、でたらめな `kid` を送り続けられてもプロバイダへのリクエストは増えません
+- 鍵は `kid` と、アルゴリズムに合う鍵種別（RS/PS→RSA、ES256→P-256 など）・`use`・`alg` で選びます。`kid` の無いトークンは、候補が 1 つに決まる場合だけ受け付けます
+- 再取得に失敗した場合は直前の鍵セットを使い続けます。初回取得に失敗した場合、ガードは `503`（`Retry-After`）を返します（`401` ではないため、クライアントがログアウト扱いにしません）
+- 固定の鍵セットを使う場合は `createLocalJwks({ keys: [...] })`。`verifyJwt(token, { key: resolver, ... })` でガード以外からも使えます
 
 ## WebSocket
 
