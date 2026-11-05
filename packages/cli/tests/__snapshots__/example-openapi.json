@@ -187,6 +187,76 @@
         }
       }
     },
+    "/users/me": {
+      "get": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Current user",
+        "description": "Returns the user named by the x-user-id header (validated by a header schema).",
+        "operationId": "users.me",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-user-id",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "format": "email"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "email"
+                  ],
+                  "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "User was not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "message"
+                  ],
+                  "$schema": "http://json-schema.org/draft-07/schema#"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/users/{id}": {
       "get": {
         "tags": [
