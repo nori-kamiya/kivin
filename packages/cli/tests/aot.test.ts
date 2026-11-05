@@ -67,6 +67,8 @@ const cases: Case[] = [
   { name: 'multipart upload', status: 200, request: () => new Request('http://aot.test/aot/upload', { method: 'POST', body: uploadForm('Doc') }) },
   { name: 'multipart upload invalid', status: 400, request: () => new Request('http://aot.test/aot/upload', { method: 'POST', body: uploadForm('') }) },
   { name: 'multipart route rejects json (415)', status: 415, request: json('POST', '/aot/upload', { title: 'Doc' }) },
+  { name: 'header schema ok', status: 200, request: get('/aot/versioned/4', { 'x-api-version': '2' }) },
+  { name: 'header schema invalid', status: 400, request: get('/aot/versioned/4', { 'x-api-version': '9' }) },
   { name: 'response schema violation', request: get('/aot/invalid-response') },
   { name: 'queued 204 status', request: get('/aot/no-content') },
   { name: 'method not allowed', request: get('/aot/scoped', {}, 'POST') },

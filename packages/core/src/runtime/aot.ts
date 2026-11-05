@@ -5,6 +5,7 @@
 // method call, literal argument list, no per-request closures). Everything whose semantics must stay
 // identical to the runtime-compiled executor (validation, guards, middleware, filters, response
 // finalisation, error mapping) lives here in `AotRouteRuntime`, built from the same compiled pieces.
+import { getRouteHeaders } from './headers';
 import type { Container } from '../container';
 import { RequestContext } from '../context';
 import { HttpError } from '../http';
@@ -25,6 +26,8 @@ export interface AotRouteRuntime<TController = unknown> {
   resolveParamPayload(params: Record<string, string>): unknown;
   resolveQueryPayload(requestUrl: string): unknown;
   readQueryParam(requestUrl: string, name: string): string | undefined;
+  /** Headers the route-level header wrapper stored for this request (`{}` when unused). */
+  headers(params: Record<string, string>): unknown;
   /** Reads and validates the JSON body; primes `context.jsonBody()` when a context exists. */
   readBody(request: Request, context: RequestContext | undefined): Promise<unknown>;
   /**
@@ -106,6 +109,7 @@ export function createAotRuntime(input: {
     resolveParamPayload: input.resolveParamPayload,
     resolveQueryPayload: input.resolveQueryPayload,
     readQueryParam: readNamedQueryParam,
+    headers: getRouteHeaders,
 
     async readBody(request, context) {
       if (!readsBody) {

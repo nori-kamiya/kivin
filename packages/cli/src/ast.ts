@@ -82,6 +82,7 @@ export interface AstRouteNode {
   operationId?: string;
   tags: string[];
   bodySchema?: AstExpressionRef;
+  headerSchema?: AstExpressionRef;
   /** `@Consumes(...)` request body media type. */
   consumes?: BodyMediaType;
   querySchema?: AstExpressionRef;
@@ -94,11 +95,11 @@ export interface AstRouteNode {
   filters: AstExpressionRef[];
 }
 
-export type InputField = 'params' | 'query' | 'body' | 'context';
+export type InputField = 'params' | 'query' | 'body' | 'context' | 'headers';
 export type BodyMediaType = 'application/json' | 'multipart/form-data' | 'application/x-www-form-urlencoded';
 const BODY_MEDIA_TYPES: readonly BodyMediaType[] = ['application/json', 'multipart/form-data', 'application/x-www-form-urlencoded'];
 export type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body' | 'input'; name?: string; fields?: InputField[] };
-const INPUT_FIELDS: readonly InputField[] = ['params', 'query', 'body', 'context'];
+const INPUT_FIELDS: readonly InputField[] = ['params', 'query', 'body', 'context', 'headers'];
 
 interface AstSymbolRef {
   name: string;
@@ -196,14 +197,15 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
       if (inputParameter) {
         // The input kivin builds from the declared schemas must satisfy the handler's parameter type,
         // e.g. `RouteInput<{ params: typeof IdParams }>` while the route says `@UseParamSchema(IdParams)`.
-        const spec = (['params', 'query', 'body'] as const)
+        const schemas = { params: route.paramSchema, query: route.querySchema, body: route.bodySchema, headers: route.headerSchema };
+        const spec = (['params', 'query', 'body', 'headers'] as const)
           .map((field) => {
-            const schema = schemaType(controller, field === 'params' ? route.paramSchema : field === 'query' ? route.querySchema : route.bodySchema);
+            const schema = schemaType(controller, schemas[field]);
             return schema ? `${field}: ${schema}` : undefined;
           })
           .filter(Boolean);
         const specType = spec.length > 0 ? `{ ${spec.join('; ')} }` : '{}';
-        add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema`)}>`);
+        add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema / @UseHeaderSchema`)}>`);
       }
 
       const successResponses = route.responses.filter((response) => response.status >= 200 && response.status < 300 && response.schema);
@@ -358,6 +360,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   }
   const bodySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseBodySchema');
   const querySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseQuerySchema');
+  const headerSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseHeaderSchema');
   const paramSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseParamSchema');
   const security = readSecurityDecorators(decorators, filePath);
   const tags = readStringDecoratorValues(decorators, 'Tag', filePath);
@@ -377,6 +380,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
     tags,
     ...(bodySchema ? { bodySchema } : {}),
     ...(consumes ? { consumes: consumes as BodyMediaType } : {}),
+    ...(headerSchema ? { headerSchema } : {}),
     ...(querySchema ? { querySchema } : {}),
     ...(paramSchema ? { paramSchema } : {}),
     security,
@@ -1081,6 +1085,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
     `tags: ${renderStringArray([...new Set([...controller.tags, ...route.tags])])}`,
     route.bodySchema ? `bodySchema: ${renderExpression(controller.filePath, route.bodySchema, renderer)}` : undefined,
     route.consumes ? `consumes: ${JSON.stringify(route.consumes)}` : undefined,
+    route.headerSchema ? `headerSchema: ${renderExpression(controller.filePath, route.headerSchema, renderer)}` : undefined,
     route.querySchema ? `querySchema: ${renderExpression(controller.filePath, route.querySchema, renderer)}` : undefined,
     route.paramSchema ? `paramSchema: ${renderExpression(controller.filePath, route.paramSchema, renderer)}` : undefined,
     `security: ${renderSecurity(route.security)}`,

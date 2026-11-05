@@ -115,14 +115,14 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ### Handler input
 
-引数デコレータはありません（TC39 標準デコレータには存在しないため）。ハンドラは 1 つの入力オブジェクト `{ params, query, body, context }` を受け取り、型は `RouteInput<{ params?: typeof S; query?: typeof S; body?: typeof S }>` で付けます。分割代入したフィールドだけがリクエストごとに計算されます。
+引数デコレータはありません（TC39 標準デコレータには存在しないため）。ハンドラは 1 つの入力オブジェクト `{ params, query, body, headers, context }` を受け取り、型は `RouteInput<{ params?: typeof S; query?: typeof S; body?: typeof S; headers?: typeof S }>` で付けます。分割代入したフィールドだけがリクエストごとに計算されます。
 
 - デコレータは TC39 標準で動きます。`experimentalDecorators` は不要です（有効にしないでください）。
 - メソッドのメタデータは `Class[Symbol.metadata]` に保存されます。`Symbol.metadata` が無い実行環境では `@kivin/core` が well-known symbol を補います。
 
 ### Validation schemas
 
-`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
+`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`, `@UseHeaderSchema(schema)`。ヘッダは小文字の名前（`'x-api-version'` など）で検証され、schema にあるキーだけが `headers` に渡ります（schema が無ければ全ヘッダの文字列レコード）。ヘッダの検証はガードやミドルウェアより前に行われ、失敗は `400 headers validation failed` です。OpenAPI には `in: header` のパラメータとして出力されます。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
 
 ### OpenAPI metadata
 

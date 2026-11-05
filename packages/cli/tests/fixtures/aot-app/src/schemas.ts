@@ -6,4 +6,5 @@ export const ItemInput = v.object({ name: v.pipe(v.string(), v.minLength(1)), pr
 export const ItemPatch = v.object({ name: v.optional(v.string()), price: v.optional(v.number()) });
 export const Item = v.object({ id: v.number(), name: v.string(), price: v.number() });
 export const UploadForm = v.object({ title: v.pipe(v.string(), v.minLength(1)), file: v.file() });
+export const VersionHeaders = v.object({ 'x-api-version': v.picklist(['1', '2']) });
 export const ErrorBody = v.object({ message: v.string() });

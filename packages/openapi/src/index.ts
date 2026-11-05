@@ -37,6 +37,7 @@ export function buildOpenApiDocument<TSchema>(input: {
       parameters: [
         ...buildParameters('path', route.docs.paramSchema, input.schemaAdapter),
         ...buildParameters('query', route.docs.querySchema, input.schemaAdapter),
+        ...buildParameters('header', route.docs.headerSchema, input.schemaAdapter),
       ],
       security: routeSecurity.length > 0
         ? routeSecurity.map((entry) => ({ [entry.scheme]: entry.scopes }))
@@ -95,7 +96,7 @@ function requestBodyContent(consumes: string | undefined, schema: Record<string,
 }
 
 function buildParameters<TSchema>(
-  location: 'path' | 'query',
+  location: 'path' | 'query' | 'header',
   schema: TSchema | undefined,
   schemaAdapter: SchemaAdapter<TSchema>,
 ) {

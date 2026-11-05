@@ -37,6 +37,8 @@ export interface RouteDocsMetadata {
    * turned into an object (strings and `File`s, repeated fields as arrays) before validation.
    */
   consumes?: BodyMediaType;
+  /** `@UseHeaderSchema`: validates the request headers (lower-case names) passed as `headers`. */
+  headerSchema?: unknown;
   querySchema?: unknown;
   paramSchema?: unknown;
   security: RouteSecurityRequirement[];
@@ -62,7 +64,7 @@ export interface RouteEnhancerMetadata {
 export type ParameterSource = 'context' | 'path' | 'query' | 'body' | 'input';
 
 /** Fields of the single input object a handler receives (`find({ params, context })`). */
-export type InputField = 'params' | 'query' | 'body' | 'context';
+export type InputField = 'params' | 'query' | 'body' | 'context' | 'headers';
 
 export interface ParameterMetadata {
   index: number;

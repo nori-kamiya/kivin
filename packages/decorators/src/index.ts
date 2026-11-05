@@ -200,6 +200,11 @@ export function Consumes(mediaType: BodyMediaType): MethodDecorator {
   return (_value, context) => updateDocs(context, 'Consumes', (current) => ({ ...current, consumes: mediaType }));
 }
 
+/** Validates the request headers (lower-case names, e.g. `'x-api-version'`) passed as the input's `headers`. */
+export function UseHeaderSchema(schema: unknown): MethodDecorator {
+  return (_value, context) => updateDocs(context, 'UseHeaderSchema', (current) => ({ ...current, headerSchema: schema }));
+}
+
 export function UseBodySchema(schema: unknown): MethodDecorator {
   return (_value, context) => updateDocs(context, 'UseBodySchema', (current) => ({ ...current, bodySchema: schema }));
 }
