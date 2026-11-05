@@ -13,7 +13,7 @@ import { createBodyPayloadFromJsonLoaderResolver, createBodyPayloadLoaderFactory
 import { applyFilters, compileFilters, compileGuards, compileMiddleware, createRawExecutionState, createRawGuardsAllowChecker, createRawMiddlewareDispatcher, createRawResponseExecutionState, createResolvedRawMiddlewareInvoker, createScopedResolver, createSingleRawGuardAllowChecker, describeToken, enforceGuards, resolveCompiledDependencies, resolveRawMiddlewareResult, runMiddlewareChain } from './pipeline';
 import { createNativeStaticResponse, createResponseBodyMapper, createUnhandledErrorResponse, finalizeContextResult, finalizeDefaultCreatedContextResult, finalizeDefaultCreatedPlainResult, finalizeDefaultCreatedRawResult, finalizeDefaultOkRawResult, finalizeRawResult, finalizeResultWithoutContext, getDefaultSuccessResponseInit, getDefaultSuccessStatus, handlePlainExecutionError, mapUnknownToResponse } from './results';
 import { type CompiledArgumentInput, type CompiledRoute, type CompiledRouteExecutor, type DeferredPayloadLoader, type DeferredPayloadLoaderFactory, type ManifestRoute, type NextResponseFactory, type RawExecutionState, type RawResponseExecutionState, RESPONSE_INIT_204, type ResponseStateAdapter, type RouteFilters } from './types';
-import { isAsyncFunction, isPromiseLike } from './utils';
+import { isAsyncFunction, isPromiseLike, rethrowJsonBodyError } from './utils';
 
 export function createCompiledRouteWithExecutor<TSchema>(
   route: ManifestRoute<TSchema>,
@@ -442,7 +442,7 @@ function compileRouteExecutorFor<TSchema>(input: {
         executeHandler: ({ bodyPayload, params }) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
         finalizeResult: finalizeCompiledPlainResult,
         handleError: handlePlainExecutionError,
-        resolveBodyPayload: (request) => resolveBodyPayloadFromJsonLoader(() => request.json()),
+        resolveBodyPayload: (request) => resolveBodyPayloadFromJsonLoader(() => request.json().then(undefined, rethrowJsonBodyError)),
       })
     : undefined;
 
@@ -459,7 +459,7 @@ function compileRouteExecutorFor<TSchema>(input: {
         executeHandler: ({ bodyPayload, params }) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
         finalizeResult: finalizeDefaultCreatedPlainResult,
         handleError: handlePlainExecutionError,
-        resolveBodyPayload: (request) => resolveBodyPayloadFromJsonLoader(() => request.json()),
+        resolveBodyPayload: (request) => resolveBodyPayloadFromJsonLoader(() => request.json().then(undefined, rethrowJsonBodyError)),
       })
     : undefined;
 
@@ -924,7 +924,11 @@ function compileRouteExecutorFor<TSchema>(input: {
 
       const getJsonBody = async () => {
         if (!parsedBodyLoaded) {
-          parsedBody = await request.json();
+          try {
+            parsedBody = await request.json();
+          } catch (error) {
+            rethrowJsonBodyError(error);
+          }
           parsedBodyLoaded = true;
 
           if (context) {

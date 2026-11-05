@@ -30,6 +30,8 @@
 
 ### Fixed
 
+- `@kivin/core`: CORS を有効にしたとき、検証エラー（400）・ガードの拒否（403）・ハンドラの例外・フィルタの応答に CORS ヘッダが付かず、ブラウザがエラー本文を読めなかった問題を修正。ヘッダが変更不可のレスポンス（`fetch` の結果をそのまま返す場合など）でも 500 にならないようにした
+
 - **`@kivin/core`: 引数を取らず定数を返す GET ルートで、app 全体（`globals`）の guard / middleware / filter と CORS が適用されていなかった問題を修正**。このようなルートは静的レスポンスを事前計算して pipeline を丸ごと省略していたが、判定がルート自身の enhancer しか見ていなかったため、たとえば global の認証 guard がそのルートでは素通りしていた。global を含めて enhancer が 1 つでもあれば事前計算しないようにした
 - リポジトリ直下に `tsconfig.json` を追加。Bun は作業ディレクトリの tsconfig からデコレータの方式を決めるため、ルートで `bun test` / `bun run` を実行すると TC39 デコレータとして動き、メソッド・引数デコレータのメタデータが記録されていなかった（CLI の AST 経路は影響なし）
 - README の Quick start を現行 API（`createApp(definition, manifest)`、必須の `schemaAdapter`、default export の manifest）に合わせた
@@ -38,6 +40,8 @@
 - `@kivin/core`: クエリ schema を持つルートで、クエリ文字列が無いリクエストが `400 query validation failed` になっていた問題を修正（optional なフィールドだけの schema でも空オブジェクトとして検証する）
 
 ### Changed
+
+- `@kivin/core`: 不正な JSON ボディ（空ボディを含む）を 500 ではなく `400 { message: 'Invalid JSON body' }` で返すようにした（クライアントの誤りでありサーバーエラーではないため。フィルタで `HttpError` として扱える）
 
 - `@kivin/core`: 引数を取らない GET ルートに global の guard / middleware がある場合も、ハンドラの結果を起動時に一度だけ計算して再利用するようにした（pipeline 自体は毎回実行）。global middleware 付きの `/health` 相当で約 +20%
 - **TC39 標準デコレータへ移行（破壊的変更）**。`experimentalDecorators` は不要になった（有効にしない）。TC39 に引数デコレータが無いため `@Body` / `@PathParam` / `@QueryParam` / `@Context` を廃止し、ハンドラは 1 つの入力オブジェクト `find({ params, query, body, context }: RouteInput<{ params: typeof S }>)` を受け取る形にした。CLI は分割代入したフィールドだけを manifest に記録し、実行時もそのフィールドだけを計算する。`contracts.ts` は `RouteInput` の型と schema デコレータのズレを検出する。古い書き方は `kivin generate` が置き換え方を示すエラーで止める

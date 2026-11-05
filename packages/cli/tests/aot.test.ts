@@ -45,7 +45,7 @@ const cases: Case[] = [
   { name: 'create guard false -> 403', request: json('POST', '/aot/items', { name: 'Ink', price: 3 }, { 'x-role': 'guest' }) },
   { name: 'create guard throws 401', request: json('POST', '/aot/items', { name: 'Ink', price: 3 }, { 'x-role': 'banned' }) },
   { name: 'create invalid body', request: json('POST', '/aot/items', { name: '', price: 'x' }, { 'x-role': 'admin' }) },
-  { name: 'create malformed json', request: json('POST', '/aot/items', '{"name":', { 'x-role': 'admin' }) },
+  { name: 'create malformed json', status: 400, request: json('POST', '/aot/items', '{"name":', { 'x-role': 'admin' }) },
   { name: 'replace ok (raw guard + 1 middleware)', request: json('PUT', '/aot/items/1', { name: 'Pen', price: 5 }) },
   { name: 'replace raw guard deny', request: json('PUT', '/aot/items/1', { name: 'Pen', price: 5 }, { 'x-key': 'deny' }) },
   { name: 'replace middleware short-circuit', request: json('PUT', '/aot/items/1', { name: 'Pen', price: 5 }, { 'x-short-circuit': '1' }) },

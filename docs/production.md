@@ -17,7 +17,7 @@ defineApplication({
 });
 ```
 
-- アプリの全ルートのレスポンスに CORS ヘッダを付けます（一番外側の global middleware として動きます）。
+- アプリの全ルートのレスポンスに CORS ヘッダを付けます（一番外側の global middleware として動きます）。パラメータ / クエリ / ボディの検証エラー、ガードの拒否、フィルタやハンドラの例外から作られたエラーレスポンスにも付くので、ブラウザからエラー本文を読めます。
 - preflight（`OPTIONS` + `Access-Control-Request-Method`）には自動で応答します。`methods` を省略すると、そのパスが実際に受け付けるメソッドを返します。
 - 404 / 405 にもヘッダを付けるので、ブラウザ側でエラー内容を読めます。
 - `credentials: true` で `origin: '*'` の場合は、リクエストの origin をそのまま返します（ブラウザは `*` と credentials の組み合わせを拒否するため）。

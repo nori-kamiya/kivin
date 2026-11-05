@@ -5,7 +5,7 @@ import { HttpError } from '../http';
 import type { Token } from '../types';
 import { mapUnknownToResponse } from './results';
 import type { CompiledDependencyList, ManifestRoute, NextResponseFactory, RawExecutionState, RawGuardInvoker, RawGuardSyncInvoker, RawMiddlewareInvoker, RawResponseExecutionState, ResponseStateAdapter, RouteFilters, RouteGuards, RouteMiddleware, ScopedResolver } from './types';
-import { isPromiseLike } from './utils';
+import { isPromiseLike, rethrowJsonBodyError } from './utils';
 
 export function createScopedResolver<T>(input: {
   container: Container;
@@ -201,7 +201,11 @@ export function createRawExecutionState(
 
   const getJsonBody = async () => {
     if (!parsedBodyLoaded) {
-      parsedBody = await request.json();
+      try {
+        parsedBody = await request.json();
+      } catch (error) {
+        rethrowJsonBodyError(error);
+      }
       parsedBodyLoaded = true;
 
       if (context) {
@@ -241,7 +245,11 @@ export function createRawResponseExecutionState(request: Request): RawResponseEx
 
   const getJsonBody = async () => {
     if (!parsedBodyLoaded) {
-      parsedBody = await request.json();
+      try {
+        parsedBody = await request.json();
+      } catch (error) {
+        rethrowJsonBodyError(error);
+      }
       parsedBodyLoaded = true;
     }
 

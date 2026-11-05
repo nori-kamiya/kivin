@@ -13,7 +13,7 @@ import { readNamedQueryParam } from '../request-url';
 import type { Token } from '../types';
 import { applyFilters, runMiddlewareChain } from './pipeline';
 import type { CompiledRouteExecutor, ManifestRoute, ResponseStateAdapter, RouteFilters, RouteGuards, RouteMiddleware } from './types';
-import { isPromiseLike } from './utils';
+import { isPromiseLike, rethrowJsonBodyError } from './utils';
 
 export interface AotRouteRuntime<TController = unknown> {
   /** Singleton controller instance (AOT executors are only bound when the route is all-singleton). */
@@ -111,7 +111,12 @@ export function createAotRuntime(input: {
       if (!readsBody) {
         return undefined;
       }
-      const raw = await request.json();
+      let raw: unknown;
+      try {
+        raw = await request.json();
+      } catch (error) {
+        rethrowJsonBodyError(error);
+      }
       const value = validateBody ? validateBody(raw) : raw;
       context?.primeJsonBody(value);
       return value;

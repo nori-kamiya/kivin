@@ -20,6 +20,11 @@ export interface CorsOptions {
 export interface CorsHandler {
   /** Adds CORS headers to a response for an allowed origin. */
   apply(request: Request, headers: Headers): void;
+  /**
+   * Returns the response with CORS headers for an allowed origin, unless it already has them. A
+   * response with immutable headers (e.g. a proxied `fetch` result) is copied instead of throwing.
+   */
+  ensure(request: Request, response: Response): Response;
   /** Preflight response for an `OPTIONS` request, or `undefined` when it is not a CORS preflight. */
   preflight(request: Request, allowedMethods: readonly string[]): Response | undefined;
 }
@@ -53,6 +58,23 @@ export function createCorsHandler(options: CorsOptions): CorsHandler {
         headers.set('access-control-expose-headers', exposeHeaders);
       }
     },
+    ensure(request, response) {
+      if (response.headers.has('access-control-allow-origin')) {
+        return response;
+      }
+      const origin = request.headers.get('origin');
+      if (!origin || !allowOrigin(origin)) {
+        return response;
+      }
+      try {
+        this.apply(request, response.headers);
+        return response;
+      } catch {
+        const copy = new Response(response.body, response);
+        this.apply(request, copy.headers);
+        return copy;
+      }
+    },
     preflight(request, allowedMethods) {
       const origin = request.headers.get('origin');
       const requestedMethod = request.headers.get('access-control-request-method');
@@ -82,19 +104,19 @@ export function createCorsHandler(options: CorsOptions): CorsHandler {
   };
 }
 
-/** Global middleware class that adds CORS headers to every application route response. */
+/**
+ * Global middleware class that adds CORS headers to route responses. Responses that never pass back
+ * through it (validation errors, guard rejections, errors thrown past it) get the headers from the
+ * route-level wrapper in `createApp`.
+ */
 export function createCorsMiddleware(handler: CorsHandler) {
   return class CorsMiddleware implements NestLikeMiddleware {
     async handleRaw(request: Request, _params: Record<string, string>, _state: unknown, next: () => Response | PromiseLike<Response>) {
-      const response = await next();
-      handler.apply(request, response.headers);
-      return response;
+      return handler.ensure(request, await next());
     }
 
     async handle(context: import('./context').RequestContext, next: () => Response | PromiseLike<Response>) {
-      const response = await next();
-      handler.apply(context.request, response.headers);
-      return response;
+      return handler.ensure(context.request, await next());
     }
   };
 }
