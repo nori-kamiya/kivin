@@ -1,6 +1,6 @@
 import type { AppManifest, SchemaAdapter } from '@kivin/core';
 import { describe, expect, test } from 'bun:test';
-import { buildOpenApiDocument, createDocsHtml } from '../src/index';
+import { buildOpenApiDocument, createDocsHtml, toOpenApiPath } from '../src/index';
 
 // A tiny adapter whose "schemas" already are JSON Schema, so the test only exercises the document builder.
 const jsonSchemaAdapter: SchemaAdapter<Record<string, unknown>> = {
@@ -82,7 +82,7 @@ describe('buildOpenApiDocument', () => {
   });
 
   test('expands path and query schemas into parameters', () => {
-    expect(paths['/items/:id']!.get.parameters).toEqual([
+    expect(paths['/items/{id}']!.get.parameters).toEqual([
       { in: 'path', name: 'id', required: true, schema: { type: 'string' } },
       { in: 'query', name: 'expand', required: false, schema: { type: 'boolean' } },
       { in: 'query', name: 'fields', required: true, schema: { type: 'string' } },
@@ -97,7 +97,7 @@ describe('buildOpenApiDocument', () => {
   });
 
   test('falls back to a generic description and omits content without a schema', () => {
-    const notFound = paths['/items/:id']!.get.responses['404'];
+    const notFound = paths['/items/{id}']!.get.responses['404'];
     expect(notFound.description).toBe('Response');
     expect(notFound.content).toBeUndefined();
   });
@@ -108,5 +108,16 @@ describe('createDocsHtml', () => {
     const html = createDocsHtml('/api/openapi.json?x="1"');
     expect(html).toContain('url: "/api/openapi.json?x=\\"1\\""');
     expect(html.startsWith('<!doctype html>')).toBe(true);
+  });
+});
+
+describe('toOpenApiPath', () => {
+  test.each([
+    ['/', '/'],
+    ['/users/', '/users'],
+    ['/users/:id', '/users/{id}'],
+    ['/orgs/:orgId/users/:user_id/', '/orgs/{orgId}/users/{user_id}'],
+  ])('%p -> %p', (input, expected) => {
+    expect(toOpenApiPath(input)).toBe(expected);
   });
 });

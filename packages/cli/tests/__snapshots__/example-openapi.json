@@ -46,7 +46,7 @@
     }
   },
   "paths": {
-    "/users/": {
+    "/users": {
       "get": {
         "tags": [
           "Users"
@@ -187,7 +187,7 @@
         }
       }
     },
-    "/users/:id": {
+    "/users/{id}": {
       "get": {
         "tags": [
           "Users"
@@ -532,7 +532,7 @@
         }
       }
     },
-    "/users/:id/avatar": {
+    "/users/{id}/avatar": {
       "put": {
         "tags": [
           "Users"

@@ -20,7 +20,7 @@ export function buildOpenApiDocument<TSchema>(input: {
   }
 
   for (const route of input.manifest.routes) {
-    const pathItem = (paths[route.fullPath] ??= {});
+    const pathItem = (paths[toOpenApiPath(route.fullPath)] ??= {});
     const routeTags = route.docs.tags.length > 0 ? route.docs.tags : ['default'];
     const routeSecurity = route.docs.security ?? [];
     routeTags.forEach((tag) => {
@@ -88,6 +88,16 @@ export function buildOpenApiDocument<TSchema>(input: {
       : {}),
     paths,
   };
+}
+
+/**
+ * OpenAPI path template for a route path: `:id` parameters become `{id}` (OpenAPI path templating;
+ * Swagger UI, generators and validators do not understand `:id`) and a trailing slash is dropped,
+ * as the router serves `/users/` and `/users` alike.
+ */
+export function toOpenApiPath(path: string) {
+  const templated = path.replace(/:([A-Za-z0-9_]+)/g, '{$1}');
+  return templated.length > 1 && templated.endsWith('/') ? templated.slice(0, -1) : templated;
 }
 
 /** Request body content for the route's `@Consumes` media type (JSON when unset). */
