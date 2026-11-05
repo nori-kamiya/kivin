@@ -341,3 +341,44 @@ describe('global enhancers on static routes', () => {
     expect(await (await app.fetch(new Request('http://x/ping'))).json()).toEqual({ pong: true });
   });
 });
+
+describe('precomputed handler result under enhancers', () => {
+  let calls = 0;
+  class CountingController {
+    status() {
+      calls += 1;
+      return { ok: true };
+    }
+  }
+  class HeaderMiddleware {
+    handleRaw(_request: Request, _params: Record<string, string>, state: { setResponseHeader(name: string, value: string): void }, next: () => Response | PromiseLike<Response>) {
+      state.setResponseHeader('x-mw', 'raw');
+      return next();
+    }
+
+    handle(context: RequestContext, next: () => Response | PromiseLike<Response>) {
+      context.setResponseHeader('x-mw', 'context');
+      return next();
+    }
+  }
+
+  test('computes the response once and still runs middleware on every request', async () => {
+    const app = createApp(defineApplication({
+      modules: [defineModule({ providers: [HeaderMiddleware], controllers: [CountingController], imports: [] })],
+      schemaAdapter: createValibotAdapter(),
+      globals: { guards: [], middleware: [HeaderMiddleware], filters: [] },
+    }), {
+      routes: [{
+        method: 'GET', fullPath: '/status', controller: CountingController, methodName: 'status',
+        parameters: [], guards: [], middleware: [], filters: [],
+        docs: { tags: [], security: [], responses: [] },
+      }],
+    });
+    for (let index = 0; index < 3; index += 1) {
+      const response = await app.fetch(new Request('http://x/status'));
+      expect(await response.json()).toEqual({ ok: true });
+      expect(response.headers.get('x-mw')).not.toBeNull();
+    }
+    expect(calls).toBe(1);
+  });
+});

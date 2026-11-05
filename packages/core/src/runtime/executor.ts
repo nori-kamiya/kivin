@@ -244,7 +244,9 @@ export function compileRouteExecutor<TSchema>(input: {
   // middleware or filter applies — including app-wide globals (the route's own lists are checked in
   // canPrecomputeNativeStaticResponse; the compiled lists below also contain the globals).
   const hasEnhancers = guards.entries.length > 0 || middleware.entries.length > 0 || filters.entries.length > 0;
-  const nativeStaticResponse = singletonController && !hasEnhancers
+  // A parameterless, schema-free GET handler cannot see the request, so (as for the static path) its
+  // response is computed once. With enhancers the pipeline still runs around a clone of it.
+  const precomputedResponse = singletonController
     ? createNativeStaticResponse({
         definition: input.definition,
         handler: singletonController[input.route.methodName] as (...args: unknown[]) => unknown,
@@ -252,6 +254,7 @@ export function compileRouteExecutor<TSchema>(input: {
         target: singletonController,
       })
     : undefined;
+  const nativeStaticResponse = hasEnhancers ? undefined : precomputedResponse;
   const mapCompiledResponseBody = createResponseBodyMapper(input.definition, input.route);
   const defaultSuccessStatus = getDefaultSuccessStatus(input.route);
   const defaultSuccessResponseInit = getDefaultSuccessResponseInit(defaultSuccessStatus);
@@ -319,7 +322,9 @@ export function compileRouteExecutor<TSchema>(input: {
             : (result: unknown) => finalizeResultWithoutContext(result, mapCompiledResponseBody, defaultSuccessStatus))))
     : (result: unknown) => finalizeResultWithoutContext(result, mapCompiledResponseBody, defaultSuccessStatus);
   const singletonHandler = singletonController?.[input.route.methodName] as ((...args: unknown[]) => unknown) | undefined;
-  const executeSingletonHandler = singletonController && singletonHandler
+  const executeSingletonHandler = precomputedResponse
+    ? () => precomputedResponse.clone()
+    : singletonController && singletonHandler
     ? createCompiledHandlerExecutor({
         controller: singletonController,
         handler: singletonHandler,
