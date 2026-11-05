@@ -59,6 +59,7 @@
       "name": "kivin-example-benchmark-stack-kivin",
       "dependencies": {
         "@kivin/core": "workspace:*",
+        "@kivin/decorators": "workspace:*",
         "@kivin/logger": "workspace:*",
         "@kivin/valibot": "workspace:*",
         "valibot": "^1.5.0",
