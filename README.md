@@ -50,7 +50,7 @@ import { Controller, Get } from '@kivin/decorators';
 import { createValibotAdapter } from '@kivin/valibot';
 
 @Controller('/hello')
-class HelloController {
+export class HelloController {
   @Get('/')
   hello() {
     return { message: 'hello kivin' };
