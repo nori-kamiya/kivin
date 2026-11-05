@@ -492,7 +492,7 @@ function compileRouteExecutorFor<TSchema>(input: {
         : error;
     }
 
-    const response = createUnhandledErrorResponse();
+    const response = createUnhandledErrorResponse(error);
 
     return rawResponseState.hasQueuedResponseState()
       ? rawResponseState.applyResponseHeaders(response)
@@ -512,7 +512,7 @@ function compileRouteExecutorFor<TSchema>(input: {
         : error;
     }
 
-    const response = createUnhandledErrorResponse();
+    const response = createUnhandledErrorResponse(error);
 
     return rawResponseState.hasQueuedResponseState()
       ? rawResponseState.applyResponseHeaders(response)
@@ -1091,7 +1091,7 @@ function compileRouteExecutorFor<TSchema>(input: {
             : error;
         }
 
-        const response = Response.json({ message: 'Internal Server Error' }, { status: 500 });
+        const response = createUnhandledErrorResponse(error);
 
         if (!context) {
           return response;

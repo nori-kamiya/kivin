@@ -75,3 +75,4 @@ export { SecureHeadersMiddleware, createSecureHeadersMiddleware, type SecureHead
 export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, SchemaAdapter, Token } from './types';
 
 export { toValidationIssues, type ValidationIssue } from './runtime/payload';
+export { markErrorReported } from './runtime/results';

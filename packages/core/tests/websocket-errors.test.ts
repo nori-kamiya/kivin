@@ -30,7 +30,8 @@ describe('WebSocket handler errors', () => {
       const response = await fetch(`http://127.0.0.1:${server.port}/ws`);
       expect(response.status).toBe(500);
       expect(await response.json()).toEqual({ message: 'Internal Server Error' });
-      expect(String(consoleError.mock.calls[0]?.[0])).toContain('WebSocket upgrade failed for /ws');
+      // Search instead of indexing: other test files may log asynchronously while this one runs.
+      expect(consoleError.mock.calls.some((call) => String(call[0]).includes('WebSocket upgrade failed for /ws'))).toBe(true);
     } finally {
       await instance.close();
     }
@@ -74,7 +75,7 @@ describe('WebSocket handler errors', () => {
       const plain = await connect(`ws://127.0.0.1:${server.port}/plain`);
       plain.socket.send('x');
       await Bun.sleep(50);
-      expect(String(consoleError.mock.calls.at(-1)?.[0])).toContain('WebSocket message handler failed for /plain');
+      expect(consoleError.mock.calls.some((call) => String(call[0]).includes('WebSocket message handler failed for /plain'))).toBe(true);
       plain.socket.close();
     } finally {
       await instance.close();

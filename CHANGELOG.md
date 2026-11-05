@@ -33,6 +33,7 @@
 
 ### Fixed
 
+- `@kivin/core`: フィルタで処理されなかった例外は 500 になるだけでどこにも記録されず、`@kivin/logger` を入れていないアプリでは原因が失われていた。`console.error('[kivin] Unhandled error', error)` に 1 回出すようにした（`HttpError` とフィルタで処理された例外は出さない。`@kivin/logger` の `RequestLoggerMiddleware` が記録した例外は二重に出さない）。他のロガーからは `markErrorReported(error)` で同様に抑止できる
 - `@kivin/core`: WebSocket の `upgrade` の例外が Bun の既定エラーページ（development ではスタックトレースを表示）まで漏れていた問題と、`open` / `message` / `close` / `drain` の例外が未処理 reject になっていた（プロセスの終了コードが 1 になる）問題を修正。`upgrade` は 500 を返し、ハンドラの例外は新しい `error` フックか `console.error` に渡す。`open` の失敗時は 1011 で閉じる。`listen()` に Bun.serve の `error` ハンドラを既定で設定した
 - `@kivin/core`: `setCookie` / `serializeCookie` の `path` / `domain` / `sameSite` / `priority` に `;` や改行を含む値を渡すと、属性の注入（`path: '/; Domain=evil'`）やヘッダ分割ができた問題を修正。不正な値は `TypeError` にする
 

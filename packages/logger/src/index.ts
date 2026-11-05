@@ -1,4 +1,4 @@
-import { createToken, defineModule, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { createToken, defineModule, markErrorReported, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 import { Injectable } from '@kivin/decorators';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -128,6 +128,8 @@ export class RequestLoggerMiddleware implements NestLikeMiddleware {
           durationMs: elapsed(startedAt),
           error: serializeError(error),
         });
+        // Already logged: kivin's default console report for unhandled errors skips it.
+        markErrorReported(error);
       }
       throw error;
     }
