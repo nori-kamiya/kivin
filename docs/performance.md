@@ -21,6 +21,27 @@
 - それぞれについて `--compile` 実行と `bun run` 実行を比較する
 - `health` / `users` / `patch` を個別 variant として比較する
 
+## Regression gate
+
+`bun run perf:regression` は「この変更で kivin 自身が遅くなっていないか」を、同じマシン上で base ref（既定は `origin/main`）と比較して判定します。CI では PR ごとに PR の base と比較し、劣化があればマージをブロックします。
+
+```bash
+bun run perf:regression                      # base = origin/main
+bun run perf:regression -- --base HEAD~1
+PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
+```
+
+- **計測対象**: `scripts/perf/bench-app.ts` の 11 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403）。base 側も同じファイルを使い、`@kivin/*` だけを base の worktree に向けます。
+- **in-process（ブロッキング）**: base と current の 2 つのアプリを 1 プロセスに読み込み、短い計測ブロックを A→B / B→A と交互に回して、隣り合うペアの比を取ります（`scripts/perf/paired.ts`）。CPU クロックや他プロセスの影響が両側に等しく乗るので、2 コアの共有 VM でも同一コード同士の差は ±1% 程度に収まります。
+- **判定**:
+  - いずれかのシナリオで中央値が **4% 以上** 遅く、かつ bootstrap 95% 信頼区間が全体として 1 を下回る。疑わしいシナリオは 2 倍のラウンドで再計測し、それでも該当する場合のみ失敗にします。
+  - 全シナリオの幾何平均が **1.5% 以上** 遅く、同じく信頼区間が 1 を下回る。
+  - compiled binary のサイズが **5% 以上** 増える、または起動時間が 10ms かつ 25% 以上悪化する。
+- **HTTP（参考値）**: 2 つの compiled binary を同時に起動し、load client がブロックを交互に流します。client とサーバーが CPU を取り合うためノイズが大きく（同一コードでも ±10〜20%）、10% 超の明確な低下は警告として表示しますがブロックはしません。
+- **検出力の確認**: リクエスト経路に約 3% の処理を足すと幾何平均で検出され、同一コード同士の比較では誤検出しないことを確認しています。閾値は `PERF_SCENARIO_THRESHOLD` / `PERF_GEOMEAN_THRESHOLD` / `PERF_SIZE_THRESHOLD` で調整できます。
+
+Hono / Elysia との比較（`bun run perf:check`）は CI 上で参考として実行します（`continue-on-error`）。
+
 ## Commands
 
 ```bash

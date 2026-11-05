@@ -33,6 +33,7 @@
     "inspect:routes": "bun run packages/cli/src/bin.ts inspect routes --entry examples/basic/src/app.ts",
     "inspect:modules": "bun run packages/cli/src/bin.ts inspect modules --entry examples/basic/src/app.ts",
     "perf:check": "bun run scripts/perf-gate.ts",
+    "perf:regression": "bun run scripts/perf-regression.ts",
     "release:check": "bun run check && bun test && bun run example:smoke",
     "test": "bun test",
     "example:build": "bun run generate && bun build examples/basic/src/main.ts --compile --outfile examples/basic/bin/basic-app",
