@@ -122,7 +122,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ### Validation schemas
 
-`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`。
+`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
 
 ### OpenAPI metadata
 

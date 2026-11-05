@@ -131,16 +131,31 @@ events({ context }: RouteInput) {
 
 ## multipart / form
 
+`@Consumes('multipart/form-data')`（または `'application/x-www-form-urlencoded'`）を付けると、ボディをフォームとして読み、`@UseBodySchema` で検証したうえで入力オブジェクトの `body` に渡します。
+
 ```ts
-@Post('/avatar')
-async upload({ context }: RouteInput) {
-  const form = await context.form(); // { name: string, avatar: File, tag: string[] ... }
-  const input = v.parse(AvatarSchema, form);
-  // ...
+export const AvatarUpload = v.object({
+  avatar: v.pipe(v.file(), v.mimeType(['image/png', 'image/jpeg']), v.maxSize(1024 * 1024)),
+  alt: v.optional(v.string()),
+});
+
+@Put('/:id/avatar')
+@Consumes('multipart/form-data')
+@UseParamSchema(UserIdParams)
+@UseBodySchema(AvatarUpload)
+uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: typeof AvatarUpload }>) {
+  return { id: params.id, filename: body.avatar.name, size: body.avatar.size };
 }
 ```
 
-`context.formData()` は生の `FormData` を返します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。入力オブジェクトの `body` で multipart を直接受ける形と、OpenAPI の multipart 記述は今後の課題です。
+- フィールドは文字列か `File` になり、同じ名前が複数あれば配列になります（`v.array(v.string())` などで受けます）
+- フォーム以外の Content-Type は `415`、壊れたボディは `400`、schema 違反は通常どおり `400 body validation failed`
+- ガード・ミドルウェア・フィルタ・CORS は JSON ルートと同じ順序で効きます（ボディを読むのはガードの後）
+- OpenAPI の `requestBody` は `multipart/form-data` で出力され、`v.file()` / `v.blob()` は `{ type: 'string', format: 'binary' }` になります
+- 生成クライアントは plain object を `FormData` に変換して送ります（`File` / `Blob` はそのまま、配列は同名フィールドを複数）。`FormData` を直接渡すこともできます
+- `@Consumes` のない JSON ルートには一切コストがかかりません
+
+`context.formData()` / `context.form()` は従来どおり使え、`@Consumes` ルートでも `body` と同じ解析結果を共有します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。
 
 ## Graceful shutdown
 

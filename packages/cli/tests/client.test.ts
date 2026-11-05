@@ -38,6 +38,13 @@ describe('generated client', () => {
     expect(importLines.every((line) => line.startsWith('import type '))).toBe(true);
   });
 
+  test('multipart routes send FormData with files', async () => {
+    const avatar = new File([new Uint8Array([137, 80, 78, 71])], 'me.png', { type: 'image/png' });
+    const stored = await client.users.uploadAvatar({ params: { id: '1' }, body: { avatar, alt: 'me' } });
+    expect(stored).toEqual({ userId: '1', filename: 'me.png', type: 'image/png', size: 4, alt: 'me' });
+    expect(seenRequests.at(-1)!.headers.get('content-type')).toStartWith('multipart/form-data; boundary=');
+  });
+
   test('calls routes with query, params and body and returns parsed JSON', async () => {
     const users = await client.users.list({ query: { search: 'ada' } });
     expect(users.map((user) => user.name)).toEqual(['Ada Lovelace']);

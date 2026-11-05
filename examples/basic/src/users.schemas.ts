@@ -31,6 +31,19 @@ export const UserSearchQuerySchema = v.object({
   search: v.optional(v.string()),
 });
 
+export const AvatarUploadSchema = v.object({
+  avatar: v.pipe(v.file(), v.mimeType(['image/png', 'image/jpeg']), v.maxSize(1024 * 1024)),
+  alt: v.optional(v.string()),
+});
+
+export const AvatarSchema = v.object({
+  userId: v.string(),
+  filename: v.string(),
+  type: v.string(),
+  size: v.number(),
+  alt: v.nullable(v.string()),
+});
+
 export const ErrorSchema = v.object({
   message: v.string(),
 });

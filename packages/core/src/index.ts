@@ -33,7 +33,7 @@ export {
     setControllerMetadata,
     setInjectableMetadata,
     setModuleDecoratorMetadata,
-    setRouteMetadata, updateRouteDocs, updateRouteEnhancers, type AppDefinition, type AppEnhancerMetadata, type AppOpenApiConfig, type ClassProvider,
+    setRouteMetadata, updateRouteDocs, updateRouteEnhancers, type AppDefinition, type AppEnhancerMetadata, type AppOpenApiConfig, type BodyMediaType, type ClassProvider,
     type ContainerLike,
     type ControllerMetadata,
     type FactoryProvider,

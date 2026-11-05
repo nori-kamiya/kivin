@@ -24,12 +24,19 @@ export interface RouteResponseMetadata {
   schema?: unknown;
 }
 
+export type BodyMediaType = 'application/json' | 'multipart/form-data' | 'application/x-www-form-urlencoded';
+
 export interface RouteDocsMetadata {
   summary?: string;
   description?: string;
   operationId?: string;
   tags: string[];
   bodySchema?: unknown;
+  /**
+   * Request body media type (`@Consumes`). Form types make the route read the body as `FormData`,
+   * turned into an object (strings and `File`s, repeated fields as arrays) before validation.
+   */
+  consumes?: BodyMediaType;
   querySchema?: unknown;
   paramSchema?: unknown;
   security: RouteSecurityRequirement[];

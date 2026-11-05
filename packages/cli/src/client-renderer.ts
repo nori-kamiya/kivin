@@ -59,7 +59,7 @@ export function renderClient(controllers: AstControllerNode[], outFile: string) 
       operations.push(`  ${JSON.stringify(operationKey)}: { method: ${JSON.stringify(route.method)}; path: ${JSON.stringify(fullPath)}; input: ${inputType}; output: ${output} };`);
       group.set(
         methodName,
-        `${JSON.stringify(methodName)}: (...[input]: OptionalIfEmpty<Operations[${JSON.stringify(operationKey)}]['input']>) => call<Operations[${JSON.stringify(operationKey)}]['output']>(${JSON.stringify(route.method)}, ${JSON.stringify(fullPath)}, input)`,
+        `${JSON.stringify(methodName)}: (...[input]: OptionalIfEmpty<Operations[${JSON.stringify(operationKey)}]['input']>) => call<Operations[${JSON.stringify(operationKey)}]['output']>(${JSON.stringify(route.method)}, ${JSON.stringify(fullPath)}, input${isFormRoute(route) ? ', true' : ''})`,
       );
     }
   }
@@ -111,6 +111,7 @@ export function createClient(options: ClientOptions) {
     method: string,
     path: string,
     input: { params?: Record<string, unknown>; query?: Record<string, unknown>; body?: unknown; headers?: HeadersInit; signal?: AbortSignal } = {},
+    form = false,
   ): Promise<TOutput> {
     const resolvedPath = path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => {
       const value = input.params?.[name];
@@ -132,14 +133,16 @@ export function createClient(options: ClientOptions) {
     const headers = new Headers(typeof options.headers === 'function' ? await options.headers() : options.headers);
     new Headers(input.headers).forEach((value, key) => headers.set(key, value));
     const hasBody = input.body !== undefined;
-    if (hasBody && !headers.has('content-type')) {
+    // Form routes (@Consumes multipart / urlencoded) send FormData; fetch sets the multipart boundary.
+    const body = !hasBody ? undefined : form ? toFormBody(input.body) : JSON.stringify(input.body);
+    if (hasBody && !form && !headers.has('content-type')) {
       headers.set('content-type', 'application/json');
     }
 
     const response = await transport(new Request(\`\${baseUrl}\${resolvedPath}\${queryString ? \`?\${queryString}\` : ''}\`, {
       method,
       headers,
-      ...(hasBody ? { body: JSON.stringify(input.body) } : {}),
+      ...(body !== undefined ? { body } : {}),
       ...(input.signal ? { signal: input.signal } : {}),
     }));
 
@@ -157,8 +160,28 @@ ${groupEntries.join('\n')}
   };
 }
 
+function toFormBody(value: unknown): BodyInit {
+  if (value instanceof FormData || value instanceof URLSearchParams) {
+    return value;
+  }
+  const formData = new FormData();
+  for (const [key, field] of Object.entries((value ?? {}) as Record<string, unknown>)) {
+    for (const item of Array.isArray(field) ? field : [field]) {
+      if (item === undefined || item === null) {
+        continue;
+      }
+      formData.append(key, item instanceof Blob ? item : String(item));
+    }
+  }
+  return formData;
+}
+
 export type KivinClient = ReturnType<typeof createClient>;
 `;
+
+  function isFormRoute(route: AstRouteNode) {
+    return route.consumes === 'multipart/form-data' || route.consumes === 'application/x-www-form-urlencoded';
+  }
 
   function paramsType(route: AstRouteNode, fullPath: string, schema: string | undefined, infer: string) {
     if (schema) {

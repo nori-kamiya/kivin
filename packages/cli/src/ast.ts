@@ -82,6 +82,8 @@ export interface AstRouteNode {
   operationId?: string;
   tags: string[];
   bodySchema?: AstExpressionRef;
+  /** `@Consumes(...)` request body media type. */
+  consumes?: BodyMediaType;
   querySchema?: AstExpressionRef;
   paramSchema?: AstExpressionRef;
   security: Array<{ scheme: string; scopes: string[] }>;
@@ -93,6 +95,8 @@ export interface AstRouteNode {
 }
 
 export type InputField = 'params' | 'query' | 'body' | 'context';
+export type BodyMediaType = 'application/json' | 'multipart/form-data' | 'application/x-www-form-urlencoded';
+const BODY_MEDIA_TYPES: readonly BodyMediaType[] = ['application/json', 'multipart/form-data', 'application/x-www-form-urlencoded'];
 export type RouteParameterDescriptor = { index: number; source: 'context' | 'path' | 'query' | 'body' | 'input'; name?: string; fields?: InputField[] };
 const INPUT_FIELDS: readonly InputField[] = ['params', 'query', 'body', 'context'];
 
@@ -348,6 +352,10 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
     : undefined;
   const description = readStringDecoratorArgument(decorators, 'Description', filePath);
   const operationId = readStringDecoratorArgument(decorators, 'OperationId', filePath);
+  const consumes = readStringDecoratorArgument(decorators, 'Consumes', filePath);
+  if (consumes !== undefined && !BODY_MEDIA_TYPES.includes(consumes as BodyMediaType)) {
+    throw new Error(`${filePath}: @Consumes(${JSON.stringify(consumes)}) must be one of ${BODY_MEDIA_TYPES.join(', ')}`);
+  }
   const bodySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseBodySchema');
   const querySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseQuerySchema');
   const paramSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseParamSchema');
@@ -368,6 +376,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
     ...(operationId ? { operationId } : {}),
     tags,
     ...(bodySchema ? { bodySchema } : {}),
+    ...(consumes ? { consumes: consumes as BodyMediaType } : {}),
     ...(querySchema ? { querySchema } : {}),
     ...(paramSchema ? { paramSchema } : {}),
     security,
@@ -1071,6 +1080,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
     route.operationId ? `operationId: ${JSON.stringify(route.operationId)}` : undefined,
     `tags: ${renderStringArray([...new Set([...controller.tags, ...route.tags])])}`,
     route.bodySchema ? `bodySchema: ${renderExpression(controller.filePath, route.bodySchema, renderer)}` : undefined,
+    route.consumes ? `consumes: ${JSON.stringify(route.consumes)}` : undefined,
     route.querySchema ? `querySchema: ${renderExpression(controller.filePath, route.querySchema, renderer)}` : undefined,
     route.paramSchema ? `paramSchema: ${renderExpression(controller.filePath, route.paramSchema, renderer)}` : undefined,
     `security: ${renderSecurity(route.security)}`,
