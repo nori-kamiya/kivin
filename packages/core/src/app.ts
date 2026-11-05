@@ -43,6 +43,19 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     effectiveGlobalMiddleware = [CorsMiddleware, ...globalMiddlewareTokens];
   }
 
+  // Two routes for the same method and path shape would be resolved differently by `fetch` (first
+  // match) and Bun's native routes (last registration), so they are rejected up front.
+  const routeShapes = new Map<string, (typeof manifest.routes)[number]>();
+  for (const route of manifest.routes) {
+    const shape = `${route.method} ${normalizeRoutePath(route.fullPath).replace(/:[^/]+/g, ':')}`;
+    const existing = routeShapes.get(shape);
+    if (existing) {
+      const describeRoute = (candidate: typeof route) => `${candidate.method} ${candidate.fullPath} (${candidate.controller.name}.${candidate.methodName})`;
+      throw new Error(`Duplicate route: ${describeRoute(route)} conflicts with ${describeRoute(existing)}`);
+    }
+    routeShapes.set(shape, route);
+  }
+
   for (const route of manifest.routes) {
     const compiledRoute = compileRouteExecutor({
       container,

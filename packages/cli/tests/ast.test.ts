@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from '../src/ast';
 import { generateArtifacts, inspectModules, inspectRoutes, loadAppDefinition } from '../src/index';
+import { toOpenApiPath } from '@kivin/openapi';
 
 const testsDir = import.meta.dir;
 const repoRoot = resolve(testsDir, '../../..');
@@ -145,9 +146,9 @@ describe('generateArtifacts', () => {
         name: 'x-api-key',
       },
     });
-    expect(openApi.paths['/contracts/']?.get?.tags).toEqual(['Contracts']);
-    expect(openApi.paths['/contracts/:id']?.post?.tags).toEqual(['Contracts', 'Mutations']);
-    expect(openApi.paths['/contracts/:id']?.delete?.responses?.['204']).toEqual({
+    expect(openApi.paths['/contracts']?.get?.tags).toEqual(['Contracts']);
+    expect(openApi.paths['/contracts/{id}']?.post?.tags).toEqual(['Contracts', 'Mutations']);
+    expect(openApi.paths['/contracts/{id}']?.delete?.responses?.['204']).toEqual({
       description: 'Deleted',
     });
   });
@@ -323,7 +324,7 @@ async function expectOpenApiContractAlignment(input: { entry: string; outDir: st
   const openApi = JSON.parse(await readFile(result.openApiPath, 'utf8')) as OpenApiDocument;
 
   for (const route of manifest.routes) {
-    const operation = openApi.paths[route.fullPath]?.[route.method.toLowerCase()];
+    const operation = openApi.paths[toOpenApiPath(route.fullPath)]?.[route.method.toLowerCase()];
     expect(operation).toBeDefined();
     expect(operation?.operationId).toBe(route.docs.operationId);
     expect(operation?.summary).toBe(route.docs.summary);
