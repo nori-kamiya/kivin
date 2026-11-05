@@ -151,5 +151,11 @@ function decodeQueryComponent(value: string) {
     return value;
   }
 
-  return decodeURIComponent(hasPlus ? value.replace(/\+/g, ' ') : value);
+  const spaced = hasPlus ? value.replace(/\+/g, ' ') : value;
+  try {
+    return decodeURIComponent(spaced);
+  } catch {
+    // Malformed percent-encoding keeps the raw text (a client error must not become a 500).
+    return spaced;
+  }
 }
