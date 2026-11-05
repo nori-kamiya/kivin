@@ -3,7 +3,7 @@ export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, M
 
 import type { Server } from 'bun';
 import { Container } from './container';
-import { createCorsHandler, createCorsMiddleware } from './cors';
+import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
 import type { AppDefinition } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
@@ -53,8 +53,9 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       route,
     });
 
-    compiledRoutes.push(compiledRoute);
-    router.register(route.method, route.fullPath, compiledRoute);
+    const servedRoute = cors ? withCorsOnEveryResponse(compiledRoute, cors) : compiledRoute;
+    compiledRoutes.push(servedRoute);
+    router.register(route.method, route.fullPath, servedRoute);
   }
 
   const exactRoutes = createExactRouteLookup(compiledRoutes);
@@ -219,4 +220,17 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
   };
 
   return app;
+}
+
+/**
+ * Route-level CORS: parameter / query / body validation errors, guard rejections and errors handled by
+ * filters are answered before or outside the CORS middleware, so the headers are ensured here too (a
+ * browser cannot read an error response that lacks them).
+ */
+function withCorsOnEveryResponse<TSchema>(compiled: CompiledRoute<TSchema>, cors: CorsHandler): CompiledRoute<TSchema> {
+  const execute = compiled.execute;
+  return {
+    ...compiled,
+    execute: (request, params) => execute(request, params).then((response) => cors.ensure(request, response)),
+  };
 }

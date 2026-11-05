@@ -2799,17 +2799,19 @@ describe('createApp pipeline', () => {
     expect(await response.json()).toEqual({ message: 'Not Found' });
   });
 
-  test('malformed JSON body returns 500 because JSON parse fails before validation', async () => {
-    const response = await app.fetch(new Request('http://localhost/test/echo', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: '{invalid json',
-    }));
+  test('malformed JSON body is a 400 client error, not a 500', async () => {
+    for (const body of ['{invalid json', '']) {
+      const response = await app.fetch(new Request('http://localhost/test/echo', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      }));
 
-    expect(response.status).toBe(500);
-    expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
-    const payload = await response.json();
-    expect(payload.message).toBe('Internal Server Error');
+      expect(response.status).toBe(400);
+      expect(response.headers.get('content-type')).toBe('application/json;charset=utf-8');
+      const payload = await response.json();
+      expect(payload.message).toBe('Invalid JSON body');
+    }
   });
 
   test('405 Method Not Allowed on dynamic routes includes allowed methods', async () => {

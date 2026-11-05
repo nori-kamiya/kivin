@@ -3,6 +3,7 @@ import type { ContainerLike } from './metadata';
 import { createEventStream, type EventStreamHandler, type EventStreamOptions } from './sse';
 import { readNullableQueryParam } from './request-url';
 import { formDataToObject } from './runtime/form-body';
+import { rethrowJsonBodyError } from './runtime/utils';
 import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
 import type { Token } from './types';
 
@@ -424,7 +425,11 @@ export class RequestContext {
 
   async jsonBody<T>(): Promise<T> {
     if (!this.bodyLoaded) {
-      this.bodyCache = await this.request.json();
+      try {
+        this.bodyCache = await this.request.json();
+      } catch (error) {
+        rethrowJsonBodyError(error);
+      }
       this.bodyLoaded = true;
     }
 

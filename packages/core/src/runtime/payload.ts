@@ -2,7 +2,7 @@
 import type { AppDefinition } from '../metadata';
 import { readQueryObject } from '../request-url';
 import type { CompiledBodyPayloadFromJsonLoaderResolver, CompiledBodyPayloadResolver, CompiledParamPayloadResolver, CompiledQueryPayloadResolver, DeferredPayloadLoader, DeferredPayloadLoaderFactory, ManifestRoute } from './types';
-import { isPromiseLike, mapLoadedValue } from './utils';
+import { isPromiseLike, mapLoadedValue, rethrowJsonBodyError } from './utils';
 
 export function validateOrThrow<TSchema>(
   schemaAdapter: AppDefinition<TSchema>['schemaAdapter'],
@@ -87,10 +87,10 @@ export function createBodyPayloadResolver<TSchema>(
   if (route.docs.bodySchema) {
     const bodySchema = route.docs.bodySchema;
     const validateBody = createSchemaValidator(definition, bodySchema, 'body');
-    return (request) => mapLoadedValue(request.json(), validateBody);
+    return (request) => request.json().then(validateBody, rethrowJsonBodyError);
   }
 
-  return (request) => request.json();
+  return (request) => request.json().then(undefined, rethrowJsonBodyError);
 }
 
 export function createDeferredPayloadLoader<T>(load: () => Promise<T> | T, onResolved?: (value: T) => void): DeferredPayloadLoader<T> {
