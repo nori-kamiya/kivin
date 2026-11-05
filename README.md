@@ -210,7 +210,7 @@ bun run bench
 
 `bun run bench` は compiled binary の `kivin` / `hono` / `elysia` を同一 workload で比較し、startup、binary size、GET/PATCH の throughput と latency を出します。
 
-full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:stack` を基準にするのが安全です。手元の `10` iteration sample では、`kivin` は full stack で `Hono` を安定して上回り、`Elysia` とも main app-like routes では strongest tier を維持しています。canonical focused CRUD baseline でも `patch` は strongest tier、`delete` も strongest tier ですが、`compiled create` はまだ `Hono` / `Elysia` が上です。今の認識としては「最強クラス」であって、「全 path で絶対最速」ではありません（数値は環境・バージョンに依存するため、各自の環境で再計測することを推奨します）。
+full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:stack` を基準にするのが安全です。CI のペア計測（`bun run perf:check`、2026-11）では、`kivin` は app-like な全 workload で `Hono` を上回り（105〜139%）、`Elysia` とは 97〜108% で拮抗しています（guard / validation を含む create / patch / delete は同等以上、静的な health と query validation はわずかに下）。詳細は [docs/performance.md](docs/performance.md#latest-paired-comparison-ci-2026-11-05)。数値は環境・バージョンに依存するため、各自の環境で再計測することを推奨します。
 
 `bun run inspect:routes` は route ごとの handler に加えて controller scope、guard/middleware/filter の scope、executor mode (`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`) も表示します。
 

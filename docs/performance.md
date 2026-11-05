@@ -148,7 +148,26 @@ BENCH_ITERATIONS=10 bun run bench:stack > .bench/stack-full-$(date +%Y%m%d%H).tx
 BENCH_ITERATIONS=10 bun run bench:stack:delete > .bench/stack-delete-$(date +%Y%m%d%H).txt
 ```
 
-## Current 10-iteration baseline
+## Latest paired comparison (CI, 2026-11-05)
+
+`bun run perf:check` の CI 結果（GitHub Actions ランナー、compiled binary 3 つを同時起動し Latin square でペア計測、中央値と bootstrap 95% CI）。PR #18 時点（AOT executor、`Response.json`、クエリ解析の高速化、sync guard / middleware の microtask 削減を含む）:
+
+| workload | kivin req/s | hono req/s | elysia req/s | kivin / hono (95% CI) | kivin / elysia (95% CI) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| health | 81,846 | 75,778 | 85,894 | 108.8% (103.7% … 116.0%) | 97.0% (94.2% … 101.2%) |
+| docs-html | 82,626 | 78,516 | 85,014 | 104.9% (101.4% … 108.4%) | 98.1% (96.5% … 101.4%) |
+| read-users (query validation) | 79,875 | 73,445 | 84,397 | 105.1% (99.5% … 117.5%) | 97.4% (87.3% … 100.4%) |
+| create-user (guard + body validation) | 66,294 | 48,873 | 63,899 | 138.9% (124.4% … 166.8%) | 103.7% (98.2% … 109.6%) |
+| patch-user (guard + body validation) | 73,037 | 59,410 | 69,296 | 125.3% (102.0% … 132.8%) | 108.5% (96.0% … 113.2%) |
+| delete-user (guard) | 80,303 | 66,819 | 78,433 | 114.1% (108.8% … 126.8%) | 102.2% (98.2% … 105.1%) |
+
+- すべての workload で Hono を上回る（105〜139%）
+- Elysia とは 97〜108% で拮抗。guard / validation を含む書き込み系（create / patch / delete）は同等以上、静的な health / docs と query validation はわずかに下（CI は 100% をまたぐか近い）
+- 同じランナーでも回ごとに数 % 振れるため、個々の PR の判断には `perf:regression`（kivin 自身の base 比較、in-process ペア計測）を使う
+
+以下は 2026-03 時点の旧計測（`bench:stack` の非ペア計測）で、経緯として残しています。
+
+## Previous 10-iteration baseline (2026-03)
 
 2026-03-12 の `10` iteration full stack baseline は [stack-full-20260312k.txt](../.bench/stack-full-20260312k.txt) です。mean / median の両方で傾向はほぼ同じでした。
 
