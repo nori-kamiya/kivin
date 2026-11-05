@@ -32,6 +32,8 @@
 
 ### Fixed
 
+- `@kivin/core`: WebSocket の `upgrade` の例外が Bun の既定エラーページ（development ではスタックトレースを表示）まで漏れていた問題と、`open` / `message` / `close` / `drain` の例外が未処理 reject になっていた（プロセスの終了コードが 1 になる）問題を修正。`upgrade` は 500 を返し、ハンドラの例外は新しい `error` フックか `console.error` に渡す。`open` の失敗時は 1011 で閉じる。`listen()` に Bun.serve の `error` ハンドラを既定で設定した
+
 - `@kivin/openapi`: OpenAPI の `paths` がルート定義のまま `/users/:id` になっており、OpenAPI のパステンプレート（`/users/{id}`）として解釈されなかった（Swagger UI の Try it out・コード生成・バリデータでパスパラメータが置換されない／不整合エラー）問題を修正。末尾スラッシュも落とす（`/users/` → `/users`）
 - `@kivin/openapi`: param schema の無いルートでパス変数が `parameters` に宣言されず、`@ApiResponse` の無いルートが空の `responses` になって OpenAPI として不正だった問題を修正（パス変数は必須の string として補い、レスポンス未宣言なら `200` を出す）
 - `@kivin/core`: 同じメソッドと形のパスを持つルート（`GET /x` と `GET /x/`、`/u/:id` と `/u/:name` など）が黙って両方登録され、`app.fetch` と Bun の native routes とで別のハンドラが選ばれていた問題を修正。起動時に両方のルートを示すエラーにする
