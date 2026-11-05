@@ -38,7 +38,7 @@ export function readQueryObject(url: string) {
     return undefined;
   }
 
-  const result = Object.create(null) as Record<string, string>;
+  const result = Object.create(null) as Record<string, string | string[]>;
   let segmentStart = queryStart + 1;
   while (segmentStart < end) {
     let segmentEnd = url.indexOf('&', segmentStart);
@@ -53,9 +53,11 @@ export function readQueryObject(url: string) {
       }
 
       if (separator !== segmentStart) {
-        result[decodeQueryComponent(url.slice(segmentStart, separator))] = separator === segmentEnd
-          ? ''
-          : decodeQueryComponent(url.slice(separator + 1, segmentEnd));
+        const key = decodeQueryComponent(url.slice(segmentStart, separator));
+        const value = separator === segmentEnd ? '' : decodeQueryComponent(url.slice(separator + 1, segmentEnd));
+        const existing = result[key];
+        // A repeated key (`?tag=a&tag=b`, as the generated client sends arrays) becomes an array.
+        result[key] = existing === undefined ? value : typeof existing === 'string' ? [existing, value] : (existing.push(value), existing);
       }
     }
 
