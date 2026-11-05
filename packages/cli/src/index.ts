@@ -52,15 +52,18 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   const outDir = resolve(input.outDir);
   const manifestPath = resolve(outDir, 'manifest.ts');
   const contractsPath = resolve(outDir, 'contracts.ts');
+  const clientPath = resolve(outDir, 'client.ts');
 
   await mkdir(outDir, { recursive: true });
   const generated = await buildManifestSourceFromAst({
     entry: input.entry,
     outFile: manifestPath,
     contractsOutFile: contractsPath,
+    clientOutFile: clientPath,
   });
   await writeFile(manifestPath, generated.source, 'utf8');
   await writeFile(contractsPath, generated.contractsSource ?? 'export {};\n', 'utf8');
+  await writeFile(clientPath, generated.clientSource ?? 'export {};\n', 'utf8');
 
   const appDefinition = await loadAppDefinition(input.entry);
   const manifest = await loadManifest(manifestPath);
@@ -79,6 +82,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   return {
     manifestPath,
     contractsPath,
+    clientPath,
     openApiPath: resolve(outDir, 'openapi.json'),
   };
 }
