@@ -31,6 +31,10 @@ export const UserSearchQuerySchema = v.object({
   search: v.optional(v.string()),
 });
 
+export const CurrentUserHeadersSchema = v.object({
+  'x-user-id': v.pipe(v.string(), v.minLength(1)),
+});
+
 export const AvatarUploadSchema = v.object({
   avatar: v.pipe(v.file(), v.mimeType(['image/png', 'image/jpeg']), v.maxSize(1024 * 1024)),
   alt: v.optional(v.string()),

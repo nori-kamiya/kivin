@@ -26,6 +26,7 @@
 - `@kivin/jwt`: JWKS 対応。`createRemoteJwks(url)`（TTL / `Cache-Control` キャッシュ、未知の `kid` での rate limit 付き再取得、取得失敗時は直前の鍵を継続）と `createLocalJwks`。`key` に鍵リゾルバ関数を渡せるようにし、JWKS が取得できない場合ガードは 503 を返す
 - `@kivin/decorators`: `@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded')` で入力オブジェクトの `body` にフォーム（`File` を含む）を検証して渡せるようにした。OpenAPI は該当 media type で出力し、生成クライアントは `FormData` で送信する
 - `@kivin/core`: 起動時フック `onModuleInit` / `onApplicationBootstrap` と `app.init()` を追加。フックを持つ provider があるのに `init()` 前に `listen()` するとエラーにして、フックが黙って実行されないようにした。`createTestingApp().request()` は自動で `init()` する
+- `@kivin/cli`: 生成クライアントで `@UseHeaderSchema` のルートのヘッダ名と値を型付けした（`createClient({ headers })` で毎回送れるよう呼び出しごとには任意）。schema なしクエリの型を `string | string[] | undefined` にしてサーバ側と揃えた
 - `@kivin/decorators` / `@kivin/core`: `@UseHeaderSchema` と入力オブジェクトの `headers` を追加。リクエストヘッダ（小文字名）を検証・型付けしてハンドラに渡し、OpenAPI に `in: header` として出力する。`headers` を読まない・schema の無いルートには一切コストがかからない
 - `@kivin/valibot`: `v.file()` / `v.blob()` を OpenAPI で `{ type: 'string', format: 'binary' }` として出力
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
@@ -33,6 +34,7 @@
 ### Fixed
 
 - `@kivin/core`: WebSocket の `upgrade` の例外が Bun の既定エラーページ（development ではスタックトレースを表示）まで漏れていた問題と、`open` / `message` / `close` / `drain` の例外が未処理 reject になっていた（プロセスの終了コードが 1 になる）問題を修正。`upgrade` は 500 を返し、ハンドラの例外は新しい `error` フックか `console.error` に渡す。`open` の失敗時は 1011 で閉じる。`listen()` に Bun.serve の `error` ハンドラを既定で設定した
+- `@kivin/core`: `setCookie` / `serializeCookie` の `path` / `domain` / `sameSite` / `priority` に `;` や改行を含む値を渡すと、属性の注入（`path: '/; Domain=evil'`）やヘッダ分割ができた問題を修正。不正な値は `TypeError` にする
 
 - `@kivin/openapi`: OpenAPI の `paths` がルート定義のまま `/users/:id` になっており、OpenAPI のパステンプレート（`/users/{id}`）として解釈されなかった（Swagger UI の Try it out・コード生成・バリデータでパスパラメータが置換されない／不整合エラー）問題を修正。末尾スラッシュも落とす（`/users/` → `/users`）
 - `@kivin/openapi`: param schema の無いルートでパス変数が `parameters` に宣言されず、`@ApiResponse` の無いルートが空の `responses` になって OpenAPI として不正だった問題を修正（パス変数は必須の string として補い、レスポンス未宣言なら `200` を出す）

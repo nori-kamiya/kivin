@@ -62,9 +62,9 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
     parts.push(`Expires=${options.expires.toUTCString()}`);
   }
   if (options.domain) {
-    parts.push(`Domain=${options.domain}`);
+    parts.push(`Domain=${checkAttribute('domain', options.domain)}`);
   }
-  parts.push(`Path=${options.path ?? '/'}`);
+  parts.push(`Path=${checkAttribute('path', options.path ?? '/')}`);
   if (options.httpOnly) {
     parts.push('HttpOnly');
   }
@@ -72,12 +72,18 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
     parts.push('Secure');
   }
   if (options.sameSite) {
+    if (!SAME_SITE.has(options.sameSite)) {
+      throw new TypeError(`Invalid cookie sameSite: ${String(options.sameSite)}`);
+    }
     parts.push(`SameSite=${options.sameSite}`);
   }
   if (options.partitioned) {
     parts.push('Partitioned');
   }
   if (options.priority) {
+    if (!PRIORITY.has(options.priority)) {
+      throw new TypeError(`Invalid cookie priority: ${String(options.priority)}`);
+    }
     parts.push(`Priority=${options.priority}`);
   }
   return parts.join('; ');
@@ -86,6 +92,19 @@ export function serializeCookie(name: string, value: string, options: CookieOpti
 /** `Set-Cookie` value that deletes a cookie (same `path` / `domain` as when it was set). */
 export function serializeDeletedCookie(name: string, options: Pick<CookieOptions, 'domain' | 'path' | 'secure' | 'sameSite' | 'partitioned'> = {}) {
   return serializeCookie(name, '', { ...options, maxAge: 0, expires: new Date(0) });
+}
+
+const SAME_SITE = new Set(['Strict', 'Lax', 'None']);
+const PRIORITY = new Set(['Low', 'Medium', 'High']);
+// Visible ASCII except `;` (RFC 6265 path-value / domain): a `;` or a control character would let the
+// value add attributes (`path: '/; Domain=evil'`) or split the header.
+const ATTRIBUTE_VALUE = /^[\u0021-\u003A\u003C-\u007E]+$/;
+
+function checkAttribute(name: 'path' | 'domain', value: string) {
+  if (!ATTRIBUTE_VALUE.test(value)) {
+    throw new TypeError(`Invalid cookie ${name}: ${JSON.stringify(value)}`);
+  }
+  return value;
 }
 
 function safeDecode(value: string) {

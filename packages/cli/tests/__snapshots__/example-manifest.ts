@@ -2,7 +2,7 @@ import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivin/core';
 import { ApiKeyGuard } from '../../../../examples/basic/src/api-key.guard';
 import { UserNotFoundFilter } from '../../../../examples/basic/src/user-not-found.filter';
 import { UserController } from '../../../../examples/basic/src/users.controller';
-import { AvatarSchema, AvatarUploadSchema, CreateUserSchema, ErrorSchema, PatchUserSchema, ReplaceUserSchema, UserIdParamSchema, UserListSchema, UserSchema, UserSearchQuerySchema } from '../../../../examples/basic/src/users.schemas';
+import { AvatarSchema, AvatarUploadSchema, CreateUserSchema, CurrentUserHeadersSchema, ErrorSchema, PatchUserSchema, ReplaceUserSchema, UserIdParamSchema, UserListSchema, UserSchema, UserSearchQuerySchema } from '../../../../examples/basic/src/users.schemas';
 
 export const manifest: AppManifest = {
   routes: [
@@ -35,6 +35,41 @@ export const manifest: AppManifest = {
               });
             }
             const result = controller["list"]({ query: queryValue ?? {} } as never);
+            return rt.finish(rt.isThenable(result) ? await result : result, context);
+          } catch (error) {
+            return rt.handleError(error, context, request, params);
+          }
+        };
+      },
+    },
+    {
+      method: "GET",
+      fullPath: "/users/me",
+      controller: UserController,
+      methodName: "me",
+      parameters: [{ index: 0, source: "input", fields: ["headers"] }],
+      guards: [],
+      middleware: [],
+      filters: [UserNotFoundFilter],
+      docs: { summary: "Current user", description: "Returns the user named by the x-user-id header (validated by a header schema).", operationId: "users.me", tags: ["Users"], headerSchema: CurrentUserHeadersSchema, security: [], responses: [{ status: 200, description: "Current user", schema: UserSchema }, { status: 404, description: "User was not found", schema: ErrorSchema }] },
+      aot: (rt: AotRouteRuntime<UserController>) => {
+        const controller = rt.controller;
+        const hasGuards = rt.hasGuards;
+        const hasMiddleware = rt.hasMiddleware;
+        return async (request: Request, params: Record<string, string>) => {
+          let context: RequestContext | undefined;
+          try {
+            if (hasGuards) {
+              const guarded = rt.runGuards(request, params, context);
+              context = rt.isThenable(guarded) ? await guarded : guarded;
+            }
+            if (hasMiddleware) {
+              const ctx = (context ??= rt.createContext(request, params));
+              return await rt.runMiddleware(ctx, async () => {
+                return controller["me"]({ headers: rt.headers(params) } as never);
+              });
+            }
+            const result = controller["me"]({ headers: rt.headers(params) } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
           } catch (error) {
             return rt.handleError(error, context, request, params);

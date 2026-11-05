@@ -38,6 +38,13 @@ describe('generated client', () => {
     expect(importLines.every((line) => line.startsWith('import type '))).toBe(true);
   });
 
+  test('header-schema routes send the typed headers', async () => {
+    expect(await client.users.me({ headers: { 'x-user-id': '1' } })).toMatchObject({ id: '1' });
+    expect(seenRequests.at(-1)!.headers.get('x-user-id')).toBe('1');
+    const missing = await client.users.me().catch((error: unknown) => error);
+    expect((missing as { status: number }).status).toBe(400);
+  });
+
   test('multipart routes send FormData with files', async () => {
     const avatar = new File([new Uint8Array([137, 80, 78, 71])], 'me.png', { type: 'image/png' });
     const stored = await client.users.uploadAvatar({ params: { id: '1' }, body: { avatar, alt: 'me' } });
