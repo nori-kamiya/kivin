@@ -94,6 +94,10 @@ try {
   const openApiDocument = await openApiResponse.json() as { openapi?: string };
   assert(openApiDocument.openapi === '3.1.0', 'OpenAPI document did not expose version 3.1.0');
 
+  const docsResponse = await fetch(`${baseUrl}/docs`);
+  assert(docsResponse.status === 200, `/docs returned ${docsResponse.status}`);
+  assert((docsResponse.headers.get('content-type') ?? '').startsWith('text/html'), '/docs did not return HTML');
+
   console.log(`example smoke passed on ${baseUrl}`);
 } catch (error) {
   const stdout = await streamToText(processHandle.stdout);

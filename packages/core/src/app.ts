@@ -41,8 +41,8 @@ interface CompiledDependencyList<T> {
   >;
 }
 
-type BunRouteHandler = (request: Request & { params?: Record<string, string> }) => Response | Promise<Response>;
-type BunRouteDefinition = Response | BunRouteHandler | Partial<Record<HttpMethod | 'HEAD' | 'OPTIONS', Response | BunRouteHandler>>;
+export type BunRouteHandler = (request: Request & { params?: Record<string, string> }) => Response | Promise<Response>;
+export type BunRouteDefinition = Response | BunRouteHandler | Partial<Record<HttpMethod | 'HEAD' | 'OPTIONS', Response | BunRouteHandler>>;
 
 interface CompiledArgumentInput {
   bodyValue: unknown;
@@ -625,14 +625,35 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
 
   return {
     fetch,
-    listen(port: number) {
+    /**
+     * Starts `Bun.serve` with every manifest route compiled into Bun's native `routes` table.
+     * `options.routes` adds extra native routes (for example a static `/openapi.json`); a path that
+     * collides with a manifest route is rejected so app routes can never be shadowed silently.
+     */
+    listen(options: number | ListenOptions) {
+      const { routes: extraRoutes = {}, ...serveOptions } = typeof options === 'number' ? { port: options } : options;
+      const routes = createBunServeRoutes(compiledRoutes);
+      for (const [path, definition] of Object.entries(extraRoutes)) {
+        if (path in routes) {
+          throw new Error(`listen({ routes }) path ${path} collides with an application route`);
+        }
+        routes[path] = definition;
+      }
+
       return Bun.serve({
-        port,
-        routes: createBunServeRoutes(compiledRoutes),
+        ...serveOptions,
+        routes,
         fetch,
       });
     },
   };
+}
+
+export interface ListenOptions {
+  port?: number;
+  hostname?: string;
+  /** Extra native Bun routes served alongside the application routes. */
+  routes?: Record<string, BunRouteDefinition>;
 }
 
 function createBunServeRoutes<TSchema>(compiledRoutes: CompiledRoute<TSchema>[]): Record<string, BunRouteDefinition> {
