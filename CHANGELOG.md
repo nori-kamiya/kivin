@@ -45,6 +45,8 @@
 
 ### Changed
 
+- `@kivin/core`: クエリで同じキーが繰り返された場合（`?tag=a&tag=b`）に最後の値だけを残していたのを、配列にするようにした（Express / Fastify と同じ）。生成クライアントは配列のクエリを繰り返しキーで送るため、これまでは `v.array()` の schema が通らず、schema なしでは最後の値しか届かなかった。schema なしの `query` の型は `Record<string, string | string[] | undefined>` になる
+
 - `@kivin/core`: 不正な JSON ボディ（空ボディを含む）を 500 ではなく `400 { message: 'Invalid JSON body' }` で返すようにした（クライアントの誤りでありサーバーエラーではないため。フィルタで `HttpError` として扱える）
 
 - `@kivin/core`: 引数を取らない GET ルートに global の guard / middleware がある場合も、ハンドラの結果を起動時に一度だけ計算して再利用するようにした（pipeline 自体は毎回実行）。global middleware 付きの `/health` 相当で約 +20%

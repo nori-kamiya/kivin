@@ -5,7 +5,8 @@ import { normalizeRoutePath } from '../src/runtime/routing';
 describe('readQueryObject', () => {
   const cases: Array<[string, Record<string, string> | undefined]> = [
     ['http://x/u?search=Ada', { search: 'Ada' }],
-    ['http://x/u?a=1&b=2&a=3', { a: '3', b: '2' }],
+    ['http://x/u?a=1&b=2&a=3', { a: ['1', '3'], b: '2' }],
+    ['http://x/u?t=a&t=b&t=c', { t: ['a', 'b', 'c'] }],
     ['http://x/u?', undefined],
     ['http://x/u?#a=1', undefined],
     ['http://x/u', undefined],

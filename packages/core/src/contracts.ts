@@ -61,7 +61,8 @@ export interface RouteInputSpec {
  */
 export interface RouteInput<TSpec extends RouteInputSpec = {}> {
   params: TSpec extends { params: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string>;
-  query: TSpec extends { query: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string | undefined>;
+  /** Without a schema: strings, or an array of strings for a repeated key (`?tag=a&tag=b`). */
+  query: TSpec extends { query: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string | string[] | undefined>;
   body: TSpec extends { body: infer TSchema } ? InferSchemaOutput<TSchema> : unknown;
   /** Request headers with lower-case names; validated and typed by `@UseHeaderSchema`. */
   headers: TSpec extends { headers: infer TSchema } ? InferSchemaOutput<TSchema> : Record<string, string | undefined>;
