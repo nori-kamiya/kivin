@@ -76,3 +76,4 @@ export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, 
 
 export { toValidationIssues, type ValidationIssue } from './runtime/payload';
 export { markErrorReported } from './runtime/results';
+export { serveStatic, type ServeStaticOptions } from './static';
