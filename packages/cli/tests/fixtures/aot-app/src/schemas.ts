@@ -5,4 +5,5 @@ export const IdParams = v.object({ id: v.pipe(v.string(), v.regex(/^\d+$/), v.tr
 export const ItemInput = v.object({ name: v.pipe(v.string(), v.minLength(1)), price: v.number() });
 export const ItemPatch = v.object({ name: v.optional(v.string()), price: v.optional(v.number()) });
 export const Item = v.object({ id: v.number(), name: v.string(), price: v.number() });
+export const UploadForm = v.object({ title: v.pipe(v.string(), v.minLength(1)), file: v.file() });
 export const ErrorBody = v.object({ message: v.string() });

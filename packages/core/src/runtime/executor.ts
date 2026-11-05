@@ -7,6 +7,7 @@ import { readNamedQueryParam } from '../request-url';
 import { createJsonResponseWithStatus, createNoContentResponse } from '../response';
 import type { Token } from '../types';
 import { aotEnabled, createAotRuntime } from './aot';
+import { isFormMediaType, withFormBody } from './form-body';
 import { createArgumentResolver, createCompiledHandlerExecutor, createHandlerInvoker } from './arguments';
 import { createBodyPayloadFromJsonLoaderResolver, createBodyPayloadLoaderFactory, createBodyPayloadResolver, createParamPayloadResolver, createQueryPayloadResolver, createSchemaValidator } from './payload';
 import { applyFilters, compileFilters, compileGuards, compileMiddleware, createRawExecutionState, createRawGuardsAllowChecker, createRawMiddlewareDispatcher, createRawResponseExecutionState, createResolvedRawMiddlewareInvoker, createScopedResolver, createSingleRawGuardAllowChecker, describeToken, enforceGuards, resolveCompiledDependencies, resolveRawMiddlewareResult, runMiddlewareChain } from './pipeline';
@@ -169,6 +170,18 @@ export function createSpecializedRawHandlerBodyExecutor(input: {
 }
 
 export function compileRouteExecutor<TSchema>(input: {
+  container: Container;
+  definition: AppDefinition<TSchema>;
+  globalFilterTokens: Token[];
+  globalGuardTokens: Token[];
+  globalMiddlewareTokens: Token[];
+  route: ManifestRoute<TSchema>;
+}): CompiledRoute<TSchema> {
+  const compiled = compileRouteExecutorFor(input);
+  return isFormMediaType(input.route.docs.consumes) ? withFormBody(compiled) : compiled;
+}
+
+function compileRouteExecutorFor<TSchema>(input: {
   container: Container;
   definition: AppDefinition<TSchema>;
   globalFilterTokens: Token[];

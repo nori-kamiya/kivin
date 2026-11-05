@@ -1,6 +1,7 @@
 import type { RouteInput } from '@kivin/core';
 import {
     ApiResponse,
+    Consumes,
     Controller,
     Delete,
     Description,
@@ -23,6 +24,8 @@ import { getRequestLogger } from '@kivin/logger';
 import { ApiKeyGuard } from './api-key.guard';
 import { UserNotFoundFilter } from './user-not-found.filter';
 import {
+    AvatarSchema,
+    AvatarUploadSchema,
     CreateUserSchema,
     ErrorSchema,
     PatchUserSchema,
@@ -109,6 +112,24 @@ export class UserController {
   patch({ params, body, context }: RouteInput<{ params: typeof UserIdParamSchema; body: typeof PatchUserSchema }>) {
     getRequestLogger(context).info('users.patch.requested', { id: params.id, email: body.email ?? null });
     return this.userService.patch(params.id, body);
+  }
+
+  @Put('/:id/avatar')
+  @Summary('Upload avatar')
+  @Description('Uploads a PNG or JPEG avatar (max 1 MiB) as multipart/form-data.')
+  @OperationId('users.uploadAvatar')
+  @Security('apiKeyAuth')
+  @Consumes('multipart/form-data')
+  @UseParamSchema(UserIdParamSchema)
+  @UseBodySchema(AvatarUploadSchema)
+  @UseGuards(ApiKeyGuard)
+  @UseFilters(UserNotFoundFilter)
+  @ApiResponse(200, AvatarSchema, 'Stored avatar')
+  @ApiResponse(404, ErrorSchema, 'User was not found')
+  @ApiResponse(415, ErrorSchema, 'Body was not multipart/form-data')
+  uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParamSchema; body: typeof AvatarUploadSchema }>) {
+    this.userService.requireById(params.id);
+    return { userId: params.id, filename: body.avatar.name, type: body.avatar.type, size: body.avatar.size, alt: body.alt ?? null };
   }
 
   @Delete('/:id')

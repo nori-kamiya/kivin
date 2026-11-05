@@ -24,6 +24,8 @@ export function createValibotAdapter(): SchemaAdapter<ValibotSchema> {
     toOpenApiSchema(schema: ValibotSchema) {
       return toJsonSchema(schema, {
         errorMode: 'ignore',
+        // File uploads (`v.file()` / `v.blob()`, e.g. in a multipart body) are binary strings in OpenAPI.
+        overrideSchema: ({ valibotSchema }) => (valibotSchema.type === 'file' || valibotSchema.type === 'blob' ? { type: 'string', format: 'binary' } : undefined),
       }) as Record<string, unknown>;
     },
   };

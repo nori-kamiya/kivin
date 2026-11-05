@@ -2,7 +2,7 @@ import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivin/core';
 import { ApiKeyGuard } from '../../../../examples/basic/src/api-key.guard';
 import { UserNotFoundFilter } from '../../../../examples/basic/src/user-not-found.filter';
 import { UserController } from '../../../../examples/basic/src/users.controller';
-import { CreateUserSchema, ErrorSchema, PatchUserSchema, ReplaceUserSchema, UserIdParamSchema, UserListSchema, UserSchema, UserSearchQuerySchema } from '../../../../examples/basic/src/users.schemas';
+import { AvatarSchema, AvatarUploadSchema, CreateUserSchema, ErrorSchema, PatchUserSchema, ReplaceUserSchema, UserIdParamSchema, UserListSchema, UserSchema, UserSearchQuerySchema } from '../../../../examples/basic/src/users.schemas';
 
 export const manifest: AppManifest = {
   routes: [
@@ -188,6 +188,44 @@ export const manifest: AppManifest = {
             const body = await rt.readBody(request, ctx);
             const result = controller["patch"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, ctx);
+          } catch (error) {
+            return rt.handleError(error, context, request, params);
+          }
+        };
+      },
+    },
+    {
+      method: "PUT",
+      fullPath: "/users/:id/avatar",
+      controller: UserController,
+      methodName: "uploadAvatar",
+      parameters: [{ index: 0, source: "input", fields: ["params", "body"] }],
+      guards: [ApiKeyGuard],
+      middleware: [],
+      filters: [UserNotFoundFilter],
+      docs: { summary: "Upload avatar", description: "Uploads a PNG or JPEG avatar (max 1 MiB) as multipart/form-data.", operationId: "users.uploadAvatar", tags: ["Users"], bodySchema: AvatarUploadSchema, consumes: "multipart/form-data", paramSchema: UserIdParamSchema, security: [{ scheme: "apiKeyAuth", scopes: [] }], responses: [{ status: 200, description: "Stored avatar", schema: AvatarSchema }, { status: 404, description: "User was not found", schema: ErrorSchema }, { status: 415, description: "Body was not multipart/form-data", schema: ErrorSchema }] },
+      aot: (rt: AotRouteRuntime<UserController>) => {
+        const controller = rt.controller;
+        const hasGuards = rt.hasGuards;
+        const hasMiddleware = rt.hasMiddleware;
+        return async (request: Request, params: Record<string, string>) => {
+          let context: RequestContext | undefined;
+          try {
+            const paramValue = rt.resolveParamPayload(params);
+            if (hasGuards) {
+              const guarded = rt.runGuards(request, params, context);
+              context = rt.isThenable(guarded) ? await guarded : guarded;
+            }
+            if (hasMiddleware) {
+              const ctx = (context ??= rt.createContext(request, params));
+              return await rt.runMiddleware(ctx, async () => {
+                const body = await rt.readBody(request, ctx);
+                return controller["uploadAvatar"]({ params: paramValue ?? {}, body: body } as never);
+              });
+            }
+            const body = await rt.readBody(request, context);
+            const result = controller["uploadAvatar"]({ params: paramValue ?? {}, body: body } as never);
+            return rt.finish(rt.isThenable(result) ? await result : result, context);
           } catch (error) {
             return rt.handleError(error, context, request, params);
           }

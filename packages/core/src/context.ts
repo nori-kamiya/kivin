@@ -2,6 +2,7 @@ import { parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptio
 import type { ContainerLike } from './metadata';
 import { createEventStream, type EventStreamHandler, type EventStreamOptions } from './sse';
 import { readNullableQueryParam } from './request-url';
+import { formDataToObject } from './runtime/form-body';
 import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
 import type { Token } from './types';
 
@@ -404,19 +405,7 @@ export class RequestContext {
    * arrays. Validate it with your schema library (e.g. `v.object({ avatar: v.file(), name: v.string() })`).
    */
   async form(): Promise<Record<string, FormDataEntryValue | FormDataEntryValue[]>> {
-    const formData = await this.formData();
-    const result: Record<string, FormDataEntryValue | FormDataEntryValue[]> = Object.create(null);
-    for (const [key, value] of formData) {
-      const existing = result[key];
-      if (existing === undefined) {
-        result[key] = value;
-      } else if (Array.isArray(existing)) {
-        existing.push(value);
-      } else {
-        result[key] = [existing, value];
-      }
-    }
-    return result;
+    return formDataToObject(await this.formData());
   }
 
   /** Server-Sent Events response; queued response headers (e.g. cookies) are applied to it. */

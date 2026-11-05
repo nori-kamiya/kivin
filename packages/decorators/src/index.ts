@@ -18,6 +18,7 @@ import {
     setRouteMetadata,
     updateRouteDocs,
     updateRouteEnhancers,
+    type BodyMediaType,
     type Constructor,
     type HttpMethod,
     type ModuleLike,
@@ -189,6 +190,15 @@ export function Response(status: number, schemaOrDescription?: unknown, descript
 }
 
 export const ApiResponse = Response;
+
+/**
+ * Request body media type. `'multipart/form-data'` / `'application/x-www-form-urlencoded'` make the
+ * route parse the body as a form (fields become strings or `File`s, repeated fields arrays), validate
+ * it with `@UseBodySchema` and hand it to the handler as `body`; other content types get 415.
+ */
+export function Consumes(mediaType: BodyMediaType): MethodDecorator {
+  return (_value, context) => updateDocs(context, 'Consumes', (current) => ({ ...current, consumes: mediaType }));
+}
 
 export function UseBodySchema(schema: unknown): MethodDecorator {
   return (_value, context) => updateDocs(context, 'UseBodySchema', (current) => ({ ...current, bodySchema: schema }));

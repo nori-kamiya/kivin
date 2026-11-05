@@ -1,7 +1,7 @@
 import { HttpError, type RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import { ApiResponse, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
 import { HeaderMiddleware, ItemMissing, MissingFilter, RawKeyGuard, REQUEST_ID, RoleGuard, Store, TraceMiddleware } from './providers';
-import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery } from './schemas';
+import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery, UploadForm } from './schemas';
 
 @Controller('/aot')
 @Injectable({ deps: [Store] })
@@ -116,6 +116,13 @@ export class AotController {
     context.setCookie('a', '1');
     context.setCookie('b', '2');
     return { body };
+  }
+
+  @Post('/upload')
+  @Consumes('multipart/form-data')
+  @UseBodySchema(UploadForm)
+  async upload({ body }: RouteInput<{ body: typeof UploadForm }>) {
+    return { title: body.title, file: body.file.name, text: await body.file.text() };
   }
 
   @Get('/invalid-response')

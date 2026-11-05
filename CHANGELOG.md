@@ -23,6 +23,8 @@
 - `@kivin/core`: `app.close()` による graceful shutdown と `onApplicationShutdown` フック、`listen({ shutdownSignals, maxRequestBodySize, idleTimeout })`、`app.get(token)`
 - `@kivin/core`: provider を差し替えてポートを開かずに呼べる `createTestingApp`
 - `@kivin/jwt`: Web Crypto ベースの `verifyJwt` / `signJwt` と `createJwtGuard`
+- `@kivin/decorators`: `@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded')` で入力オブジェクトの `body` にフォーム（`File` を含む）を検証して渡せるようにした。OpenAPI は該当 media type で出力し、生成クライアントは `FormData` で送信する
+- `@kivin/valibot`: `v.file()` / `v.blob()` を OpenAPI で `{ type: 'string', format: 'binary' }` として出力
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
 
 ### Fixed
