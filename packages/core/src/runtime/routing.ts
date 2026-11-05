@@ -5,6 +5,11 @@ import { toHeadResponse } from './results';
 import { type BunRouteDefinition, type BunRouteHandler, type CompiledRoute, HTTP_METHOD_ORDER } from './types';
 
 export function normalizeRoutePath(path: string) {
+  // Hot path for every in-process fetch: already-normal paths skip the string rebuild and regex.
+  if (path.charCodeAt(0) === 47 /* / */ && (path.length === 1 || path.charCodeAt(path.length - 1) !== 47)) {
+    return path;
+  }
+
   if (!path.startsWith('/')) {
     path = `/${path}`;
   }

@@ -24,21 +24,43 @@ export function readNullableQueryParam(url: string, name: string) {
 }
 
 export function readQueryObject(url: string) {
-  const query = readQueryString(url);
-  if (!query) {
+  // Single pass over the URL without slicing out the query first or allocating a visitor closure.
+  const queryStart = url.indexOf('?');
+  if (queryStart === -1) {
+    return undefined;
+  }
+
+  let end = url.indexOf('#', queryStart + 1);
+  if (end === -1) {
+    end = url.length;
+  }
+  if (end === queryStart + 1) {
     return undefined;
   }
 
   const result = Object.create(null) as Record<string, string>;
-
-  scanQueryEntries(query, (rawKey, rawValue) => {
-    if (!rawKey) {
-      return false;
+  let segmentStart = queryStart + 1;
+  while (segmentStart < end) {
+    let segmentEnd = url.indexOf('&', segmentStart);
+    if (segmentEnd === -1 || segmentEnd > end) {
+      segmentEnd = end;
     }
 
-    result[decodeQueryComponent(rawKey)] = decodeQueryComponent(rawValue);
-    return false;
-  });
+    if (segmentEnd !== segmentStart) {
+      let separator = url.indexOf('=', segmentStart);
+      if (separator === -1 || separator > segmentEnd) {
+        separator = segmentEnd;
+      }
+
+      if (separator !== segmentStart) {
+        result[decodeQueryComponent(url.slice(segmentStart, separator))] = separator === segmentEnd
+          ? ''
+          : decodeQueryComponent(url.slice(separator + 1, segmentEnd));
+      }
+    }
+
+    segmentStart = segmentEnd + 1;
+  }
 
   return result;
 }
@@ -122,9 +144,10 @@ function scanQueryEntries(query: string, visit: (rawKey: string, rawValue: strin
 }
 
 function decodeQueryComponent(value: string) {
-  if (!value.includes('+') && !value.includes('%')) {
+  const hasPlus = value.indexOf('+') !== -1;
+  if (!hasPlus && value.indexOf('%') === -1) {
     return value;
   }
 
-  return decodeURIComponent(value.includes('+') ? value.replace(/\+/g, ' ') : value);
+  return decodeURIComponent(hasPlus ? value.replace(/\+/g, ' ') : value);
 }
