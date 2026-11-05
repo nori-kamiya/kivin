@@ -13,6 +13,7 @@ import {
     type ModuleLike,
     type ProviderDefinition,
     type Token,
+    type TokenValues,
 } from '@kivin/core';
 
 export function Module(input: {
@@ -29,11 +30,25 @@ export function Module(input: {
   };
 }
 
-export function Injectable(input: { deps?: unknown[] } = {}) {
-  return function injectableDecorator(target: Function) {
+type DepsCountMismatch<TExpected, TReceived> = {
+  readonly kivinError: 'The number of @Injectable deps does not match the constructor parameters';
+  readonly constructorParameters: TExpected;
+  readonly deps: TReceived;
+};
+
+/**
+ * Declares the DI tokens passed to the constructor, in order.
+ * The decorator is typed so that each token's value must be assignable to the matching
+ * constructor parameter and the deps count must fit the constructor, catching drift at compile time.
+ */
+export function Injectable<const TDeps extends readonly Token[] = []>(input: { deps?: TDeps } = {}) {
+  return function injectableDecorator<TTarget extends abstract new (...args: TokenValues<TDeps>) => unknown>(
+    target: TTarget,
+  ): TDeps['length'] extends ConstructorParameters<TTarget>['length'] ? void : DepsCountMismatch<ConstructorParameters<TTarget>['length'], TDeps['length']> {
     setInjectableMetadata(target, {
-      deps: (input.deps ?? []) as never[],
+      deps: [...(input.deps ?? [])] as Token[],
     });
+    return undefined as never;
   };
 }
 

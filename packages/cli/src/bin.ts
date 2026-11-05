@@ -39,6 +39,7 @@ async function main() {
     });
 
     console.log(`manifest: ${result.manifestPath}`);
+    console.log(`contracts: ${result.contractsPath}`);
     console.log(`openapi: ${result.openApiPath}`);
     return;
   }

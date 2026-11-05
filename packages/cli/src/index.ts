@@ -51,13 +51,16 @@ export async function loadAppDefinition(entry: string): Promise<AppDefinition<un
 export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string }) {
   const outDir = resolve(input.outDir);
   const manifestPath = resolve(outDir, 'manifest.ts');
+  const contractsPath = resolve(outDir, 'contracts.ts');
 
   await mkdir(outDir, { recursive: true });
   const generated = await buildManifestSourceFromAst({
     entry: input.entry,
     outFile: manifestPath,
+    contractsOutFile: contractsPath,
   });
   await writeFile(manifestPath, generated.source, 'utf8');
+  await writeFile(contractsPath, generated.contractsSource ?? 'export {};\n', 'utf8');
 
   const appDefinition = await loadAppDefinition(input.entry);
   const manifest = await loadManifest(manifestPath);
@@ -75,6 +78,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
 
   return {
     manifestPath,
+    contractsPath,
     openApiPath: resolve(outDir, 'openapi.json'),
   };
 }

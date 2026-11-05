@@ -1,4 +1,4 @@
-import { defineModule, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { createToken, defineModule, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 import { Injectable } from '@kivin/decorators';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -51,8 +51,8 @@ const LOG_LEVEL_ORDER: Record<LogLevel, number> = {
 
 const REQUEST_LOGGER_KEY = 'kivin.logger.request';
 
-export const LOGGER = Symbol.for('@kivin.logger');
-export const LOGGER_OPTIONS = Symbol.for('@kivin.logger.options');
+export const LOGGER = createToken<Logger>('@kivin.logger');
+export const LOGGER_OPTIONS = createToken<LoggerModuleOptions>('@kivin.logger.options');
 
 export function createLoggerModule(options: LoggerModuleOptions = {}): ModuleDefinition {
   return defineModule({
