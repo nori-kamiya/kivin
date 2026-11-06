@@ -22,6 +22,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createApp(appDefinition, manifest)` | function | アプリ定義とコンパイル済み manifest から、`fetch` と `listen(portOrOptions)` を持つアプリを生成する。`listen({ port, hostname, routes })` の `routes` は app のルートと一緒に Bun native routes に載る |
 | `buildManifest(appDefinition)` | function | アプリ定義から実行時 manifest を組み立てる（通常は生成 manifest 経由で呼ばれる） |
 | `defineApplication(input)` | function | アプリ定義（root module / OpenAPI 設定など）を宣言する |
+| `defineApplication({ basePath })` | option | 全ルートのパス接頭辞（`'/api'` なら `@Controller('/users')` の `@Get('/')` は `/api/users`）。`/` で始まる文字列リテラル。manifest・OpenAPI・生成クライアントに反映される |
 | `defineApplication({ onRequest })`, `RequestHook` | option / type | ルーティング前に全リクエストで走るフック（順番に実行）。`Response` を返すと即応答、`Request` を返すとそのリクエストとしてルーティングし直す。未設定ならコストゼロ |
 | `defineModule(input)` | function | モジュール（controllers / providers / imports / グローバル enhancer）を宣言する |
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |

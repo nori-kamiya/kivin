@@ -28,8 +28,9 @@ export function buildManifest<TSchema>(definition: AppDefinition<TSchema>): AppM
         throw new Error(`Controller metadata is missing for ${controller.name}`);
       }
 
+      const basePath = definition.basePath ? joinPaths(definition.basePath, controllerMetadata.basePath) : controllerMetadata.basePath;
       for (const descriptor of getRouteDescriptors(controller)) {
-        routes.push(buildRoute(controller, controllerMetadata, descriptor));
+        routes.push(buildRoute(controller, { ...controllerMetadata, basePath }, descriptor));
       }
     }
   }

@@ -23,7 +23,11 @@ export function defineApplication<TSchema>(input: {
   cors?: AppDefinition<TSchema>['cors'];
   bodyLimit?: AppDefinition<TSchema>['bodyLimit'];
   onRequest?: AppDefinition<TSchema>['onRequest'];
+  basePath?: AppDefinition<TSchema>['basePath'];
 }): AppDefinition<TSchema> {
+  if (input.basePath !== undefined && !input.basePath.startsWith('/')) {
+    throw new TypeError(`defineApplication({ basePath }) must start with "/" (got ${JSON.stringify(input.basePath)})`);
+  }
   return {
     modules: input.modules,
     schemaAdapter: input.schemaAdapter,
@@ -32,6 +36,7 @@ export function defineApplication<TSchema>(input: {
     ...(input.cors ? { cors: input.cors } : {}),
     ...(input.bodyLimit !== undefined ? { bodyLimit: input.bodyLimit } : {}),
     ...(input.onRequest ? { onRequest: input.onRequest } : {}),
+    ...(input.basePath !== undefined && input.basePath !== '/' ? { basePath: input.basePath } : {}),
   };
 }
 
