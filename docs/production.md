@@ -160,6 +160,32 @@ app.listen({
 - ディレクトリには `index.html`（`index` で変更、`false` で無効）
 - `precompressed: true` で、`Accept-Encoding` に応じて隣の `.br` / `.gz` を返します（`Content-Encoding` と `Vary` 付き）
 - GET / HEAD 以外は `405`
+## Basic / Bearer 認証と CSRF
+
+```ts
+import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '@kivin/core';
+
+export const AdminGuard = createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! }, realm: 'Admin' });
+export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_KEY!] });
+
+@Get('/admin')
+@UseGuards(AdminGuard)
+admin({ context }: RouteInput) {
+  return { user: readBasicCredentials(context.request)?.username };
+}
+```
+
+- `createBasicAuthGuard({ users | verify, realm })`: 失敗時は `401` と `WWW-Authenticate: Basic realm="…", charset="UTF-8"`。`users` は定数時間で比較し、どのユーザー名が存在するかが時間差で分からないよう全件を比較します。パスワードハッシュなどは `verify` で
+- `createBearerAuthGuard({ tokens | verify, realm })`: 静的な API キーなど。JWT は `@kivin/jwt` の `createJwtGuard` を使ってください
+- どちらも `canActivateRaw` を持つので、context を作らない高速な経路で動きます
+
+`createCsrfMiddleware({ trustedOrigins })` は、ブラウザからのクロスサイトな状態変更リクエストを `403` にします（Go 1.25 の `CrossOriginProtection` と同じ判定）:
+
+- GET / HEAD / OPTIONS は常に通す
+- `Sec-Fetch-Site` があれば `same-origin` か `none` のときだけ通す（`same-site` のサブドメインも拒否）
+- 無ければ `Origin` のホストがリクエストの `Host` と一致するときだけ通す。どちらのヘッダも無いリクエスト（curl やサーバ間通信）は通す
+- `trustedOrigins` に挙げたオリジンは常に許可
+- フォームの Content-Type だけを見る方式と違い、JSON など全ボディ型を対象にします
 
 ## WebSocket
 

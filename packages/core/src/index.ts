@@ -79,3 +79,4 @@ export { markErrorReported } from './runtime/results';
 export { createRateLimitMiddleware, createTimeoutMiddleware, getClientAddress, type RateLimitOptions, type TimeoutOptions } from './limits';
 export { createCompressMiddleware, createEtagMiddleware, type CompressionEncoding, type CompressOptions, type EtagOptions } from './compress';
 export { serveStatic, type ServeStaticOptions } from './static';
+export { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials, readBearerToken, safeCompare, type BasicAuthOptions, type BasicCredentials, type BearerAuthOptions, type CsrfOptions } from './auth';
