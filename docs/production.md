@@ -112,6 +112,30 @@ defineApplication({
 
 - GET / HEAD の 200 で ETag の無いレスポンスに、ボディのハッシュから弱い ETag を付け、`If-None-Match` が一致すれば `304` を返します
 - SSE / NDJSON、`maxSize`（既定 1 MiB）を超えるボディ、すでに ETag があるもの（`serveStatic` など）はそのまま通します
+## 静的ファイル
+
+`serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
+
+```ts
+import { serveStatic } from '@kivin/core';
+
+app.listen({
+  port: 3000,
+  routes: {
+    // ハッシュ付きアセットは長期キャッシュ
+    '/assets/*': serveStatic({ root: './public/assets', prefix: '/assets', cacheControl: 'public, max-age=31536000, immutable', precompressed: true }),
+    // SPA: 存在しないパスへの HTML ナビゲーションは index.html
+    '/app/*': serveStatic({ root: './web/dist', prefix: '/app', fallback: 'index.html' }),
+  },
+});
+```
+
+- Content-Type は拡張子から、`ETag`（弱い検証子）と `Last-Modified` を付け、`If-None-Match` / `If-Modified-Since` に `304` を返します
+- `Range: bytes=…`（単一範囲）に `206`、範囲外は `416`。`If-Range` が古ければ全体を返します
+- `root` の外に出るパス（`..`、`%2e%2e`、`%2f` / `\` を含むもの、NUL）は `404`。ドットファイル（`.env` など）も既定で `404`（`dotfiles: 'allow'` で許可）
+- ディレクトリには `index.html`（`index` で変更、`false` で無効）
+- `precompressed: true` で、`Accept-Encoding` に応じて隣の `.br` / `.gz` を返します（`Content-Encoding` と `Vary` 付き）
+- GET / HEAD 以外は `405`
 
 ## WebSocket
 

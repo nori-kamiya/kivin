@@ -10,6 +10,7 @@
 
 - `@kivin/core`: `createCompressMiddleware`（brotli / gzip。Accept-Encoding の q 値で選択、閾値・型フィルタ・`no-transform`・SSE 除外、NDJSON はストリーム圧縮、brotli 品質は既定 4）と `createEtagMiddleware`（ボディのハッシュから弱い ETag、If-None-Match に 304）を追加
 
+- `@kivin/core`: `serveStatic` を追加。Bun のネイティブルートで静的ファイルを配信する（ETag / Last-Modified と 304、Range、HEAD、index.html、SPA fallback、`.br` / `.gz` の事前圧縮、Cache-Control）。パストラバーサル（エンコード含む）・NUL・ドットファイルは 404
 - `@kivin/core`: `globals` やルートで指定したガード / ミドルウェア / フィルタのクラスは、モジュールの `providers` に書かなくても自動で登録されるようにした（依存はモジュールから解決）。`globals` の `guards` / `middleware` / `filters` は個別に省略できる
 
 - `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、ハンドラの入力型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
