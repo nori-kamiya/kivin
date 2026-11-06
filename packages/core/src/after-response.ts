@@ -12,9 +12,24 @@ const callbacks = new WeakMap<Request, AfterResponseCallback[]>();
 export let afterResponseInUse = false;
 
 /**
+ * Finalises routes from now on, so `afterResponse` works from the first request of the process.
+ * Call it once at startup, before the first request, in anything that registers callbacks.
+ *
+ * Reading the flag when a route starts keeps apps that never use `afterResponse` at one boolean read.
+ * Without this call, every request that passed that read before the first `afterResponse` call loses
+ * its callbacks, and any `await` ahead of the registering middleware (a guard, sync or async, is
+ * enough) lets requests pass it.
+ */
+export function enableAfterResponse() {
+  afterResponseInUse = true;
+}
+
+/**
  * Calls `callback` with the final response of the route handling `request` (one call per request).
  * Returning a `Response` replaces it, e.g. a copy with extra headers. Callback errors are logged and
- * ignored. Only requests that reach a route are finalised (not 404 / 405 answers).
+ * ignored. Only requests that reach a route are finalised (not 404 / 405 answers). Middleware that
+ * runs behind a guard or another `await` needs `enableAfterResponse()` at startup to cover the first
+ * requests of the process.
  */
 export function afterResponse(request: Request, callback: AfterResponseCallback) {
   afterResponseInUse = true;
