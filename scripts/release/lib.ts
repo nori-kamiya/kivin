@@ -194,6 +194,10 @@ export function verifyReleaseTag(input: { tag: string; manifests: readonly Works
       problems.push(`${manifest.name} is at ${manifest.version}, but ${first.name} is at ${version}; all packages share one version`);
     }
   }
+  // Every release goes to the default dist-tag, and npm refuses a prerelease there only after the approval step.
+  if (version.includes('-')) {
+    problems.push(`${version} is a prerelease; releases are published to latest, which npm refuses for prereleases`);
+  }
   if (input.tag !== `v${version}`) {
     problems.push(`tag ${input.tag} does not equal v${version}`);
   }

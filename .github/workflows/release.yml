@@ -53,8 +53,15 @@ jobs:
       contents: read
       id-token: write
     steps:
-      # No checkout and no install here: this job holds the OIDC token, so the only repository-derived code it runs
-      # is publish.mts from the artifact, which imports nothing but Node built-ins.
+      # No install here: this job holds the OIDC token, so the only repository-derived code it runs is publish.ts,
+      # taken from the tagged commit (not from the build artifact, which nothing verifies) and importing nothing but Node built-ins.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          sparse-checkout: scripts/release/publish.ts
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+      - run: cp scripts/release/publish.ts publish.mts
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.11.0
@@ -66,10 +73,10 @@ jobs:
           name: release
           path: release
       - name: Verify checksums against manifest.json
-        run: node release/publish.mts --dir release --check
+        run: node publish.mts --dir release --check
       - name: Publish
         env:
           # Only set for the first release, when the packages do not exist yet and trusted publishing cannot apply.
           # Empty afterwards, and npm falls back to the OIDC token.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
-        run: node release/publish.mts --dir release
+        run: node publish.mts --dir release

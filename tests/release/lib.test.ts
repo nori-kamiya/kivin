@@ -196,6 +196,12 @@ describe('verifyReleaseTag', () => {
     expect(verifyReleaseTag({ tag: 'v1.2.3', manifests, changelog: '## [Unreleased]\n## [1.2.30]\n' }).join('\n')).toMatch(/CHANGELOG/);
   });
 
+  test('given a prerelease version, when verifying, then it is rejected because it would be published to latest and npm refuses that', () => {
+    const prerelease = [pkg('@kivin/a', { version: '1.2.3-rc.1' }), pkg('@kivin/b', { version: '1.2.3-rc.1' })];
+    const problems = verifyReleaseTag({ tag: 'v1.2.3-rc.1', manifests: prerelease, changelog: '## [1.2.3-rc.1]\n' });
+    expect(problems.join('\n')).toMatch(/prerelease/);
+  });
+
   test('given a heading without brackets, when verifying, then it is accepted', () => {
     expect(verifyReleaseTag({ tag: 'v1.2.3', manifests, changelog: '## 1.2.3\n' })).toEqual([]);
   });
