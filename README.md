@@ -228,7 +228,7 @@ bun run bench
 
 `bun run bench` は compiled binary の `kivin` / `hono` / `elysia` を同一 workload で比較し、startup、binary size、GET/PATCH の throughput と latency を出します。
 
-full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:stack` を基準にするのが安全です。CI のペア計測（`bun run perf:check`、2026-11）では、`kivin` は app-like な全 workload で `Hono` を上回り（118〜131%）、`Elysia` とも全 workload で同等以上（100〜114%）です。詳細は [docs/performance.md](docs/performance.md#latest-paired-comparison-ci-2026-11-06)。数値は環境・バージョンに依存するため、各自の環境で再計測することを推奨します。
+full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:stack` を基準にするのが安全です。CI のペア計測（`bun run perf:check`、2026-11、#45〜#53 後）では、`kivin` は app-like な workload で `Hono` より約 10〜34% 速く、`Elysia` とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）です。詳細は [docs/performance.md](docs/performance.md) の「Latest paired comparison」。数値は環境・バージョンに依存するため、各自の環境で再計測することを推奨します。
 
 `bun run inspect:routes` は route ごとの handler に加えて controller scope、guard/middleware/filter の scope、executor mode (`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`) も表示します。
 
@@ -236,8 +236,9 @@ full stack の順位を更新したい時は `BENCH_ITERATIONS=10 bun run bench:
 
 ## Documents
 
+- [docs/handoff.md](docs/handoff.md) — 引き継ぎメモ（現状・開発の進め方・性能の測り方・設計上の決まりごと・残課題）
 - [docs/reference.md](docs/reference.md) — API reference
-- [docs/production.md](docs/production.md) — CORS / Cookie / JWT / WebSocket / SSE / multipart / graceful shutdown / テスト
+- [docs/production.md](docs/production.md) — CORS / Cookie / 認証 / セキュリティ / ストリーミング / 観測 / 環境変数 / cron / セッション / GraphQL / WebSocket / SSE / multipart / graceful shutdown / テスト
 - [docs/decorators-roadmap.md](docs/decorators-roadmap.md) — レガシー / TC39 デコレータの調査と移行方針
 - [docs/architecture.md](docs/architecture.md)
 - [docs/development-guide.md](docs/development-guide.md)

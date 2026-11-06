@@ -78,6 +78,19 @@ bun run bench:stack:spot
 bun run perf:check
 ```
 
+プロファイルとフレームワーク自体のオーバーヘッドの確認には次を使います（[handoff.md](handoff.md#4-性能の測り方)）。
+
+```bash
+# シナリオごとの ns/req（CPU プロファイラと組み合わせる）
+bun packages/cli/src/bin.ts generate --entry scripts/perf/app/app.ts --outDir scripts/perf/generated
+ONLY=patch-global-mw bun --cpu-prof --cpu-prof-dir=/tmp/prof scripts/perf/profile.ts
+bun scripts/perf/summarize-profile.ts /tmp/prof
+
+# Stack アプリ（Hono / Elysia 比較用）と手書きの最小実装の差
+bun run bench:stack:generate
+bun scripts/perf/floor.ts
+```
+
 `bun run bench` は次を実行します。
 
 - `kivin` benchmark binary build
