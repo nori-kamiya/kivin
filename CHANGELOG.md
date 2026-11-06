@@ -8,6 +8,8 @@
 
 ### Added
 
+- `@kivin/core`: `createRequestIdMiddleware` と `getRequestId` を追加（受信した ID は形式を検証し、不正なら UUID を発行。`@kivin/logger` の requestId にも反映）
+
 - `@kivin/core`: `createTimeoutMiddleware`（時間切れで 504）、`createRateLimitMiddleware`（固定ウィンドウ、429 / Retry-After / RateLimit-* ヘッダ、キーは既定でクライアントアドレス）、`getClientAddress(request)` を追加
 
 - `@kivin/core`: `createCompressMiddleware`（brotli / gzip。Accept-Encoding の q 値で選択、閾値・型フィルタ・`no-transform`・SSE 除外、NDJSON はストリーム圧縮、brotli 品質は既定 4）と `createEtagMiddleware`（ボディのハッシュから弱い ETag、If-None-Match に 304）を追加
