@@ -1,5 +1,5 @@
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
 
 @Injectable()
 export class RequestIdMiddleware implements NestLikeMiddleware {

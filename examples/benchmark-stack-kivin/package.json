@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@kivin/core": "workspace:*",
-    "@kivin/logger": "workspace:*",
-    "@kivin/valibot": "workspace:*",
+    "@kivinjs/core": "workspace:*",
+    "@kivinjs/logger": "workspace:*",
+    "@kivinjs/valibot": "workspace:*",
     "valibot": "^1.5.0",
-    "@kivin/decorators": "workspace:*"
+    "@kivinjs/decorators": "workspace:*"
   }
 }

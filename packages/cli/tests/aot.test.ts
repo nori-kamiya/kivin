@@ -1,6 +1,6 @@
 // Differential test: every request must produce exactly the same response with the generated AOT
 // executors as with the runtime-compiled executors (manifest without `aot`).
-import { createApp, type AppManifest } from '@kivin/core';
+import { createApp, type AppManifest } from '@kivinjs/core';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';

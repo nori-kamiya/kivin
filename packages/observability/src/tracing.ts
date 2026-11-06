@@ -1,6 +1,6 @@
 // OpenTelemetry server spans without a dependency: the middleware takes the tracer (and optionally
 // the propagation / context APIs) from `@opentelemetry/api`, typed structurally.
-import { afterResponse, enableAfterResponse, getClientAddress, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { afterResponse, enableAfterResponse, getClientAddress, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
 export type AttributeValue = string | number | boolean;
 

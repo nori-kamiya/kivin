@@ -1,4 +1,4 @@
-# @kivin/openapi
+# @kivinjs/openapi
 
 *English | [日本語](#日本語)*
 
@@ -9,21 +9,21 @@ OpenAPI 3.1 document generation for kivin, plus an HTML docs page.
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/openapi
+bun add @kivinjs/core @kivinjs/openapi
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 `kivin generate` already writes `openapi.json`. `createDocsHtml` loads Swagger UI from unpkg.com, so the viewer's browser needs access to it (and your CSP must allow it).
 
 ## Usage
 
 ```ts
-import { createApp } from '@kivin/core';
-import { createDocsHtml } from '@kivin/openapi';
+import { createApp } from '@kivinjs/core';
+import { createDocsHtml } from '@kivinjs/openapi';
 import manifest from '../.kivin/generated/manifest';
 import openApiDocument from '../.kivin/generated/openapi.json';
 import definition from './app';
@@ -54,21 +54,21 @@ kivin 用の OpenAPI 3.1 ドキュメント生成です。docs の HTML ペー�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/openapi
+bun add @kivinjs/core @kivinjs/openapi
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 `openapi.json` は `kivin generate` が出力します。`createDocsHtml` は Swagger UI を unpkg.com から読み込むため、閲覧側のブラウザが unpkg.com に到達でき、CSP で許可されている必要があります。
 
 ### 使い方
 
 ```ts
-import { createApp } from '@kivin/core';
-import { createDocsHtml } from '@kivin/openapi';
+import { createApp } from '@kivinjs/core';
+import { createDocsHtml } from '@kivinjs/openapi';
 import manifest from '../.kivin/generated/manifest';
 import openApiDocument from '../.kivin/generated/openapi.json';
 import definition from './app';

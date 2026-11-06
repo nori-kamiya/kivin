@@ -56,8 +56,8 @@ describe('kivin init: generated files', () => {
     expect(manifest.name).toBe('my-app');
     expect(manifest.private).toBe(true);
     expect(Object.keys(manifest.scripts).sort()).toEqual(['build', 'dev', 'generate', 'test', 'typecheck']);
-    expect(Object.keys(manifest.dependencies).sort()).toEqual(['@kivin/core', '@kivin/decorators', '@kivin/valibot', 'valibot']);
-    expect(Object.keys(manifest.devDependencies).sort()).toEqual(['@kivin/cli', '@types/bun', 'typescript']);
+    expect(Object.keys(manifest.dependencies).sort()).toEqual(['@kivinjs/core', '@kivinjs/decorators', '@kivinjs/valibot', 'valibot']);
+    expect(Object.keys(manifest.devDependencies).sort()).toEqual(['@kivinjs/cli', '@types/bun', 'typescript']);
     expect(manifest.scripts.test).toBe('bun test');
     expect(manifest.scripts.typecheck).toBe('tsc');
   });
@@ -171,15 +171,15 @@ describe('kivin init: package name', () => {
 });
 
 describe('kivin init: dependency ranges', () => {
-  test('given a CLI version, when initialised, then @kivin/* use ^<version> and the rest use the constants', () => {
+  test('given a CLI version, when initialised, then @kivinjs/* use ^<version> and the rest use the constants', () => {
     const cwd = freshCwd();
     initProject({ dir: 'my-app', cwd, version: '0.3.7' });
     const manifest = JSON.parse(readFileSync(join(cwd, 'my-app/package.json'), 'utf8'));
 
-    for (const name of ['@kivin/core', '@kivin/decorators', '@kivin/valibot']) {
+    for (const name of ['@kivinjs/core', '@kivinjs/decorators', '@kivinjs/valibot']) {
       expect(manifest.dependencies[name]).toBe('^0.3.7');
     }
-    expect(manifest.devDependencies['@kivin/cli']).toBe('^0.3.7');
+    expect(manifest.devDependencies['@kivinjs/cli']).toBe('^0.3.7');
     expect(manifest.dependencies.valibot).toBe(TEMPLATE_RANGES.valibot);
     expect(manifest.devDependencies.typescript).toBe(TEMPLATE_RANGES.typescript);
     expect(manifest.devDependencies['@types/bun']).toBe(TEMPLATE_RANGES['@types/bun']);
@@ -190,14 +190,14 @@ describe('kivin init: dependency ranges', () => {
     initProject({ dir: 'my-app', cwd, version: '0.1.0-rc.1' });
     const manifest = JSON.parse(readFileSync(join(cwd, 'my-app/package.json'), 'utf8'));
 
-    expect(manifest.dependencies['@kivin/core']).toBe('^0.1.0-rc.1');
+    expect(manifest.dependencies['@kivinjs/core']).toBe('^0.1.0-rc.1');
   });
 
   test('given a version that is not semver, when initialised, then it throws', () => {
     expect(() => initProject({ dir: 'my-app', cwd: freshCwd(), version: '../evil' })).toThrow(/version/);
   });
 
-  test('given the valibot constant, then it satisfies the @kivin/valibot peer range and stays in sync with it', () => {
+  test('given the valibot constant, then it satisfies the @kivinjs/valibot peer range and stays in sync with it', () => {
     const peer = valibotPackage.peerDependencies.valibot;
     const floor = TEMPLATE_RANGES.valibot.replace(/^\^/, '');
 
@@ -217,11 +217,11 @@ describe('kivin init: template compiles', () => {
   });
 
   test('given the scaffold, when type-checked strictly against the workspace sources, then tsc reports no errors', async () => {
-    // The scaffold names published @kivin/* packages; map them to the workspace sources, and take the lib and
+    // The scaffold names published @kivinjs/* packages; map them to the workspace sources, and take the lib and
     // types from the monorepo setup, because the workspace sources are checked against node and bun-types, not @types/bun. main.ts needs the generated manifest, so it is excluded here;
     // pack:smoke covers generate, build and run end to end.
     const paths = Object.fromEntries(
-      ['core', 'decorators', 'valibot', 'standard-schema', 'logger', 'openapi'].map((name) => [`@kivin/${name}`, [join(repoRoot, `packages/${name}/src/index.ts`)]]),
+      ['core', 'decorators', 'valibot', 'standard-schema', 'logger', 'openapi'].map((name) => [`@kivinjs/${name}`, [join(repoRoot, `packages/${name}/src/index.ts`)]]),
     );
     writeFileSync(
       join(projectDir, 'tsconfig.check.json'),

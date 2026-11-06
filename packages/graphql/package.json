@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/graphql",
+  "name": "@kivinjs/graphql",
   "version": "0.1.0",
   "description": "Mount GraphQL Yoga (or any fetch-based GraphQL server) on kivin native routes",
   "license": "MIT",
@@ -25,10 +25,10 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*",
+    "@kivinjs/core": "workspace:*",
     "graphql": "^17.1.0",
     "graphql-ws": "^6.4.1",
     "graphql-yoga": "^6.0.1"

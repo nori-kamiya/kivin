@@ -1,4 +1,4 @@
-import type { ParseResult, SchemaAdapter } from '@kivin/core';
+import type { ParseResult, SchemaAdapter } from '@kivinjs/core';
 import { toJsonSchema } from '@valibot/to-json-schema';
 import { safeParse, type BaseSchema } from 'valibot';
 

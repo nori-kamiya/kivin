@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createIpMatcher, createIpRestriction, createIpRestrictionGuard, parseIpAddress } from '@kivin/security';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createIpMatcher, createIpRestriction, createIpRestrictionGuard, parseIpAddress } from '@kivinjs/security';
 import { describe, expect, test } from 'bun:test';
 
 describe('parseIpAddress', () => {

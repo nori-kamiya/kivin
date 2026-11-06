@@ -1,4 +1,4 @@
-# @kivin/static
+# @kivinjs/static
 
 *English | [日本語](#日本語)*
 
@@ -9,21 +9,21 @@ Static file serving for kivin on Bun native routes: ETag / 304, Range, precompre
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/static
+bun add @kivinjs/core @kivinjs/static
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
-`@kivin/http` is installed automatically as a dependency.
+`@kivinjs/http` is installed automatically as a dependency.
 
 ## Usage
 
 ```ts
-import { createApp } from '@kivin/core';
-import { serveStatic } from '@kivin/static';
+import { createApp } from '@kivinjs/core';
+import { serveStatic } from '@kivinjs/static';
 import manifest from '../.kivin/generated/manifest';
 import definition from './app';
 
@@ -51,21 +51,21 @@ Bun のネイティブルート上で動く kivin 用の静的ファイル配信
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/static
+bun add @kivinjs/core @kivinjs/static
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
-`@kivin/http` は依存として自動で入ります。
+`@kivinjs/http` は依存として自動で入ります。
 
 ### 使い方
 
 ```ts
-import { createApp } from '@kivin/core';
-import { serveStatic } from '@kivin/static';
+import { createApp } from '@kivinjs/core';
+import { serveStatic } from '@kivinjs/static';
 import manifest from '../.kivin/generated/manifest';
 import definition from './app';
 

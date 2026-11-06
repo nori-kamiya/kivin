@@ -1,4 +1,4 @@
-import { ApiResponse, Controller, Description, Get, Summary } from '@kivin/decorators';
+import { ApiResponse, Controller, Description, Get, Summary } from '@kivinjs/decorators';
 import { UserSchema } from './schemas';
 
 // 非 ASCII 文字の後ろにある式も、元のソースどおりに切り出せること

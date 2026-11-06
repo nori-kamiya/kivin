@@ -1,6 +1,6 @@
-// @kivin/graphql: mounts a fetch-based GraphQL server (GraphQL Yoga, or any server exposing
+// @kivinjs/graphql: mounts a fetch-based GraphQL server (GraphQL Yoga, or any server exposing
 // `fetch(request, context)`) on a native route, with access to kivin's DI container.
-import { HttpError } from '@kivin/core';
+import { HttpError } from '@kivinjs/core';
 
 /** What the mount needs from the server: GraphQL Yoga's `createYoga(...)` result fits as is. */
 export interface FetchGraphqlServer<TServerContext> {

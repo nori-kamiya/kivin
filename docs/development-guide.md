@@ -80,35 +80,35 @@ runtime は次の責務に絞ります。
 
 ### 4. Make Optional Packages Near-Zero Cost
 
-実アプリでは `core` だけ速くても足りません。`@kivin/logger`, `@kivin/valibot`, `@kivin/openapi`, `@kivin/cli`, `@kivin/decorators` を使っても fastest tier に残れる構造が必要です。
+実アプリでは `core` だけ速くても足りません。`@kivinjs/logger`, `@kivinjs/valibot`, `@kivinjs/openapi`, `@kivinjs/cli`, `@kivinjs/decorators` を使っても fastest tier に残れる構造が必要です。
 
 各 package の原則は次です。
 
-#### `@kivin/decorators`
+#### `@kivinjs/decorators`
 
 - runtime reflection を賢くするための package にしない
 - metadata は build step の入力として扱う
 - decorator は authoring DX に寄与し、runtime dependency は増やさない
 
-#### `@kivin/cli`
+#### `@kivinjs/cli`
 
 - module graph, route manifest, OpenAPI generation を一手に引き受ける
 - runtime を軽くするための code generation を優先する
 - app inspect や route diagnostics も CLI に寄せる
 
-#### `@kivin/openapi`
+#### `@kivinjs/openapi`
 
 - request path に一切入れない
 - generated artifact を返すだけの構造を優先する
 - docs UI が必要でも runtime schema walk はしない
 
-#### `@kivin/valibot`
+#### `@kivinjs/valibot`
 
 - runtime validation の境界を明確にする
 - route 単位で必要な validator だけを持つ
 - schema adapter の共通化は維持するが、per-request schema resolution は避ける
 
-#### `@kivin/logger`
+#### `@kivinjs/logger`
 
 - disabled path で allocation を増やさない
 - request logger は opt-in かつ thin middleware に保つ

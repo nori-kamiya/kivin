@@ -1,5 +1,5 @@
-import { createApp, createTestingApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type RequestContext } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, createTestingApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type RequestContext } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 function build(log: string[], options: { failOnce?: boolean } = {}) {

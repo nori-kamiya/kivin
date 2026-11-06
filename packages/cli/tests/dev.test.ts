@@ -9,7 +9,7 @@ const portFile = join(appDir, 'port.txt');
 const events: DevEvent[] = [];
 let dev: DevHandle | undefined;
 
-const controllerSource = (message: string) => `import { Controller, Get } from '@kivin/decorators';
+const controllerSource = (message: string) => `import { Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/hello')
 export class HelloController {
@@ -47,8 +47,8 @@ describe('kivin dev', () => {
     await rm(appDir, { recursive: true, force: true });
     await mkdir(appDir, { recursive: true });
     await writeFile(join(appDir, 'controller.ts'), controllerSource('first'));
-    await writeFile(join(appDir, 'app.ts'), `import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+    await writeFile(join(appDir, 'app.ts'), `import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { HelloController } from './controller';
 
 export default defineApplication({
@@ -56,7 +56,7 @@ export default defineApplication({
   schemaAdapter: createValibotAdapter(),
 });
 `);
-    await writeFile(join(appDir, 'main.ts'), `import { createApp } from '@kivin/core';
+    await writeFile(join(appDir, 'main.ts'), `import { createApp } from '@kivinjs/core';
 import { writeFileSync } from 'node:fs';
 import manifest from './.kivin/generated/manifest';
 import appDefinition from './app';
@@ -124,8 +124,8 @@ describe('kivin dev first generate failure', () => {
     await rm(dir, { recursive: true, force: true });
     await mkdir(join(dir, 'src'), { recursive: true });
     await writeFile(join(dir, 'src/controller.ts'), controllerSource('only'));
-    await writeFile(join(dir, 'src/app.ts'), `import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+    await writeFile(join(dir, 'src/app.ts'), `import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { HelloController } from './controller';
 
 export default defineApplication({

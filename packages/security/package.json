@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/security",
+  "name": "@kivinjs/security",
   "version": "0.1.0",
   "description": "Authentication guards (Basic / Bearer), CSRF protection, secure headers, rate limiting and IP restriction for kivin",
   "license": "MIT",
@@ -25,10 +25,10 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

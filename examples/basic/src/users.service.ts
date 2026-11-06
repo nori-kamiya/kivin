@@ -1,7 +1,7 @@
-import { conflict } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
-import type { Logger } from '@kivin/logger';
-import { LOGGER } from '@kivin/logger';
+import { conflict } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
+import type { Logger } from '@kivinjs/logger';
+import { LOGGER } from '@kivinjs/logger';
 import type { CreateUserInput, PatchUserInput, ReplaceUserInput } from './users.schemas';
 
 export interface UserRecord {

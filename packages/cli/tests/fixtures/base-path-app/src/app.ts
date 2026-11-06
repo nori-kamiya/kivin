@@ -1,6 +1,6 @@
-import { defineApplication, defineModule } from '@kivin/core';
-import { Controller, Get } from '@kivin/decorators';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { Controller, Get } from '@kivinjs/decorators';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 @Controller('/users')
 export class UsersController {

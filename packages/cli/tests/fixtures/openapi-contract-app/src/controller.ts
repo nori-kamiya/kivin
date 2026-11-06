@@ -1,4 +1,4 @@
-import type { RouteInput } from '@kivin/core';
+import type { RouteInput } from '@kivinjs/core';
 import {
     ApiResponse,
     Controller,
@@ -13,7 +13,7 @@ import {
     UseBodySchema,
     UseParamSchema,
     UseQuerySchema,
-} from '@kivin/decorators';
+} from '@kivinjs/decorators';
 import {
     ContractListSchema,
     ContractPathSchema,

@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivinjs/core';
 import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '../src/index';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 const basic = (user: string, pass: string) => `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${user}:${pass}`)))}`;

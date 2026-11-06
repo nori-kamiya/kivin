@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/session",
+  "name": "@kivinjs/session",
   "version": "0.1.0",
   "description": "Server-side sessions for kivin: signed session-ID cookie, pluggable stores",
   "license": "MIT",
@@ -25,10 +25,10 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

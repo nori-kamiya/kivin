@@ -1,6 +1,6 @@
 // JSON Web Tokens on Web Crypto (no dependencies) and a bearer-token guard for kivin.
 import type { webcrypto } from 'node:crypto';
-import { HttpError, unauthorized, type CanActivate, type RequestContext } from '@kivin/core';
+import { HttpError, unauthorized, type CanActivate, type RequestContext } from '@kivinjs/core';
 
 export type JwtAlgorithm =
   | 'HS256' | 'HS384' | 'HS512'

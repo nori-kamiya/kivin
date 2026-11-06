@@ -4,7 +4,7 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from '../src/ast';
 import { generateArtifacts, inspectModules, inspectRoutes, loadAppDefinition } from '../src/index';
-import { toOpenApiPath } from '@kivin/openapi';
+import { toOpenApiPath } from '@kivinjs/openapi';
 
 const testsDir = import.meta.dir;
 const repoRoot = resolve(testsDir, '../../..');

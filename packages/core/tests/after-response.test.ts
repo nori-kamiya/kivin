@@ -1,4 +1,4 @@
-import { afterResponse, createApp, defineApplication, defineModule, type AppManifest, type ExceptionFilter, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivin/core';
+import { afterResponse, createApp, defineApplication, defineModule, type AppManifest, type ExceptionFilter, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivinjs/core';
 import { describe, expect, spyOn, test } from 'bun:test';
 
 class Teapot extends Error {}

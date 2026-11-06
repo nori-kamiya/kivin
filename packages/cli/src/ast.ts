@@ -163,7 +163,7 @@ export async function buildManifestSourceFromAst(input: { entry: string; outFile
   const controllers = (await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name))))
     .map((controller) => (appBasePath ? { ...controller, basePath: joinPaths(appBasePath, controller.basePath) } : controller));
   const renderer = new ImportRenderer(resolve(input.outFile));
-  renderer.addTypeImport('@kivin/core', 'AppManifest');
+  renderer.addTypeImport('@kivinjs/core', 'AppManifest');
   const aot = input.aot !== false;
   const routeEntries = controllers.flatMap((controller) => controller.routes.map((route) => renderRoute(controller, route, renderer, aot)));
   const imports = renderer.render();
@@ -217,7 +217,7 @@ export const TYPEOF_EXPRESSION_PATTERN = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*
  */
 function renderContracts(controllers: AstControllerNode[], outFile: string) {
   const renderer = new ImportRenderer(outFile);
-  const contract = renderer.addTypeImport('@kivin/core', 'RouteContract');
+  const contract = renderer.addTypeImport('@kivinjs/core', 'RouteContract');
   const checks: string[] = [];
 
   const schemaType = (controller: AstControllerNode, expression: AstExpressionRef | undefined) => {
@@ -1220,7 +1220,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
   const routeFilters = renderExpressionList(controller.filePath, [...controller.filters, ...route.filters], renderer);
 
   const aotFactory = aot
-    ? renderAotFactory(route, controllerLocalName, renderer.addTypeImport('@kivin/core', 'AotRouteRuntime'), renderer.addTypeImport('@kivin/core', 'RequestContext'))
+    ? renderAotFactory(route, controllerLocalName, renderer.addTypeImport('@kivinjs/core', 'AotRouteRuntime'), renderer.addTypeImport('@kivinjs/core', 'RequestContext'))
     : undefined;
 
   return `    {\n      method: ${JSON.stringify(route.method)},\n      fullPath: ${JSON.stringify(joinPaths(controller.basePath, route.path))},\n      controller: ${controllerLocalName},\n      methodName: ${JSON.stringify(route.methodName)},\n      parameters: ${renderParameters(route.parameters)},\n      guards: ${routeGuards},\n      middleware: ${routeMiddleware},\n      filters: ${routeFilters},\n      docs: { ${docsEntries.join(', ')} },${aotFactory ? `\n      aot: ${aotFactory},` : ''}\n    }`;

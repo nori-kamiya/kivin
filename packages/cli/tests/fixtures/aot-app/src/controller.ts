@@ -1,5 +1,5 @@
-import { HttpError, type RouteInput } from '@kivin/core';
-import { ApiResponse, BodyLimit, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseHeaderSchema, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import { HttpError, type RouteInput } from '@kivinjs/core';
+import { ApiResponse, BodyLimit, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseHeaderSchema, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivinjs/decorators';
 import { HeaderMiddleware, ItemMissing, MissingFilter, RawKeyGuard, REQUEST_ID, RoleGuard, Store, TraceMiddleware } from './providers';
 import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery, UploadForm, VersionHeaders } from './schemas';
 

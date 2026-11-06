@@ -1,4 +1,4 @@
-// @kivin/http: HTTP-level middleware and helpers (compression, ETag, timeout, request IDs, content
+// @kivinjs/http: HTTP-level middleware and helpers (compression, ETag, timeout, request IDs, content
 // negotiation, streaming, pretty JSON, method override, trailing slashes).
 export { accepts, acceptsEncoding, acceptsLanguage, acceptsType, negotiate, parseAcceptHeader, type AcceptEntry } from './accepts';
 export { createCompressMiddleware, createEtagMiddleware, type CompressionEncoding, type CompressOptions, type EtagOptions } from './compress';

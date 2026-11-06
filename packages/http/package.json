@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/http",
+  "name": "@kivinjs/http",
   "version": "0.1.0",
   "description": "HTTP middleware and helpers for kivin: compression, ETag, timeout, request IDs, content negotiation, streaming, pretty JSON, method override, trailing slashes",
   "license": "MIT",
@@ -25,10 +25,10 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

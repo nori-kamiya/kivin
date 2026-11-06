@@ -14,8 +14,8 @@ import {
     type ExceptionFilter,
     type NestLikeMiddleware,
     type ResponseState,
-} from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+} from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import * as v from 'valibot';
 

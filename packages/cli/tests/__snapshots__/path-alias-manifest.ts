@@ -1,4 +1,4 @@
-import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivin/core';
+import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivinjs/core';
 import { FeatureAController } from '../fixtures/path-alias-app/src/feature-a/controller';
 import { SharedSchema } from '../fixtures/path-alias-app/src/feature-a/schemas';
 import { FeatureBController } from '../fixtures/path-alias-app/src/feature-b/controller';

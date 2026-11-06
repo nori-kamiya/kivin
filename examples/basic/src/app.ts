@@ -1,7 +1,7 @@
-import { defineApplication, defineModule } from '@kivin/core';
-import { createSecureHeadersMiddleware } from '@kivin/security';
-import { createLogger, LOGGER, LOGGER_OPTIONS, RequestLoggerMiddleware } from '@kivin/logger';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createSecureHeadersMiddleware } from '@kivinjs/security';
+import { createLogger, LOGGER, LOGGER_OPTIONS, RequestLoggerMiddleware } from '@kivinjs/logger';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { RequestIdMiddleware } from './request-id.middleware';
 import { UsersModule } from './users.module';
 

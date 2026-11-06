@@ -12,35 +12,36 @@ npm への最初の公開です。v0.0.1 はソースのみのタグで、npm �
 
 ### Added
 
-- `@kivin/core`: Bun のネイティブルートへ直接コンパイルするルーティング、モジュールと DI（`createToken`、request-scoped provider、`onModuleInit` / `onApplicationBootstrap` / `onApplicationShutdown`、`app.init()` / `app.close()`）、入力検証、Cookie（署名付き含む）、SSE、WebSocket（`defineWebSocket`）、CORS、`onRequest` フック、`afterResponse` / `enableAfterResponse`、`basePath`、`bodyLimit`、`createRequestIdMiddleware`、`getClientAddress`、`createTestingApp`、`listen({ shutdownSignals, onShutdownStart, shutdownDelayMs })`
-- `@kivin/cli`: `kivin init` / `generate` / `dev` / `openapi` / `inspect`。`generate` は manifest、`contracts.ts`（ハンドラと schema のズレを `tsc` で検出）、型付きクライアント `client.ts`、OpenAPI、AOT 実行関数を出力する
-- `@kivin/decorators`: TC39 標準デコレータ（`@Controller` / `@Get` など、`@UseGuards`、`@BodyLimit`、`@Consumes`、`@StaticResponse`、`@UseHeaderSchema`、型付きの `@Injectable({ deps })`）
-- `@kivin/openapi`: OpenAPI 3.1 の生成と Swagger UI の HTML
-- `@kivin/valibot` / `@kivin/standard-schema`: schema adapter
-- `@kivin/logger`: JSON 構造化ロガーとリクエストロガー
-- `@kivin/jwt`: Web Crypto ベースの JWT 検証・署名、JWKS、JWT ガード
-- `@kivin/security`: Basic / Bearer 認証、CSRF、secure headers、レートリミット（ストア差し替え可）、IP 制限、`anyGuard`
-- `@kivin/http`: 圧縮、ETag、タイムアウト、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、リバースプロキシ、HTML テンプレート、リクエストストレージ
-- `@kivin/static`: 静的ファイル配信（ETag、Range、SPA fallback、事前圧縮、パストラバーサル対策）
-- `@kivin/observability`: Prometheus メトリクス、OpenTelemetry の SERVER スパン、Server-Timing、`/livez` / `/readyz`
-- `@kivin/config`: 型付き環境変数（`loadEnv` / `envProvider`）
-- `@kivin/schedule`: cron ジョブ（IANA タイムゾーン、重複実行の抑止、`app.close()` 連動）
-- `@kivin/session`: サーバー側セッション（署名付き Cookie、ストア差し替え可）
-- `@kivin/graphql`: GraphQL Yoga などの fetch ベースのサーバーをネイティブルートに載せる。`graphql-ws` の配線例は `docs/production.md`
+- `@kivinjs/core`: Bun のネイティブルートへ直接コンパイルするルーティング、モジュールと DI（`createToken`、request-scoped provider、`onModuleInit` / `onApplicationBootstrap` / `onApplicationShutdown`、`app.init()` / `app.close()`）、入力検証、Cookie（署名付き含む）、SSE、WebSocket（`defineWebSocket`）、CORS、`onRequest` フック、`afterResponse` / `enableAfterResponse`、`basePath`、`bodyLimit`、`createRequestIdMiddleware`、`getClientAddress`、`createTestingApp`、`listen({ shutdownSignals, onShutdownStart, shutdownDelayMs })`
+- `@kivinjs/cli`: `kivin init` / `generate` / `dev` / `openapi` / `inspect`。`generate` は manifest、`contracts.ts`（ハンドラと schema のズレを `tsc` で検出）、型付きクライアント `client.ts`、OpenAPI、AOT 実行関数を出力する
+- `@kivinjs/decorators`: TC39 標準デコレータ（`@Controller` / `@Get` など、`@UseGuards`、`@BodyLimit`、`@Consumes`、`@StaticResponse`、`@UseHeaderSchema`、型付きの `@Injectable({ deps })`）
+- `@kivinjs/openapi`: OpenAPI 3.1 の生成と Swagger UI の HTML
+- `@kivinjs/valibot` / `@kivinjs/standard-schema`: schema adapter
+- `@kivinjs/logger`: JSON 構造化ロガーとリクエストロガー
+- `@kivinjs/jwt`: Web Crypto ベースの JWT 検証・署名、JWKS、JWT ガード
+- `@kivinjs/security`: Basic / Bearer 認証、CSRF、secure headers、レートリミット（ストア差し替え可）、IP 制限、`anyGuard`
+- `@kivinjs/http`: 圧縮、ETag、タイムアウト、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、リバースプロキシ、HTML テンプレート、リクエストストレージ
+- `@kivinjs/static`: 静的ファイル配信（ETag、Range、SPA fallback、事前圧縮、パストラバーサル対策）
+- `@kivinjs/observability`: Prometheus メトリクス、OpenTelemetry の SERVER スパン、Server-Timing、`/livez` / `/readyz`
+- `@kivinjs/config`: 型付き環境変数（`loadEnv` / `envProvider`）
+- `@kivinjs/schedule`: cron ジョブ（IANA タイムゾーン、重複実行の抑止、`app.close()` 連動）
+- `@kivinjs/session`: サーバー側セッション（署名付き Cookie、ストア差し替え可）
+- `@kivinjs/graphql`: GraphQL Yoga などの fetch ベースのサーバーをネイティブルートに載せる。`graphql-ws` の配線例は `docs/production.md`
 - CI の性能ゲート `bun run perf:regression`、Hono / Elysia とのペア計測 `bun run perf:check`
 - リリース基盤 `bun run release:pack` / `release:verify` / `pack:smoke` と `.github/workflows/release.yml`（手順は `docs/release.md`）
 
 ### Changed（v0.0.1 からの破壊的変更）
 
+- パッケージのスコープを `@kivin` から `@kivinjs` に変更した（npm で `kivin` を取得できなかったため）。CLI のコマンド名は `kivin` のまま
 - TC39 標準デコレータへ移行した。`experimentalDecorators` は有効にしない。引数デコレータ（`@Body` / `@PathParam` / `@QueryParam` / `@Context`）を廃止し、ハンドラは入力オブジェクト 1 つを受け取る
-- 認証・CSRF・secure headers・レートリミットは `@kivin/security`、圧縮・ETag・タイムアウトなどは `@kivin/http`、静的ファイルは `@kivin/static` へ `@kivin/core` から分離した
-- `@kivin/core` は peerDependency になった。プラグインと同じバージョンをプロジェクトに入れる
-- `@kivin/valibot` の `valibot` は peerDependency で、`^1.5.0` が必要
+- 認証・CSRF・secure headers・レートリミットは `@kivinjs/security`、圧縮・ETag・タイムアウトなどは `@kivinjs/http`、静的ファイルは `@kivinjs/static` へ `@kivinjs/core` から分離した
+- `@kivinjs/core` は peerDependency になった。プラグインと同じバージョンをプロジェクトに入れる
+- `@kivinjs/valibot` の `valibot` は peerDependency で、`^1.5.0` が必要
 - JSON レスポンスの `content-type` は `application/json;charset=utf-8`（空白なし）
 - 検証エラーの `issues` は `{ path, message }` の配列に正規化した
 - 繰り返されたクエリキーは最後の値ではなく配列になる
 - 不正な JSON ボディは 500 ではなく `400 { message: 'Invalid JSON body' }` を返す
-- `@kivin/cli` の AST 解析を TypeScript Compiler API から oxc へ置き換えた。`typescript` への依存はなく、`oxc-parser` / `oxc-resolver` は完全一致に固定している
+- `@kivinjs/cli` の AST 解析を TypeScript Compiler API から oxc へ置き換えた。`typescript` への依存はなく、`oxc-parser` / `oxc-resolver` は完全一致に固定している
 
 ### Security
 

@@ -12,8 +12,8 @@ Bun single binary で安定させるため、次を避けます。
 ## Supported flow
 
 ```bash
-bun add -d @kivin/cli                              # 初回のみ
-bunx --package @kivin/cli kivin generate --entry app.ts --outDir .kivin/generated
+bun add -d @kivinjs/cli                              # 初回のみ
+bunx --package @kivinjs/cli kivin generate --entry app.ts --outDir .kivin/generated
 bun build main.ts --compile --outfile server       # app.ts と同名にしない
 ./server
 ```

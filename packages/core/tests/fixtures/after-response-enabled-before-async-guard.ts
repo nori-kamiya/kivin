@@ -1,5 +1,5 @@
 // Runs in its own process: `afterResponseInUse` is module state, see after-response-first-request.ts.
-import { afterResponse, createApp, defineApplication, defineModule, enableAfterResponse, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivin/core';
+import { afterResponse, createApp, defineApplication, defineModule, enableAfterResponse, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivinjs/core';
 
 enableAfterResponse();
 

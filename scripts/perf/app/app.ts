@@ -1,7 +1,7 @@
 // Benchmark app source. `scripts/perf-regression.ts` runs each tree's own `kivin generate` on it, so
 // the benchmark measures what users get from that version of the CLI and runtime.
-import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { HealthController, ScopedController, UsersController } from './controllers';
 import { ApiKeyGuard, requestStampProvider, RequestIdMiddleware, UserNotFoundFilter, UserStore } from './providers';
 

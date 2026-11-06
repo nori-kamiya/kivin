@@ -63,12 +63,12 @@ async me({ context }: RouteInput) {
 - 鍵は文字列・鍵のバイト列・HMAC の `CryptoKey` のいずれか。配列を渡すと先頭の鍵で署名し、どれかの鍵で検証できれば受け入れるので、新しい鍵を先頭に足すだけでローテーションできます。検証は `crypto.subtle.verify`（定数時間）です。
 - ミドルウェアなど `RequestContext` の外では `getSignedCookie(request, name, secrets)` / `serializeSignedCookie(name, value, secrets, options)` / `signCookieValue` / `verifyCookieValue` を使います。
 
-## JWT（`@kivin/jwt`）
+## JWT（`@kivinjs/jwt`）
 
 Web Crypto ベースで依存はありません。HS* / RS* / PS* / ES* / EdDSA に対応しています。
 
 ```ts
-import { createJwtGuard, getJwtPayload, signJwt } from '@kivin/jwt';
+import { createJwtGuard, getJwtPayload, signJwt } from '@kivinjs/jwt';
 
 export const AuthGuard = createJwtGuard({
   key: process.env.JWT_SECRET!,      // RS/ES では公開鍵の CryptoKey か JWK
@@ -96,7 +96,7 @@ const token = await signJwt({ role: 'admin' }, { key: secret, algorithm: 'HS256'
 Auth0 / Cognito / Entra ID / Google など、鍵をローテーションするプロバイダには `createRemoteJwks` を `key` に渡します。
 
 ```ts
-import { createJwtGuard, createRemoteJwks } from '@kivin/jwt';
+import { createJwtGuard, createRemoteJwks } from '@kivinjs/jwt';
 
 export const AuthGuard = createJwtGuard({
   key: createRemoteJwks('https://auth.example.com/.well-known/jwks.json'),
@@ -131,8 +131,8 @@ uploadAvatar(/* ... */) {}
 ## タイムアウトとレートリミット
 
 ```ts
-import { createTimeoutMiddleware } from '@kivin/http';
-import { createRateLimitMiddleware } from '@kivin/security';
+import { createTimeoutMiddleware } from '@kivinjs/http';
+import { createRateLimitMiddleware } from '@kivinjs/security';
 
 globals: {
   middleware: [
@@ -170,7 +170,7 @@ globals: {
 ## 圧縮と ETag
 
 ```ts
-import { createCompressMiddleware, createEtagMiddleware } from '@kivin/http';
+import { createCompressMiddleware, createEtagMiddleware } from '@kivinjs/http';
 
 defineApplication({
   // ...
@@ -195,7 +195,7 @@ defineApplication({
 `serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
 
 ```ts
-import { serveStatic } from '@kivin/static';
+import { serveStatic } from '@kivinjs/static';
 
 app.listen({
   port: 3000,
@@ -217,7 +217,7 @@ app.listen({
 ## Basic / Bearer 認証と CSRF
 
 ```ts
-import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '@kivin/security';
+import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '@kivinjs/security';
 
 export const AdminGuard = createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! }, realm: 'Admin' });
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_KEY!] });
@@ -230,7 +230,7 @@ admin({ context }: RouteInput) {
 ```
 
 - `createBasicAuthGuard({ users | verify, realm })`: 失敗時は `401` と `WWW-Authenticate: Basic realm="…", charset="UTF-8"`。`users` は定数時間で比較し、どのユーザー名が存在するかが時間差で分からないよう全件を比較します。パスワードハッシュなどは `verify` で
-- `createBearerAuthGuard({ tokens | verify, realm })`: 静的な API キーなど。JWT は `@kivin/jwt` の `createJwtGuard` を使ってください
+- `createBearerAuthGuard({ tokens | verify, realm })`: 静的な API キーなど。JWT は `@kivinjs/jwt` の `createJwtGuard` を使ってください
 - どちらも `canActivateRaw` を持つので、context を作らない高速な経路で動きます
 
 `createCsrfMiddleware({ trustedOrigins })` は、ブラウザからのクロスサイトな状態変更リクエストを `403` にします（Go 1.25 の `CrossOriginProtection` と同じ判定）:
@@ -241,12 +241,12 @@ admin({ context }: RouteInput) {
 - `trustedOrigins` に挙げたオリジンは常に許可
 - フォームの Content-Type だけを見る方式と違い、JSON など全ボディ型を対象にします
 
-## IP 制限（`@kivin/security`）
+## IP 制限（`@kivinjs/security`）
 
 許可リスト / 拒否リスト（Hono の `ipRestriction` 相当）。IPv4 / IPv6 のアドレス、CIDR、`*`、判定関数を指定できます。
 
 ```ts
-import { createIpRestrictionGuard } from '@kivin/security';
+import { createIpRestrictionGuard } from '@kivinjs/security';
 
 // 管理画面は社内ネットワークだけ
 @UseGuards(createIpRestrictionGuard({ allow: ['10.0.0.0/8', '192.168.0.0/16', '::1'], deny: ['10.0.13.0/24'] }))
@@ -263,13 +263,13 @@ export class AdminController { ... }
 ### いずれかの認証を通す（`anyGuard`）
 
 ```ts
-import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivin/security';
+import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivinjs/security';
 
 // API トークンでも Basic 認証でもよい
 @UseGuards(anyGuard(createBearerAuthGuard({ tokens: [process.env.API_TOKEN!] }), createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! } })))
 ```
 
-順番に試して最初に通ったもので許可します。すべて拒否した場合は最初の `HttpError`（`WWW-Authenticate` 付きの 401 など）を返し、どれも例外を投げなければ 403 です。合成するガードはコンストラクタ依存を持たないもの（`@kivin/security` / `@kivin/jwt` のファクトリで作るガードなど）に限ります。
+順番に試して最初に通ったもので許可します。すべて拒否した場合は最初の `HttpError`（`WWW-Authenticate` 付きの 401 など）を返し、どれも例外を投げなければ 403 です。合成するガードはコンストラクタ依存を持たないもの（`@kivinjs/security` / `@kivinjs/jwt` のファクトリで作るガードなど）に限ります。
 
 ## WebSocket
 
@@ -315,12 +315,12 @@ events({ context }: RouteInput) {
 
 ハンドラが終わるか、クライアントが切断する（`stream.signal` が abort される）とストリームを閉じます。プロキシに切られないよう、15 秒ごとに keep-alive コメントを送ります（`keepAliveMs` で変更可）。
 
-## ストリーミング（`@kivin/http`）
+## ストリーミング（`@kivinjs/http`）
 
 SSE 以外のストリーミングには `stream` / `streamText` / `streamNdjson` を使います。返した `Response` には通常どおりキューされたヘッダや Cookie が付きます。
 
 ```ts
-import { streamNdjson, streamText } from '@kivin/http';
+import { streamNdjson, streamText } from '@kivinjs/http';
 
 @Get('/export')
 export({ context }: RouteInput) {
@@ -343,10 +343,10 @@ progress({ context }: RouteInput) {
 - ハンドラが投げた例外は、レスポンス開始後なのでステータスは変えられません。既定ではログに出してストリームを閉じます。`onError(error, writer)` で最後のチャンクを書けます。
 - `signal: context.request.signal` を渡すと、書き込んでいない間の切断も `onAbort` / `aborted` に反映されます。
 
-## リバースプロキシ（`@kivin/http`）
+## リバースプロキシ（`@kivinjs/http`）
 
 ```ts
-import { proxy } from '@kivin/http';
+import { proxy } from '@kivinjs/http';
 
 app.listen({
   port: 3000,
@@ -365,10 +365,10 @@ app.listen({
 - 上流のレスポンスは圧縮されたまま返すので、`Content-Encoding` と中身が食い違いません。
 - 上流に届かなければ 502、`timeoutMs` を超えたら 504。クライアントが切断すると上流へのリクエストも中断します。
 
-## HTML テンプレート（`@kivin/http`）
+## HTML テンプレート（`@kivinjs/http`）
 
 ```ts
-import { html, htmlResponse, raw } from '@kivin/http';
+import { html, htmlResponse, raw } from '@kivinjs/http';
 
 @Get('/users/:id/card')
 card({ params }: RouteInput<{ params: typeof IdSchema }>) {
@@ -385,10 +385,10 @@ card({ params }: RouteInput<{ params: typeof IdSchema }>) {
 
 埋め込んだ値はすべて HTML エスケープされます（属性値も含む）。`html` で作ったものは二重にエスケープされず、配列は連結、`null` / `undefined` / 真偽値は何も出力しません。
 
-## 現在のリクエストへのアクセス（`@kivin/http`）
+## 現在のリクエストへのアクセス（`@kivinjs/http`）
 
 ```ts
-import { createRequestStorageMiddleware, getCurrentRequest, setRequestValue, getRequestValue } from '@kivin/http';
+import { createRequestStorageMiddleware, getCurrentRequest, setRequestValue, getRequestValue } from '@kivinjs/http';
 
 defineApplication({ ..., globals: { middleware: [createRequestStorageMiddleware() /* 先頭に */] } });
 
@@ -401,10 +401,10 @@ export function audit(event: string) {
 
 AsyncLocalStorage を使うので、`await` をまたいでも各リクエストで分離されます。ミドルウェアを入れたリクエストにだけコストがかかります。
 
-## コンテンツネゴシエーション（`@kivin/http`）
+## コンテンツネゴシエーション（`@kivinjs/http`）
 
 ```ts
-import { acceptsLanguage, acceptsType } from '@kivin/http';
+import { acceptsLanguage, acceptsType } from '@kivinjs/http';
 
 show({ context }: RouteInput) {
   const lang = acceptsLanguage(context.request, ['ja', 'en'], 'en');      // ja-JP → ja、en-US → en
@@ -421,7 +421,7 @@ q 値の高いものを選び、同じ q なら具体的な一致（`text/html` 
 `defineApplication({ onRequest })` に渡したフックは、ルーティングの前に全リクエストで順に実行されます（Bun のネイティブルートに載ったルートも含む）。`Response` を返すと即座に応答し、`Request` を返すとそのリクエストとしてルーティングし直します。フックを設定しなければオーバーヘッドはありません。
 
 ```ts
-import { createMethodOverride, createPrettyJsonMiddleware, createTrailingSlash } from '@kivin/http';
+import { createMethodOverride, createPrettyJsonMiddleware, createTrailingSlash } from '@kivinjs/http';
 
 defineApplication({
   modules: [AppModule],
@@ -470,8 +470,8 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 ## リクエスト ID
 
 ```ts
-import { createRequestIdMiddleware, getRequestId } from '@kivin/http';
-import { RequestLoggerMiddleware } from '@kivin/logger';
+import { createRequestIdMiddleware, getRequestId } from '@kivinjs/http';
+import { RequestLoggerMiddleware } from '@kivinjs/logger';
 
 // ID を先（外側）に置くと、ロガーの request.* レコードに同じ requestId が入ります
 globals: { middleware: [createRequestIdMiddleware(), RequestLoggerMiddleware] },
@@ -481,12 +481,12 @@ globals: { middleware: [createRequestIdMiddleware(), RequestLoggerMiddleware] },
 - レスポンスに同じヘッダを付け、ハンドラからは `getRequestId(request)` / `context.get('requestId')` で読めます
 - `header`（既定 `x-request-id`）、`trustIncoming: false`（常に新規発行）、`generate` を変更できます
 
-## 観測（`@kivin/observability`）
+## 観測（`@kivinjs/observability`）
 
 ### Prometheus メトリクス
 
 ```ts
-import { createMetrics } from '@kivin/observability';
+import { createMetrics } from '@kivinjs/observability';
 
 const metrics = createMetrics();
 const app = createApp(defineApplication({ ..., globals: { middleware: [metrics.middleware] } }), manifest);
@@ -505,7 +505,7 @@ app.listen({ port: 3000, routes: { '/metrics': metrics.handler } });
 
 ```ts
 import { context, propagation, trace } from '@opentelemetry/api';
-import { createTracingMiddleware } from '@kivin/observability';
+import { createTracingMiddleware } from '@kivinjs/observability';
 
 const Tracing = createTracingMiddleware({ tracer: trace.getTracer('my-app'), propagation, context });
 defineApplication({ ..., globals: { middleware: [Tracing /* 先頭に置く */, ...] } });
@@ -519,7 +519,7 @@ defineApplication({ ..., globals: { middleware: [Tracing /* 先頭に置く */, 
 ### Server-Timing
 
 ```ts
-import { createServerTimingMiddleware, serverTiming } from '@kivin/observability';
+import { createServerTimingMiddleware, serverTiming } from '@kivinjs/observability';
 
 defineApplication({ ..., globals: { middleware: [createServerTimingMiddleware({ enabled: (request) => isInternal(request) })] } });
 
@@ -535,7 +535,7 @@ async show({ context }: RouteInput) {
 ### ヘルスチェック
 
 ```ts
-import { createHealthCheck } from '@kivin/observability';
+import { createHealthCheck } from '@kivinjs/observability';
 
 const health = createHealthCheck({ checks: { db: () => db.query('select 1'), redis: () => redis.ping() }, timeoutMs: 2000 });
 app.listen({
@@ -550,12 +550,12 @@ app.listen({
 - `/livez` はチェックを行わず常に 200 です（依存先の障害でプロセスを再起動させないため）。
 - `/readyz` はチェックを並列に実行し、例外・`false`・タイムアウトのいずれかで 503 と失敗したチェックを返します（`details: false` で名前だけ）。
 
-## 環境変数（`@kivin/config`）
+## 環境変数（`@kivinjs/config`）
 
 起動時に一度だけ環境変数を検証し、型付きの値として使います。不正な変数はすべてまとめてエラーにし、値（パスワードなど）はメッセージに出しません。
 
 ```ts
-import { envProvider, loadEnv } from '@kivin/config';
+import { envProvider, loadEnv } from '@kivinjs/config';
 import * as v from 'valibot';
 
 const Env = v.object({
@@ -576,10 +576,10 @@ defineModule({ providers: [envProvider(ENV, Env)], ... });
 
 Standard Schema に対応したライブラリ（Valibot / Zod / ArkType）ならそのまま渡せます。それ以外は `{ adapter }` を指定します。`prefix: 'APP_'` を付けると `APP_PORT` を `PORT` として読み、無関係な変数は schema に渡しません。
 
-## 定期実行（`@kivin/schedule`）
+## 定期実行（`@kivinjs/schedule`）
 
 ```ts
-import { Scheduler } from '@kivin/schedule';
+import { Scheduler } from '@kivinjs/schedule';
 
 @Injectable({ deps: [ReportService] })
 export class Jobs extends Scheduler {
@@ -601,10 +601,10 @@ await app.close();         // 停止し、実行中のジョブを待つ（既�
 - 例外はログに出して次回以降も続けます（`onError` で通知先を変更可）。`run(name)` で手動実行、`list()` で次回実行時刻を確認できます。
 - 複数のインスタンスで動かすと、それぞれで実行されます。1 回だけ実行したいジョブはロックなどで排他してください。
 
-## セッション（`@kivin/session`）
+## セッション（`@kivinjs/session`）
 
 ```ts
-import { createSessionMiddleware, getSession } from '@kivin/session';
+import { createSessionMiddleware, getSession } from '@kivinjs/session';
 
 const Sessions = createSessionMiddleware({
   secret: [process.env.SESSION_SECRET!, process.env.SESSION_SECRET_OLD!].filter(Boolean),
@@ -629,13 +629,13 @@ logout({ context }: RouteInput) {
 - 何かを設定するまではセッションを作らず Cookie も出しません（匿名アクセスでストアが膨らまない）。変更があった時だけ保存し、`rolling: true` ならアクセスのたびに期限を延ばします。
 - `MemorySessionStore` は開発・テスト・単一プロセス向けです（再起動で消え、プロセス間で共有されない）。
 
-## GraphQL（`@kivin/graphql`）
+## GraphQL（`@kivinjs/graphql`）
 
 GraphQL Yoga をそのまま Bun のネイティブルートに載せます（kivin 側は Yoga に依存しません）。
 
 ```ts
 import { createSchema, createYoga } from 'graphql-yoga';
-import { createGraphqlRoutes } from '@kivin/graphql';
+import { createGraphqlRoutes } from '@kivinjs/graphql';
 
 const yoga = createYoga<{ users: UserService; userId?: string }>({ schema: createSchema({ typeDefs, resolvers }) });
 await app.init();
@@ -652,7 +652,7 @@ GET（GraphiQL を含む）、POST、CORS preflight、SSE のサブスクリプ�
 WebSocket のサブスクリプションには `graphql-ws` を `listen({ websockets })` に載せます。`upgrade` の戻り値をコンテキストに渡せます。
 
 ```ts
-import { defineWebSocket } from '@kivin/core';
+import { defineWebSocket } from '@kivinjs/core';
 import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from 'graphql-ws';
 
 const graphqlWs = makeServer<Record<string, unknown>, { userId: string }>({
@@ -707,7 +707,7 @@ app.listen({ port: 3000, routes: createGraphqlRoutes(yoga, { context }), websock
 フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。
 
 - `HttpError` やフィルタが応答を返した例外は出力しません
-- `@kivin/logger` の `RequestLoggerMiddleware` が `request.error` として記録した例外は二重に出しません
+- `@kivinjs/logger` の `RequestLoggerMiddleware` が `request.error` として記録した例外は二重に出しません
 - 独自のロガーで記録する場合は、記録後に `markErrorReported(error)` を呼ぶと既定の出力を抑止できます
 
 ## 起動時フック（`onModuleInit` / `onApplicationBootstrap`）
@@ -756,7 +756,7 @@ app.listen({ port: 3000, shutdownSignals: true }); // SIGINT / SIGTERM で app.c
 ## テスト
 
 ```ts
-import { createTestingApp } from '@kivin/core';
+import { createTestingApp } from '@kivinjs/core';
 
 const app = createTestingApp(appDefinition, {
   manifest,                                              // 省略するとデコレータのメタデータから組み立てる

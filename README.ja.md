@@ -15,19 +15,19 @@ Bun の single-binary デプロイを前提にした、軽量な Fetch API ベ�
 ## インストール
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/valibot valibot
-bun add -d @kivin/cli @types/bun typescript
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/valibot valibot
+bun add -d @kivinjs/cli @types/bun typescript
 ```
 
-`@kivin/cli` は、プロジェクトの開発依存として入れてください（どこか別の場所から実行するだけでは不十分です）。ルートマニフェストの生成時に、プロジェクトに入っている `@kivin/core` に対してアプリを読み込むためです。core に差し込むパッケージ（`@kivin/security`、`@kivin/http` など）は `@kivin/core` を peer dependency に持つので、同じく `bun add` で入れます。Zod や ArkType など他の Standard Schema 対応 validator は、`@kivin/valibot` の代わりに `@kivin/standard-schema` を使います（[docs/schema-adapter.md](docs/schema-adapter.md)）。
+`@kivinjs/cli` は、プロジェクトの開発依存として入れてください（どこか別の場所から実行するだけでは不十分です）。ルートマニフェストの生成時に、プロジェクトに入っている `@kivinjs/core` に対してアプリを読み込むためです。core に差し込むパッケージ（`@kivinjs/security`、`@kivinjs/http` など）は `@kivinjs/core` を peer dependency に持つので、同じく `bun add` で入れます。Zod や ArkType など他の Standard Schema 対応 validator は、`@kivinjs/valibot` の代わりに `@kivinjs/standard-schema` を使います（[docs/schema-adapter.md](docs/schema-adapter.md)）。
 
 手で組み立てずに雛形から始めるには:
 
 ```bash
-bunx --package @kivin/cli kivin init my-app
+bunx --package @kivinjs/cli kivin init my-app
 ```
 
-（必ず `--package @kivin/cli` を付けてください。スコープなしの npm 名 `kivin` は本プロジェクトのものではありません。）
+（必ず `--package @kivinjs/cli` を付けてください。スコープなしの npm 名 `kivin` は本プロジェクトのものではありません。）
 
 ### TypeScript の設定
 
@@ -58,9 +58,9 @@ kivin は TC39 標準デコレータ（TypeScript 5+ の既定）を使います
 
 ```ts
 // app.ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { Controller, Get } from '@kivin/decorators';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { Controller, Get } from '@kivinjs/decorators';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 @Controller('/hello')
 export class HelloController {
@@ -86,7 +86,7 @@ export default defineApplication({
 
 ```ts
 // main.ts
-import { createApp } from '@kivin/core';
+import { createApp } from '@kivinjs/core';
 import manifest from './.kivin/generated/manifest';
 import appDefinition from './app';
 
@@ -96,7 +96,7 @@ const app = createApp(appDefinition, manifest);
 app.listen(3000);
 ```
 
-`package.json` に scripts を足します（`kivin` コマンドはローカルの `@kivin/cli` が提供します）。
+`package.json` に scripts を足します（`kivin` コマンドはローカルの `@kivinjs/cli` が提供します）。
 
 ```json
 {
@@ -134,7 +134,7 @@ single binary にするには、生成 manifest を静的 import したまま `b
 
 ### `generate` がすること・しないこと
 
-- `kivin generate` はデコレータをソースの AST から解析しますが、**エントリファイルとその import 先も実際に import します**。つまり、`app.ts` から辿れるモジュールのトップレベルの副作用はビルド時に実行されます。必須の環境変数の読み込みや接続の確立などをそこに書くと、シークレットの無い CI / Docker ビルドで失敗します。環境変数の検証は DI（`@kivin/config` の `envProvider`）か `main.ts` で行ってください（[docs/production.md](docs/production.md)）。
+- `kivin generate` はデコレータをソースの AST から解析しますが、**エントリファイルとその import 先も実際に import します**。つまり、`app.ts` から辿れるモジュールのトップレベルの副作用はビルド時に実行されます。必須の環境変数の読み込みや接続の確立などをそこに書くと、シークレットの無い CI / Docker ビルドで失敗します。環境変数の検証は DI（`@kivinjs/config` の `envProvider`）か `main.ts` で行ってください（[docs/production.md](docs/production.md)）。
 - decorator に渡す guard・middleware は **`export` する**か、その場で式として書く必要があります。schema も **`export` してください**。契約チェックと型付きクライアントは `export` された schema を読みます。その場で書いた schema（`@UseQuerySchema(v.object({ ... }))`）は実行時には検証されますが、`kivin generate` は警告を出して契約チェックを省き、型付きクライアントの入力型はゆるい型になります。`export` していない `const IdSchema = ...` を渡すと生成に失敗します。
 - 生成に失敗した場合、`--outDir` の以前の成果物は変更されません。
 
@@ -174,8 +174,8 @@ TC39 標準デコレータには引数デコレータが無いので、ハンド
 
 ```ts
 import * as v from 'valibot';
-import type { RouteInput } from '@kivin/core';
-import { Controller, Get, Post, UseBodySchema, UseParamSchema } from '@kivin/decorators';
+import type { RouteInput } from '@kivinjs/core';
+import { Controller, Get, Post, UseBodySchema, UseParamSchema } from '@kivinjs/decorators';
 
 export const UserIdParamSchema = v.object({ id: v.string() });
 export const CreateUserSchema = v.object({ name: v.string(), email: v.pipe(v.string(), v.email()) });
@@ -229,22 +229,22 @@ contracts.ts: Type '{ contractError: "UserController.findById: the handler input
 
 | パッケージ | 役割 |
 | --- | --- |
-| `@kivin/core` | ルータ、DI、モジュール、ライフサイクル、入力検証、Cookie / SSE / WebSocket などアプリ実行時の中核 |
-| `@kivin/decorators` | Module / Controller / Route / Enhancer / OpenAPI デコレータ |
-| `@kivin/valibot` | Valibot schema adapter |
-| `@kivin/standard-schema` | Standard Schema adapter（Zod / ArkType / Valibot など） |
-| `@kivin/cli` | コード生成 CLI（`generate` / `dev` / `openapi` / `inspect`） |
-| `@kivin/openapi` | OpenAPI 3.1 ドキュメント生成 |
-| `@kivin/security` | Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット、IP 制限 |
-| `@kivin/jwt` | JWT の検証・署名（Web Crypto）、JWKS、認証 guard |
-| `@kivin/http` | 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ |
-| `@kivin/static` | 静的ファイル配信（`serveStatic`） |
-| `@kivin/session` | サーバー側セッション（署名付き Cookie、差し替え可能なストア） |
-| `@kivin/logger` | JSON line の構造化ロガーと request logger middleware |
-| `@kivin/observability` | OpenTelemetry トレース、Prometheus メトリクス、Server-Timing、ヘルスチェック |
-| `@kivin/config` | 型付き・検証済みの環境変数 |
-| `@kivin/schedule` | アプリのライフサイクルに連動する cron ジョブ |
-| `@kivin/graphql` | GraphQL Yoga のマウント |
+| `@kivinjs/core` | ルータ、DI、モジュール、ライフサイクル、入力検証、Cookie / SSE / WebSocket などアプリ実行時の中核 |
+| `@kivinjs/decorators` | Module / Controller / Route / Enhancer / OpenAPI デコレータ |
+| `@kivinjs/valibot` | Valibot schema adapter |
+| `@kivinjs/standard-schema` | Standard Schema adapter（Zod / ArkType / Valibot など） |
+| `@kivinjs/cli` | コード生成 CLI（`generate` / `dev` / `openapi` / `inspect`） |
+| `@kivinjs/openapi` | OpenAPI 3.1 ドキュメント生成 |
+| `@kivinjs/security` | Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット、IP 制限 |
+| `@kivinjs/jwt` | JWT の検証・署名（Web Crypto）、JWKS、認証 guard |
+| `@kivinjs/http` | 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ |
+| `@kivinjs/static` | 静的ファイル配信（`serveStatic`） |
+| `@kivinjs/session` | サーバー側セッション（署名付き Cookie、差し替え可能なストア） |
+| `@kivinjs/logger` | JSON line の構造化ロガーと request logger middleware |
+| `@kivinjs/observability` | OpenTelemetry トレース、Prometheus メトリクス、Server-Timing、ヘルスチェック |
+| `@kivinjs/config` | 型付き・検証済みの環境変数 |
+| `@kivinjs/schedule` | アプリのライフサイクルに連動する cron ジョブ |
+| `@kivinjs/graphql` | GraphQL Yoga のマウント |
 
 ## Performance
 

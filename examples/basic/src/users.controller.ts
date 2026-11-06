@@ -1,4 +1,4 @@
-import type { RouteInput } from '@kivin/core';
+import type { RouteInput } from '@kivinjs/core';
 import {
     ApiResponse,
     Consumes,
@@ -20,8 +20,8 @@ import {
     UseGuards,
     UseParamSchema,
     UseQuerySchema,
-} from '@kivin/decorators';
-import { getRequestLogger } from '@kivin/logger';
+} from '@kivinjs/decorators';
+import { getRequestLogger } from '@kivinjs/logger';
 import { ApiKeyGuard } from './api-key.guard';
 import { UserNotFoundFilter } from './user-not-found.filter';
 import {

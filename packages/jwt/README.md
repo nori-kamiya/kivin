@@ -1,4 +1,4 @@
-# @kivin/jwt
+# @kivinjs/jwt
 
 *English | [日本語](#日本語)*
 
@@ -9,22 +9,22 @@ JWT verification and signing (Web Crypto), JWKS key resolvers (remote and local)
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/jwt @kivin/decorators
+bun add @kivinjs/core @kivinjs/jwt @kivinjs/decorators
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 `algorithms` is required, and `exp` is required by default.
 
 ## Usage
 
 ```ts
-import { type RouteInput } from '@kivin/core';
-import { Controller, Get, UseGuards } from '@kivin/decorators';
-import { createJwtGuard, createRemoteJwks, getJwtPayload } from '@kivin/jwt';
+import { type RouteInput } from '@kivinjs/core';
+import { Controller, Get, UseGuards } from '@kivinjs/decorators';
+import { createJwtGuard, createRemoteJwks, getJwtPayload } from '@kivinjs/jwt';
 
 export const AuthGuard = createJwtGuard({
   key: createRemoteJwks('https://auth.example.com/.well-known/jwks.json'),
@@ -59,22 +59,22 @@ kivin 用の JWT の検証・署名（Web Crypto）、JWKS の鍵リゾルバ（
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/jwt @kivin/decorators
+bun add @kivinjs/core @kivinjs/jwt @kivinjs/decorators
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 `algorithms` は必須で、`exp` も既定で必須です。
 
 ### 使い方
 
 ```ts
-import { type RouteInput } from '@kivin/core';
-import { Controller, Get, UseGuards } from '@kivin/decorators';
-import { createJwtGuard, createRemoteJwks, getJwtPayload } from '@kivin/jwt';
+import { type RouteInput } from '@kivinjs/core';
+import { Controller, Get, UseGuards } from '@kivinjs/decorators';
+import { createJwtGuard, createRemoteJwks, getJwtPayload } from '@kivinjs/jwt';
 
 export const AuthGuard = createJwtGuard({
   key: createRemoteJwks('https://auth.example.com/.well-known/jwks.json'),

@@ -7,8 +7,8 @@ const dir = join(import.meta.dir, '.generated/inline-schemas');
 const bin = join(import.meta.dir, '../src/bin.ts');
 
 const controllerSource = `import * as v from 'valibot';
-import type { RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Get, Post, UseBodySchema, UseQuerySchema } from '@kivin/decorators';
+import type { RouteInput } from '@kivinjs/core';
+import { ApiResponse, Controller, Get, Post, UseBodySchema, UseQuerySchema } from '@kivinjs/decorators';
 
 export const BodySchema = v.object({ name: v.string() });
 
@@ -29,8 +29,8 @@ export class MixedController {
 }
 `;
 
-const appSource = `import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+const appSource = `import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { MixedController } from './controller';
 
 export default defineApplication({

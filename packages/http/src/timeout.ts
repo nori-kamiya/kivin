@@ -1,5 +1,5 @@
 // Request timeout middleware (equivalent of Hono's `timeout`).
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
 
 export interface TimeoutOptions {
   /** Status for a request that did not finish in time. Default 504 (as Hono). */

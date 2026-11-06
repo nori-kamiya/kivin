@@ -12,7 +12,7 @@ export interface WorkspaceManifest {
   devDependencies?: Record<string, string>;
 }
 
-export const SCOPE = '@kivin/';
+export const SCOPE = '@kivinjs/';
 
 export function readWorkspaceManifests(root: string): WorkspaceManifest[] {
   const packagesDir = join(root, 'packages');

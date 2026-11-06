@@ -1,4 +1,4 @@
-import type { CanActivate, ExceptionFilter, NestLikeMiddleware, RequestContext, ResponseState } from '@kivin/core';
+import type { CanActivate, ExceptionFilter, NestLikeMiddleware, RequestContext, ResponseState } from '@kivinjs/core';
 
 export interface UserRecord {
   id: string;

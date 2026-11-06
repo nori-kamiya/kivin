@@ -1,8 +1,8 @@
 // Runs in its own process: the very first request is the case under test, and module state in
-// `@kivin/core` remembers any earlier request.
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createMetrics, createServerTimingMiddleware, createTracingMiddleware } from '@kivin/observability';
-import { createValibotAdapter } from '@kivin/valibot';
+// `@kivinjs/core` remembers any earlier request.
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createMetrics, createServerTimingMiddleware, createTracingMiddleware } from '@kivinjs/observability';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 class AsyncGuard {
   async canActivate() {

@@ -1,4 +1,4 @@
-import type { AppManifest, SchemaAdapter } from '@kivin/core';
+import type { AppManifest, SchemaAdapter } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 import { buildOpenApiDocument, createDocsHtml, toOpenApiPath } from '../src/index';
 

@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
-import { createSessionMiddleware, getSession, MemorySessionStore, type SessionStore } from '@kivin/session';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivinjs/core';
+import { createSessionMiddleware, getSession, MemorySessionStore, type SessionStore } from '@kivinjs/session';
 import { describe, expect, test } from 'bun:test';
 
 const SECRET = 'session-test-secret';

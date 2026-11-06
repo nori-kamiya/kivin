@@ -1,5 +1,5 @@
 import { FeatureAController } from '@feature/feature-a/controller';
-import { Module } from '@kivin/decorators';
+import { Module } from '@kivinjs/decorators';
 
 @Module({
   providers: [],

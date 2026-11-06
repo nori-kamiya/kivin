@@ -1,5 +1,5 @@
-import { defineApplication } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { AotModule } from './modules';
 
 export default defineApplication({

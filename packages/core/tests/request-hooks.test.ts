@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, getClientAddress, HttpError, type AppManifest, type RequestHook } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, getClientAddress, HttpError, type AppManifest, type RequestHook } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 // `defineApplication({ onRequest })`: hooks that run before routing, in app.fetch and in the native

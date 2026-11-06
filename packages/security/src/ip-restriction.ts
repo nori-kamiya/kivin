@@ -1,6 +1,6 @@
 // IP allow / deny lists (equivalent of Hono's `ipRestriction`): exact addresses, CIDR ranges, `*`
 // and predicates, for IPv4 and IPv6 (IPv4-mapped IPv6 addresses count as IPv4).
-import { forbidden, getClientAddress, type CanActivate } from '@kivin/core';
+import { forbidden, getClientAddress, type CanActivate } from '@kivinjs/core';
 
 /** `'10.0.0.0/8'`, `'2001:db8::/32'`, `'192.168.1.5'`, `'::1'`, `'*'`, or a predicate on the address. */
 export type IpRule = string | ((address: string) => boolean);

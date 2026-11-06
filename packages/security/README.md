@@ -1,4 +1,4 @@
-# @kivin/security
+# @kivinjs/security
 
 *English | [日本語](#日本語)*
 
@@ -9,26 +9,26 @@ Authentication guards (Basic / Bearer), CSRF protection, secure headers, rate li
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/security @kivin/valibot valibot
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/security @kivinjs/valibot valibot
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 ## Usage
 
 ```ts
 // guards.ts
-import { createBearerAuthGuard } from '@kivin/security';
+import { createBearerAuthGuard } from '@kivinjs/security';
 
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_TOKEN!] });
 ```
 
 ```ts
 // items.controller.ts
-import { Controller, Get, UseGuards } from '@kivin/decorators';
+import { Controller, Get, UseGuards } from '@kivinjs/decorators';
 import { ApiKeyGuard } from './guards';
 
 @Controller('/items')
@@ -43,9 +43,9 @@ export class ItemsController {
 
 ```ts
 // app.ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivin/security';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivinjs/security';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { ItemsController } from './items.controller';
 
 const AppModule = defineModule({ controllers: [ItemsController], providers: [], imports: [] });
@@ -76,26 +76,26 @@ kivin 用の認証ガード（Basic / Bearer）、CSRF 保護、secure headers�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/security @kivin/valibot valibot
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/security @kivinjs/valibot valibot
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 ### 使い方
 
 ```ts
 // guards.ts
-import { createBearerAuthGuard } from '@kivin/security';
+import { createBearerAuthGuard } from '@kivinjs/security';
 
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_TOKEN!] });
 ```
 
 ```ts
 // items.controller.ts
-import { Controller, Get, UseGuards } from '@kivin/decorators';
+import { Controller, Get, UseGuards } from '@kivinjs/decorators';
 import { ApiKeyGuard } from './guards';
 
 @Controller('/items')
@@ -110,9 +110,9 @@ export class ItemsController {
 
 ```ts
 // app.ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivin/security';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivinjs/security';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { ItemsController } from './items.controller';
 
 const AppModule = defineModule({ controllers: [ItemsController], providers: [], imports: [] });

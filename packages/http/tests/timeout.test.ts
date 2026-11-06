@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule, getClientAddress, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, getClientAddress, type AppManifest, type RequestContext } from '@kivinjs/core';
 import { createTimeoutMiddleware } from '../src/index';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 class Routes {

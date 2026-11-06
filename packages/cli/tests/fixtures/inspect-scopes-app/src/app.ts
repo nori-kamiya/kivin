@@ -1,5 +1,5 @@
-import { defineApplication, defineModule, setInjectableMetadata } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule, setInjectableMetadata } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { REQUEST_TRACE, RequestScopedController, RequestScopedFilter, RequestScopedGuard, RequestScopedMiddleware, SingletonController } from './controllers';
 
 setInjectableMetadata(RequestScopedGuard, { deps: [REQUEST_TRACE] });

@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineWebSocket } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineWebSocket } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createClient, GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from 'graphql-ws';
 import { createSchema, createYoga } from 'graphql-yoga';

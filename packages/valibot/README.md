@@ -1,4 +1,4 @@
-# @kivin/valibot
+# @kivinjs/valibot
 
 *English | [日本語](#日本語)*
 
@@ -9,21 +9,21 @@ Valibot schema adapter for kivin: validates requests with Valibot and converts s
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/valibot valibot
+bun add @kivinjs/core @kivinjs/valibot valibot
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 `valibot` (^1.5.0) is a peer dependency.
 
 ## Usage
 
 ```ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
@@ -49,21 +49,21 @@ kivin 用の Valibot schema adapter です。Valibot でリクエストを検証
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/valibot valibot
+bun add @kivinjs/core @kivinjs/valibot valibot
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 `valibot`（^1.5.0）は peer dependency です。
 
 ### 使い方
 
 ```ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 

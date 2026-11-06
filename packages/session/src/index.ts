@@ -1,5 +1,5 @@
-// @kivin/session: server-side sessions with a signed session-ID cookie and pluggable stores.
-import { parseCookies, serializeCookie, serializeDeletedCookie, signCookieValue, verifyCookieValue, type CookieOptions, type CookieSecrets, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+// @kivinjs/session: server-side sessions with a signed session-ID cookie and pluggable stores.
+import { parseCookies, serializeCookie, serializeDeletedCookie, signCookieValue, verifyCookieValue, type CookieOptions, type CookieSecrets, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
 export type SessionData = Record<string, unknown>;
 

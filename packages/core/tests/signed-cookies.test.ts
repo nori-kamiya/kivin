@@ -1,4 +1,4 @@
-import { createApp, defineApplication, defineModule, getSignedCookie, serializeSignedCookie, signCookieValue, verifyCookieValue, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, getSignedCookie, serializeSignedCookie, signCookieValue, verifyCookieValue, type AppManifest, type RequestContext } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 
 const SECRET = 'a-long-random-secret-for-tests';

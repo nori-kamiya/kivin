@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivin/core';
-import { createPrettyJsonMiddleware, stream, streamNdjson, streamText } from '@kivin/http';
+import { createApp, defineApplication, defineModule, type AppManifest, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivinjs/core';
+import { createPrettyJsonMiddleware, stream, streamNdjson, streamText } from '@kivinjs/http';
 import { describe, expect, spyOn, test } from 'bun:test';
 
 const decoder = new TextDecoder();

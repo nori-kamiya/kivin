@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/cli",
+  "name": "@kivinjs/cli",
   "version": "0.1.0",
   "description": "Manifest and OpenAPI code-generation CLI for kivin",
   "license": "MIT",
@@ -28,15 +28,15 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@kivin/openapi": "workspace:^",
+    "@kivinjs/openapi": "workspace:^",
     "oxc-parser": "0.155.0",
     "oxc-resolver": "11.24.2"
   },
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -15,7 +15,7 @@
 
 現状は次の runtime を比較対象にしています。
 
-- `examples/benchmark-kivin`: `@kivin/core` の manual manifest を使った最小 runtime app
+- `examples/benchmark-kivin`: `@kivinjs/core` の manual manifest を使った最小 runtime app
 - `examples/benchmark-hono`: 同等 route を持つ Hono app
 - `examples/benchmark-elysia`: 同等 route を持つ Elysia app
 - それぞれについて `--compile` 実行と `bun run` 実行を比較する
@@ -55,7 +55,7 @@ bun run perf:regression -- --base HEAD~1
 PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 ```
 
-- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 14 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403、app 全体の raw middleware を前に置いた health / patch / list）。base 側も同じソースを使い、`@kivin/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
+- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 14 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403、app 全体の raw middleware を前に置いた health / patch / list）。base 側も同じソースを使い、`@kivinjs/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
 - **in-process（ブロッキング）**: base と current の 2 つのアプリを 1 プロセスに読み込み、短い計測ブロックを A→B / B→A と交互に回して、隣り合うペアの比を取ります（`scripts/perf/paired.ts`）。CPU クロックや他プロセスの影響が両側に等しく乗るので、2 コアの共有 VM でも同一コード同士の差は ±1% 程度に収まります。
 - **判定**:
   - いずれかのシナリオで中央値が **4% 以上** 遅く、かつ bootstrap 95% 信頼区間が全体として 1 を下回る。疑わしいシナリオは 2 倍のラウンドで再計測し、それでも該当する場合のみ失敗にします。
@@ -294,11 +294,11 @@ source mean:
 - `patch` は `compiled` / `source` とも strongest tier を維持している
 - `delete` は `compiled` では strongest、`source` でもほぼ strongest tier にある
 - `create` は `source` では strongest tier を維持するが、`compiled` はまだ `Hono` / `Elysia` が上
-- したがって、`@kivin/core` の current position は「最強クラス」であって、「全 workload で絶対首位」とまではまだ言わない方が正確
+- したがって、`@kivinjs/core` の current position は「最強クラス」であって、「全 workload で絶対首位」とまではまだ言わない方が正確
 
 2026-03-12 の post-optimization rerun として `stack-spot-create-patch-delete-20260312f.txt` と `stack-spot-create-patch-delete-20260312g.txt` もあります。これらは `201 + no response schema` finalizer の route-specific specialization 後の確認用 artifact ですが、3 framework すべてで振れが大きく、特に `Elysia` の `source` / `compiled delete` が大きく崩れているため canonical baseline には昇格させていません。
 
-2026-03-13 の `stack-spot-create-patch-delete-20260313a.txt` は、`@kivin/logger` の lazy fields 対応で disabled `info` log の field object allocation を避けた後の確認用 rerun です。logger 側の disabled-path 無駄は減らせましたが、focused CRUD の順位は変わらず、`compiled create` は `kivin 38.2k < hono 41.5k < elysia 43.5k` に留まりました。そのため canonical baseline は引き続き `20260312e` を維持します。
+2026-03-13 の `stack-spot-create-patch-delete-20260313a.txt` は、`@kivinjs/logger` の lazy fields 対応で disabled `info` log の field object allocation を避けた後の確認用 rerun です。logger 側の disabled-path 無駄は減らせましたが、focused CRUD の順位は変わらず、`compiled create` は `kivin 38.2k < hono 41.5k < elysia 43.5k` に留まりました。そのため canonical baseline は引き続き `20260312e` を維持します。
 
 この 2 本から safely 言えることは次です。
 
@@ -340,7 +340,7 @@ profile request ops/s:
 
 この profile からは、create path の request-time cost が `request-id` だけでなく guard と validation の双方で段階的に落ちていることがより明確に見えます。特に full create から bare までで約 `1.66x` の差があるため、次の core optimization は response finalization より `canActivateRaw` と body parse/validate の境界を優先して詰める方が妥当です。
 
-2026-03-13 の `kivin-create-breakdown-20260313c.txt` では、`@kivin/core` 側に sync raw guard / raw middleware の promise-check 回避を入れた後の rerun を残しています。cross-run variance はまだありますが、in-process profile の full create は `242.8k -> 260.9k` に上がり、compiled median create もこの rerun では `41.3k` まで戻りました。一方で `no-validation` / `bare` 側は同じ幅では伸びていないため、残差の中心は依然として body parse/validate と request-id 周辺にあります。
+2026-03-13 の `kivin-create-breakdown-20260313c.txt` では、`@kivinjs/core` 側に sync raw guard / raw middleware の promise-check 回避を入れた後の rerun を残しています。cross-run variance はまだありますが、in-process profile の full create は `242.8k -> 260.9k` に上がり、compiled median create もこの rerun では `41.3k` まで戻りました。一方で `no-validation` / `bare` 側は同じ幅では伸びていないため、残差の中心は依然として body parse/validate と request-id 周辺にあります。
 
 同 artifact には direct profile も追加してあります。
 

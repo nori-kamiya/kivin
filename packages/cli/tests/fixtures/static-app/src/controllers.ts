@@ -1,4 +1,4 @@
-import { Controller, Get, StaticResponse } from '@kivin/decorators';
+import { Controller, Get, StaticResponse } from '@kivinjs/decorators';
 
 const VERSION = '1.2.3';
 let counter = 0;

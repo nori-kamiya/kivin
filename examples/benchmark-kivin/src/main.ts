@@ -1,4 +1,4 @@
-import { createApp, defineApplication, defineModule, forbidden, notFound, type AppManifest, type CanActivate, type ParameterMetadata, type RequestContext, type SchemaAdapter } from '@kivin/core';
+import { createApp, defineApplication, defineModule, forbidden, notFound, type AppManifest, type CanActivate, type ParameterMetadata, type RequestContext, type SchemaAdapter } from '@kivinjs/core';
 
 type BenchmarkSchema = { kind: 'body' | 'users-query' | 'patch-body' | 'create-body' | 'user-id-param' };
 

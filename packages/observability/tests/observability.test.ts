@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, HttpError, type AppManifest, type ExceptionFilter, type ManifestRoute, type RequestContext } from '@kivin/core';
-import { createHealthCheck, createMetrics, createServerTimingMiddleware, createTracingMiddleware, MetricsRegistry, serverTiming, type SpanLike } from '@kivin/observability';
+import { createApp, defineApplication, defineModule, HttpError, type AppManifest, type ExceptionFilter, type ManifestRoute, type RequestContext } from '@kivinjs/core';
+import { createHealthCheck, createMetrics, createServerTimingMiddleware, createTracingMiddleware, MetricsRegistry, serverTiming, type SpanLike } from '@kivinjs/observability';
 import { describe, expect, test } from 'bun:test';
 
 class GoneError extends Error {}

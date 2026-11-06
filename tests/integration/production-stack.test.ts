@@ -2,11 +2,11 @@
 // compression, ETag, timeout, Basic / Bearer guards, validation (params / query / body / headers /
 // multipart), static files and error responses. Each feature has its own tests; this file catches
 // problems that only show up when they are stacked (ordering, duplicated or missing headers).
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createCompressMiddleware, createEtagMiddleware, createTimeoutMiddleware } from '@kivin/http';
-import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, createRateLimitMiddleware } from '@kivin/security';
-import { serveStatic } from '@kivin/static';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createCompressMiddleware, createEtagMiddleware, createTimeoutMiddleware } from '@kivinjs/http';
+import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, createRateLimitMiddleware } from '@kivinjs/security';
+import { serveStatic } from '@kivinjs/static';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, beforeAll, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

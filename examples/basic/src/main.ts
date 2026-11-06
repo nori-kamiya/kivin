@@ -1,5 +1,5 @@
-import { createApp } from '@kivin/core';
-import { createDocsHtml } from '@kivin/openapi';
+import { createApp } from '@kivinjs/core';
+import { createDocsHtml } from '@kivinjs/openapi';
 import manifest from '../.kivin/generated/manifest';
 import openApiDocument from '../.kivin/generated/openapi.json';
 import appDefinition from './app';

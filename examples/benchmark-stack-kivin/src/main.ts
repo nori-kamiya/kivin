@@ -1,7 +1,7 @@
 // Stack benchmark server. Routes come from the generated manifest (`bun run bench:stack:generate`,
 // with AOT executors); BENCH_VARIANT picks which of them to serve, like the Hono / Elysia apps.
-import { createApp, defineApplication, type AppManifest } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, type AppManifest } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import manifest from '../.kivin/generated/manifest';
 import { BenchmarkModule, LoggerModule, RequestIdMiddleware } from './app';
 

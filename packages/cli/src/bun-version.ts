@@ -1,5 +1,5 @@
 /**
- * Same check as @kivin/core's, duplicated because the CLI must start (and fail clearly) even when no @kivin/core
+ * Same check as @kivinjs/core's, duplicated because the CLI must start (and fail clearly) even when no @kivinjs/core
  * is installed next to it, e.g. under bunx.
  */
 export const MIN_BUN_VERSION = '1.4.0';

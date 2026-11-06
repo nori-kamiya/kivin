@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, unauthorized } from '@kivin/core';
-import { createGraphqlHandler, createGraphqlRoutes, type FetchGraphqlServer } from '@kivin/graphql';
+import { createApp, defineApplication, defineModule, unauthorized } from '@kivinjs/core';
+import { createGraphqlHandler, createGraphqlRoutes, type FetchGraphqlServer } from '@kivinjs/graphql';
 import { describe, expect, test } from 'bun:test';
 
 // A stand-in for GraphQL Yoga: echoes the operation and the server context it was given.

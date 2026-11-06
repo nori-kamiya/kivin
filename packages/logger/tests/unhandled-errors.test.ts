@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { createLoggerModule, RequestLoggerMiddleware } from '../src/index';
 
@@ -18,7 +18,7 @@ describe('unhandled errors with the request logger', () => {
   const consoleError = spyOn(console, 'error').mockImplementation(() => {});
   afterEach(() => consoleError.mockClear());
 
-  test('errors already logged by @kivin/logger are not printed again', async () => {
+  test('errors already logged by @kivinjs/logger are not printed again', async () => {
     const records: Array<{ message: string }> = [];
     const logged = createApp(defineApplication({
       modules: [createLoggerModule({ sink: (record) => records.push(record as { message: string }) }), defineModule({ providers: [], controllers: [Routes], imports: [] })],

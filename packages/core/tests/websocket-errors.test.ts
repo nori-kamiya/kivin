@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, defineWebSocket, type WebSocketPhase } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, defineWebSocket, type WebSocketPhase } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 const app = () => createApp(defineApplication({

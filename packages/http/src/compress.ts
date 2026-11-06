@@ -5,7 +5,7 @@
 // Order matters: list compression first (outermost) so the ETag is computed on, and compared
 // against, the uncompressed representation.
 import { brotliCompressSync, constants as zlib } from 'node:zlib';
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
 import { negotiate } from './accepts';
 
 export type CompressionEncoding = 'br' | 'gzip';

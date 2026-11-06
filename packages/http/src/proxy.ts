@@ -1,6 +1,6 @@
 // Reverse-proxy helper (equivalent of Hono's `proxy`): forwards a request upstream and returns the
 // upstream response, without hop-by-hop headers and without re-encoding the body.
-import { getClientAddress } from '@kivin/core';
+import { getClientAddress } from '@kivinjs/core';
 
 type HeadersInput = NonNullable<ConstructorParameters<typeof Headers>[0]>;
 

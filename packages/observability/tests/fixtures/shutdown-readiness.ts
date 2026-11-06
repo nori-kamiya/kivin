@@ -1,7 +1,7 @@
 // Runs in its own process: the test sends it real signals and observes the exit.
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createHealthCheck } from '@kivin/observability';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createHealthCheck } from '@kivinjs/observability';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 class Lifecycle {
   onApplicationShutdown(signal?: string) {

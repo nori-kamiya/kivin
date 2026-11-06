@@ -1,4 +1,4 @@
-import { createApp } from '@kivin/core';
+import { createApp } from '@kivinjs/core';
 import { beforeAll, describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';

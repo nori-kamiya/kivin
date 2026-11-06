@@ -231,8 +231,10 @@ async function prepareRunner(side: Side, tree: string): Promise<Runner> {
     await cp(join(tree, 'scripts/perf/app'), join(dir, 'app'), { recursive: true });
   }
   const legacyDecorators = /"experimentalDecorators"\s*:\s*true/.test(await Bun.file(join(tree, 'tsconfig.base.json')).text());
+  // Both scopes resolve because a base tree from before the rename imports @kivin/*, while the
+  // scenarios from the current tree import @kivinjs/*.
   const paths = Object.fromEntries(
-    ['core', 'decorators', 'logger', 'openapi', 'valibot'].map((name) => [`@kivin/${name}`, [join(tree, `packages/${name}/src/index.ts`)]]),
+    ['@kivinjs', '@kivin'].flatMap((scope) => ['core', 'decorators', 'logger', 'openapi', 'valibot'].map((name) => [`${scope}/${name}`, [join(tree, `packages/${name}/src/index.ts`)]])),
   );
   // Bun reads decorator semantics and path aliases from the tsconfig next to the entry / cwd.
   await writeFile(join(dir, 'tsconfig.json'), JSON.stringify({

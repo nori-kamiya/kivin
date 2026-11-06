@@ -1,6 +1,6 @@
-import { createApp, createToken, defineApplication, defineModule, type InferSchemaOutput } from '@kivin/core';
-import { EnvValidationError, envProvider, loadEnv } from '@kivin/config';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, createToken, defineApplication, defineModule, type InferSchemaOutput } from '@kivinjs/core';
+import { EnvValidationError, envProvider, loadEnv } from '@kivinjs/config';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import * as v from 'valibot';
 

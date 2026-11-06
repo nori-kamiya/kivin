@@ -1,4 +1,4 @@
-import { RequestContext } from '@kivin/core';
+import { RequestContext } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 import { createLogger, getRequestLogger, LOGGER } from '../src/index';
 

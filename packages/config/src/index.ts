@@ -1,5 +1,5 @@
-// @kivin/config: environment variables validated by a schema at startup, typed, and injectable.
-import { toValidationIssues, type InferSchemaOutput, type InjectionToken, type SchemaAdapter } from '@kivin/core';
+// @kivinjs/config: environment variables validated by a schema at startup, typed, and injectable.
+import { toValidationIssues, type InferSchemaOutput, type InjectionToken, type SchemaAdapter } from '@kivinjs/core';
 
 export type EnvSource = Record<string, string | undefined>;
 

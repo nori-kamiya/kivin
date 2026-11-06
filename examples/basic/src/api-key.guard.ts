@@ -1,5 +1,5 @@
-import type { CanActivate, ManifestRoute, RequestContext } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
+import type { CanActivate, ManifestRoute, RequestContext } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
 
 @Injectable()
 export class ApiKeyGuard implements CanActivate {

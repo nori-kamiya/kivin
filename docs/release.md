@@ -1,6 +1,6 @@
 # リリース手順書
 
-16 個の `@kivin/*` パッケージを、同じバージョンで npm に公開する手順です。ここに書いた順に、オーナー本人が行います。コードと CI は用意済みなので、オーナーにしかできない作業（npm と GitHub の設定、トークン、承認）だけを書いています。
+16 個の `@kivinjs/*` パッケージを、同じバージョンで npm に公開する手順です。ここに書いた順に、オーナー本人が行います。コードと CI は用意済みなので、オーナーにしかできない作業（npm と GitHub の設定、トークン、承認）だけを書いています。
 
 ## 全体像
 
@@ -20,20 +20,11 @@
 
 ## 手順
 
-### 1. npm の名前を確認する（最初にやる）
+### 1. npm の組織を確認する
 
-npm 上に `kivin` という名前のユーザーまたは組織が存在しますが、所有者がわかっていません。`@kivin/*` というスコープは、その名前のユーザーか組織のものなので、**自分が `@kivin` スコープを取れるか**を先に確かめます。
+公開先のスコープは `@kivinjs` です。npm の組織 `kivinjs` は作成済みです（`kivin` は他者が使用中で取得できませんでした）。公開するアカウントが組織 `kivinjs` のメンバーで、公開権限を持っていることを確認します。
 
-1. `https://www.npmjs.com/~kivin` と `https://www.npmjs.com/org/kivin` を開く。どちらかが存在すれば、その所有者が `@kivin` を持っている
-2. 存在しない、または自分のものなら、npm の組織 `kivin` を作る（Free プランで public パッケージは公開できる）
-3. 他人のものなら、次のどれかを選ぶ（番号の若い順に検討する）
-   - 所有者に連絡して譲ってもらう（npm サポートに名前の問い合わせもできる）
-   - 別のスコープに変える。候補: `@kivin-js`、`@kivinjs`、自分のユーザースコープ `@nori-kamiya`（これは必ず取れる）。候補ごとに同じ確認をする
-   - スコープなしの名前にはしない。16 個のパッケージを同じ接頭辞でまとめて管理する前提が崩れる
-
-スコープを変える場合は、このリリース作業の前に別 PR で全パッケージの `name`、`@kivin/*` を参照している import と依存、`tsconfig.base.json` の `paths`、`scripts/release/lib.ts` の `SCOPE`、docs を一括で置き換えます。あわせて `bun install` で `bun.lock` を作り直し（`--frozen-lockfile` が失敗するため）、`tests/release` にある `@kivin\/` のようにスラッシュをエスケープした正規表現も直します（検索では `@kivin/` に一致しません）。そのうえで `bun run release:check` と `bun run pack:smoke` が通ることを確認します。決めるまで先に進みません。
-
-`npm view @kivin/core` が 404 になることも確認します（すでに誰かが同名を公開していないこと）。
+`npm view @kivinjs/core` が 404 になることも確認します（すでに誰かが同名を公開していないこと）。
 
 ### 2. npm アカウントの準備
 
@@ -88,7 +79,7 @@ git push origin vX.Y.Z
 
 1. Actions の Release ワークフローで build ジョブが成功するのを待つ
 2. publish ジョブが承認待ちになる。承認する前に、タグが指すコミットが `main` の履歴にあることを自分で確認する（`git merge-base --is-ancestor <タグのコミット> origin/main`）。そのうえで build のログの `release verification passed` と artifact の `manifest.json` を確認して承認する。ログの文言だけでは、タグ側のコードが出力したものか区別できない
-3. 完了後、`npm view @kivin/core@X.Y.Z dist.integrity` が `.release/manifest.json` の値と一致し、npm のページに provenance が表示されることを確認する（`bun pm pack` の出力は 2 回の実行で同一だったため、ローカルで作った値とも比べられる。ただし tarball にはファイルのモードが入るので、比べられるのは、パッケージ内のファイルが 0644（umask 022、グループ書き込みなし）の環境で作った場合だけ。`chmod g+w` などで 0664 にするとハッシュが変わる）
+3. 完了後、`npm view @kivinjs/core@X.Y.Z dist.integrity` が `.release/manifest.json` の値と一致し、npm のページに provenance が表示されることを確認する（`bun pm pack` の出力は 2 回の実行で同一だったため、ローカルで作った値とも比べられる。ただし tarball にはファイルのモードが入るので、比べられるのは、パッケージ内のファイルが 0644（umask 022、グループ書き込みなし）の環境で作った場合だけ。`chmod g+w` などで 0664 にするとハッシュが変わる）
 
 ### 8. trusted publishing に切り替え、トークンを消す
 
@@ -96,11 +87,11 @@ git push origin vX.Y.Z
 
 ```bash
 for name in core decorators logger openapi valibot standard-schema jwt security http static graphql session schedule config observability cli; do
-  npm trust github "@kivin/$name" --file release.yml --repo nori-kamiya/kivin --env npm --allow-publish
+  npm trust github "@kivinjs/$name" --file release.yml --repo nori-kamiya/kivin --env npm --allow-publish
 done
 ```
 
-スコープを変えた場合は `@kivin` を読み替えます。16 個すべてを設定したら、次を行います。
+スコープを変えた場合は `@kivinjs` を読み替えます。16 個すべてを設定したら、次を行います。
 
 1. GitHub の environment `npm` から `NPM_BOOTSTRAP_TOKEN` を削除する
 2. npm の Access Tokens で bootstrap トークンを revoke する

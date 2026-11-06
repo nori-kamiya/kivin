@@ -1,4 +1,4 @@
-import { Container, setInjectableMetadata } from '@kivin/core';
+import { Container, setInjectableMetadata } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 
 class A {

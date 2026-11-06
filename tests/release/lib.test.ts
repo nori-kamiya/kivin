@@ -15,42 +15,42 @@ function pkg(name: string, extra: Partial<WorkspaceManifest> = {}): WorkspaceMan
 }
 
 describe('publishOrder', () => {
-  test('given a dependency and a peerDependency on @kivin packages, when ordering, then dependencies come before their dependents', () => {
+  test('given a dependency and a peerDependency on @kivinjs packages, when ordering, then dependencies come before their dependents', () => {
     const order = publishOrder([
-      pkg('@kivin/static', { dependencies: { '@kivin/http': 'workspace:^' }, peerDependencies: { '@kivin/core': 'workspace:^' } }),
-      pkg('@kivin/http', { peerDependencies: { '@kivin/core': 'workspace:^' } }),
-      pkg('@kivin/core'),
+      pkg('@kivinjs/static', { dependencies: { '@kivinjs/http': 'workspace:^' }, peerDependencies: { '@kivinjs/core': 'workspace:^' } }),
+      pkg('@kivinjs/http', { peerDependencies: { '@kivinjs/core': 'workspace:^' } }),
+      pkg('@kivinjs/core'),
     ]);
-    expect(order.map((entry) => entry.name)).toEqual(['@kivin/core', '@kivin/http', '@kivin/static']);
+    expect(order.map((entry) => entry.name)).toEqual(['@kivinjs/core', '@kivinjs/http', '@kivinjs/static']);
   });
 
-  test('given a devDependency on another @kivin package, when ordering, then it does not constrain the order', () => {
-    const order = publishOrder([pkg('@kivin/a', { devDependencies: { '@kivin/b': 'workspace:*' } }), pkg('@kivin/b', { devDependencies: { '@kivin/a': 'workspace:*' } })]);
-    expect(order.map((entry) => entry.name)).toEqual(['@kivin/a', '@kivin/b']);
+  test('given a devDependency on another @kivinjs package, when ordering, then it does not constrain the order', () => {
+    const order = publishOrder([pkg('@kivinjs/a', { devDependencies: { '@kivinjs/b': 'workspace:*' } }), pkg('@kivinjs/b', { devDependencies: { '@kivinjs/a': 'workspace:*' } })]);
+    expect(order.map((entry) => entry.name)).toEqual(['@kivinjs/a', '@kivinjs/b']);
   });
 
   test('given packages with no relation, when ordering, then the result is sorted by name regardless of input order', () => {
-    const order = publishOrder([pkg('@kivin/z'), pkg('@kivin/a'), pkg('@kivin/m')]);
-    expect(order.map((entry) => entry.name)).toEqual(['@kivin/a', '@kivin/m', '@kivin/z']);
+    const order = publishOrder([pkg('@kivinjs/z'), pkg('@kivinjs/a'), pkg('@kivinjs/m')]);
+    expect(order.map((entry) => entry.name)).toEqual(['@kivinjs/a', '@kivinjs/m', '@kivinjs/z']);
   });
 
-  test('given non-@kivin dependencies, when ordering, then they are ignored', () => {
-    const order = publishOrder([pkg('@kivin/a', { dependencies: { valibot: '^1.5.0' } })]);
+  test('given non-@kivinjs dependencies, when ordering, then they are ignored', () => {
+    const order = publishOrder([pkg('@kivinjs/a', { dependencies: { valibot: '^1.5.0' } })]);
     expect(order).toHaveLength(1);
   });
 
   test('given a dependency cycle, when ordering, then it throws naming the packages in the cycle', () => {
     expect(() =>
       publishOrder([
-        pkg('@kivin/a', { dependencies: { '@kivin/b': '^1' } }),
-        pkg('@kivin/b', { peerDependencies: { '@kivin/a': '^1' } }),
-        pkg('@kivin/c'),
+        pkg('@kivinjs/a', { dependencies: { '@kivinjs/b': '^1' } }),
+        pkg('@kivinjs/b', { peerDependencies: { '@kivinjs/a': '^1' } }),
+        pkg('@kivinjs/c'),
       ]),
-    ).toThrow(/cycle(?=[\s\S]*@kivin\/a)(?=[\s\S]*@kivin\/b)/i);
+    ).toThrow(/cycle(?=[\s\S]*@kivinjs\/a)(?=[\s\S]*@kivinjs\/b)/i);
   });
 
-  test('given a @kivin dependency that is not in the workspace, when ordering, then it throws', () => {
-    expect(() => publishOrder([pkg('@kivin/a', { dependencies: { '@kivin/missing': '^1' } })])).toThrow(/@kivin\/missing/);
+  test('given a @kivinjs dependency that is not in the workspace, when ordering, then it throws', () => {
+    expect(() => publishOrder([pkg('@kivinjs/a', { dependencies: { '@kivinjs/missing': '^1' } })])).toThrow(/@kivinjs\/missing/);
   });
 });
 
@@ -91,7 +91,7 @@ describe('verifyTarball', () => {
   });
 
   test('given a workspace: protocol anywhere in package.json, when verifying, then it is reported', () => {
-    const problems = verify(validFiles(validPackageJson({ peerDependencies: { '@kivin/core': 'workspace:^' } })));
+    const problems = verify(validFiles(validPackageJson({ peerDependencies: { '@kivinjs/core': 'workspace:^' } })));
     expect(problems.join('\n')).toMatch(/workspace:/);
   });
 
@@ -175,7 +175,7 @@ describe('verifyTarball', () => {
 });
 
 describe('verifyReleaseTag', () => {
-  const manifests = [pkg('@kivin/a'), pkg('@kivin/b')];
+  const manifests = [pkg('@kivinjs/a'), pkg('@kivinjs/b')];
   const changelog = '# Changelog\n\n## [Unreleased]\n\n## [1.2.3] - 2026-11-06\n';
 
   test('given a tag v+version shared by all packages and a changelog heading, when verifying, then there are no problems', () => {
@@ -188,8 +188,8 @@ describe('verifyReleaseTag', () => {
   });
 
   test('given packages at different versions, when verifying, then the mismatching package is named', () => {
-    const problems = verifyReleaseTag({ tag: 'v1.2.3', manifests: [pkg('@kivin/a'), pkg('@kivin/b', { version: '1.2.4' })], changelog });
-    expect(problems.join('\n')).toMatch(/@kivin\/b.*1\.2\.4/);
+    const problems = verifyReleaseTag({ tag: 'v1.2.3', manifests: [pkg('@kivinjs/a'), pkg('@kivinjs/b', { version: '1.2.4' })], changelog });
+    expect(problems.join('\n')).toMatch(/@kivinjs\/b.*1\.2\.4/);
   });
 
   test('given no changelog heading for the version, when verifying, then it is reported', () => {
@@ -197,7 +197,7 @@ describe('verifyReleaseTag', () => {
   });
 
   test('given a prerelease version, when verifying, then it is rejected because it would be published to latest and npm refuses that', () => {
-    const prerelease = [pkg('@kivin/a', { version: '1.2.3-rc.1' }), pkg('@kivin/b', { version: '1.2.3-rc.1' })];
+    const prerelease = [pkg('@kivinjs/a', { version: '1.2.3-rc.1' }), pkg('@kivinjs/b', { version: '1.2.3-rc.1' })];
     const problems = verifyReleaseTag({ tag: 'v1.2.3-rc.1', manifests: prerelease, changelog: '## [1.2.3-rc.1]\n' });
     expect(problems.join('\n')).toMatch(/prerelease/);
   });

@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/static",
+  "name": "@kivinjs/static",
   "version": "0.1.0",
   "description": "Static file serving for kivin on Bun native routes",
   "license": "MIT",
@@ -25,13 +25,13 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@kivin/http": "workspace:^"
+    "@kivinjs/http": "workspace:^"
   },
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -1,5 +1,5 @@
-import { HttpError, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
+import { HttpError, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
 
 export class ItemMissing extends Error {}
 

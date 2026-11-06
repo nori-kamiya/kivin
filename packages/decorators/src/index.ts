@@ -26,7 +26,7 @@ import {
     type RouteDocsMetadata,
     type Token,
     type TokenValues,
-} from '@kivin/core';
+} from '@kivinjs/core';
 
 type ClassDecorator = (value: Function, context: ClassDecoratorContext) => void;
 type MethodDecorator = (value: Function, context: ClassMethodDecoratorContext) => void;
@@ -46,7 +46,7 @@ function assertStandard(context: unknown, decorator: string): asserts context is
 function metadataOf(context: DecoratorContext): object {
   if (!context.metadata) {
     // Only possible when `Symbol.metadata` was missing while the class was defined.
-    throw new Error(`kivin: decorator metadata is unavailable (Symbol.metadata ${String(METADATA_SYMBOL.description)}); import @kivin/core before defining controllers`);
+    throw new Error(`kivin: decorator metadata is unavailable (Symbol.metadata ${String(METADATA_SYMBOL.description)}); import @kivinjs/core before defining controllers`);
   }
   return context.metadata;
 }

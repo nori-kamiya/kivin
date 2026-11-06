@@ -2,26 +2,26 @@
 
 kivin の公開 API を package ごとにまとめたリファレンスです。詳細な設計背景は各専用ドキュメント（[architecture](./architecture.md) ほか）を参照してください。
 
-- [@kivin/core](#kivincore)
-- [@kivin/security](#kivinsecurity)
-- [@kivin/http](#kivinhttp)
-- [@kivin/observability](#kivinobservability)
-- [@kivin/config](#kivinconfig)
-- [@kivin/schedule](#kivinschedule)
-- [@kivin/session](#kivinsession)
-- [@kivin/graphql](#kivingraphql)
-- [@kivin/static](#kivinstatic)
-- [@kivin/decorators](#kivindecorators)
-- [@kivin/valibot](#kivinvalibot)
-- [@kivin/standard-schema](#kivinstandard-schema)
-- [@kivin/jwt](#kivinjwt)
-- [@kivin/openapi](#kivinopenapi)
-- [@kivin/logger](#kivinlogger)
-- [@kivin/cli](#kivincli)
+- [@kivinjs/core](#kivincore)
+- [@kivinjs/security](#kivinsecurity)
+- [@kivinjs/http](#kivinhttp)
+- [@kivinjs/observability](#kivinobservability)
+- [@kivinjs/config](#kivinconfig)
+- [@kivinjs/schedule](#kivinschedule)
+- [@kivinjs/session](#kivinsession)
+- [@kivinjs/graphql](#kivingraphql)
+- [@kivinjs/static](#kivinstatic)
+- [@kivinjs/decorators](#kivindecorators)
+- [@kivinjs/valibot](#kivinvalibot)
+- [@kivinjs/standard-schema](#kivinstandard-schema)
+- [@kivinjs/jwt](#kivinjwt)
+- [@kivinjs/openapi](#kivinopenapi)
+- [@kivinjs/logger](#kivinlogger)
+- [@kivinjs/cli](#kivincli)
 
 ---
 
-## @kivin/core
+## @kivinjs/core
 
 ルータ・DI・アプリ実行時コア。
 
@@ -40,7 +40,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
 | `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
 | `afterResponse(request, callback)` | function | そのリクエストの最終レスポンス（例外フィルタ・CORS の後、クライアントが受け取るもの）でコールバックを呼ぶ。`Response` を返すと差し替え。メトリクスやトレースのミドルウェアが正しいステータスを記録するのに使う |
-| `enableAfterResponse()` | function | `afterResponse` を最初のリクエストから有効にする。ガード（同期・非同期を問わない）などの `await` の後ろで走るミドルウェアが `afterResponse` を使うなら、最初のリクエストより前に 1 回呼ぶ（`@kivin/observability` のミドルウェアは生成時に呼ぶ） |
+| `enableAfterResponse()` | function | `afterResponse` を最初のリクエストから有効にする。ガード（同期・非同期を問わない）などの `await` の後ろで走るミドルウェアが `afterResponse` を使うなら、最初のリクエストより前に 1 回呼ぶ（`@kivinjs/observability` のミドルウェアは生成時に呼ぶ） |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
@@ -110,7 +110,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 
 ---
 
-## @kivin/security
+## @kivinjs/security
 
 認証ガード・CSRF・セキュリティヘッダ・レートリミット。
 
@@ -129,7 +129,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createIpRestriction(options)`, `createIpMatcher(rules)`, `parseIpAddress(text)` | function | IP 制限の判定関数（`onRequest` フック用）、ルール照合、アドレスのパース（IPv4-mapped は IPv4 扱い） |
 | `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはコンストラクタ依存なし |
 
-## @kivin/http
+## @kivinjs/http
 
 HTTP レベルのミドルウェアとヘルパー。
 
@@ -152,7 +152,7 @@ HTTP レベルのミドルウェアとヘルパー。
 | `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス |
 | `createRequestStorageMiddleware()`, `getCurrentRequest()`, `getRequestValue(key)`, `setRequestValue(key, value)` | function | AsyncLocalStorage で現在のリクエストと値をどこからでも参照する（Hono の `contextStorage`） |
 
-## @kivin/observability
+## @kivinjs/observability
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -162,7 +162,7 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createServerTimingMiddleware(options?)`, `serverTiming(request)` | function | `Server-Timing` ヘッダ（total とハンドラが記録した計測）。`enabled` で送る条件を絞れる |
 | `createHealthCheck(options?)` | function | `/livez`（常に 200）と `/readyz`（チェックを並列実行、失敗・タイムアウトで 503）。`routes()` で `listen({ routes })` に渡す。`setReady(false)` でドレイン |
 
-## @kivin/config
+## @kivinjs/config
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -170,14 +170,14 @@ HTTP レベルのミドルウェアとヘルパー。
 | `envProvider(token, schema, options?)` | function | 検証済みの環境変数を DI で注入する provider |
 | `EnvValidationError`, `EnvIssue` | class / type | 検証エラー（変数名とメッセージ） |
 
-## @kivin/schedule
+## @kivinjs/schedule
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
 | `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ） |
 | `parseCron(expression, timeZone?)` | function | cron 式（5 / 6 フィールド、範囲・ステップ・リスト・名前・`@daily` などの別名）を解析し、IANA タイムゾーン（夏時間対応）で次回実行時刻を計算する |
 
-## @kivin/session
+## @kivinjs/session
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -185,20 +185,20 @@ HTTP レベルのミドルウェアとヘルパー。
 | `getSession(request)` | function | リクエストのセッション（`get` / `set` / `delete` / `has` / `all` / `regenerate()`（固定化攻撃対策）/ `destroy()`） |
 | `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（Redis などを実装できる）とメモリ実装 |
 
-## @kivin/graphql
+## @kivinjs/graphql
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
 | `createGraphqlRoutes(server, options?)` | function | GraphQL Yoga（または `fetch(request, context)` を持つ GraphQL サーバー）を `listen({ routes })` のネイティブルートとして載せる。`context` で認証済みユーザーや `app.get(...)` のサービスを渡す |
 | `createGraphqlHandler(server, options?)` | function | 同じハンドラを単体で返す |
 
-## @kivin/static
+## @kivinjs/static
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
 | `serveStatic(options)` | function | 静的ファイル配信ハンドラ（`listen({ routes })` に渡す）。ETag / 304、Range、事前圧縮、SPA fallback、パストラバーサル対策 |
 
-## @kivin/decorators
+## @kivinjs/decorators
 
 NestJS 風の宣言的 API。コンパイル時に AST から読み取られる。
 
@@ -223,7 +223,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 引数デコレータはありません（TC39 標準デコレータには存在しないため）。ハンドラは 1 つの入力オブジェクト `{ params, query, body, headers, context }` を受け取り、型は `RouteInput<{ params?: typeof S; query?: typeof S; body?: typeof S; headers?: typeof S }>` で付けます。分割代入したフィールドだけがリクエストごとに計算されます。
 
 - デコレータは TC39 標準で動きます。`experimentalDecorators` は不要です（有効にしないでください）。
-- メソッドのメタデータは `Class[Symbol.metadata]` に保存されます。`Symbol.metadata` が無い実行環境では `@kivin/core` が well-known symbol を補います。
+- メソッドのメタデータは `Class[Symbol.metadata]` に保存されます。`Symbol.metadata` が無い実行環境では `@kivinjs/core` が well-known symbol を補います。
 
 ### Validation schemas
 
@@ -241,7 +241,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/valibot
+## @kivinjs/valibot
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -250,7 +250,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/standard-schema
+## @kivinjs/standard-schema
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -259,7 +259,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/jwt
+## @kivinjs/jwt
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -272,7 +272,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/openapi
+## @kivinjs/openapi
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -282,7 +282,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/logger
+## @kivinjs/logger
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
@@ -295,11 +295,11 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ---
 
-## @kivin/cli
+## @kivinjs/cli
 
-`kivin` CLI。プロジェクトに `bun add -d @kivin/cli` で入れ、`package.json` の scripts（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）か `bunx --package @kivin/cli kivin <command>` で実行する。名前が `kivin` だけの npm パッケージは本プロジェクトのものではないため、`bunx kivin` とは書かない。
+`kivin` CLI。プロジェクトに `bun add -d @kivinjs/cli` で入れ、`package.json` の scripts（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）か `bunx --package @kivinjs/cli kivin <command>` で実行する。名前が `kivin` だけの npm パッケージは本プロジェクトのものではないため、`bunx kivin` とは書かない。
 
-`kivin --help` / `-h` は使い方を標準出力に、`kivin --version` / `-v` は `@kivin/cli` のバージョンを出力して終了コード 0 で終わる。未知のコマンドは使い方を標準エラーに出し、非 0 で終わる。
+`kivin --help` / `-h` は使い方を標準出力に、`kivin --version` / `-v` は `@kivinjs/cli` のバージョンを出力して終了コード 0 で終わる。未知のコマンドは使い方を標準エラーに出し、非 0 で終わる。
 
 ### `init`
 
@@ -312,7 +312,7 @@ init <dir>
 - `<dir>` が存在して空でない場合（ファイル、シンボリックリンクを含む）は、何も書かずに非 0 で終わる。既存のファイルを上書きすることはない。空のディレクトリは使える。
 - パッケージ名は `<dir>` の最後の要素から決まり、小文字・数字・`.`・`_`・`-` だけで先頭が英小文字か数字であることを検証する（満たさなければエラー）。`<dir>` は引数として明示された相対・絶対パスをそのまま解決し、テンプレートの値からパスをたどることはない。
 - 生成物: `package.json`（`dev` / `generate` / `build` / `typecheck` / `test`）、`tsconfig.json`（TC39 デコレータ、`experimentalDecorators` なし、`types: ["bun"]`、`lib: ["ESNext"]`、strict）、`.gitignore`、`README.md`、`src/app.ts`、`src/main.ts`、`src/greeting.{module,controller,service,schemas}.ts`（valibot による検証つき）、`src/greeting.test.ts`。
-- `@kivin/*` の範囲は実行中の CLI のバージョンから `^<version>` で決まる。`valibot` / `typescript` / `@types/bun` の範囲は `packages/cli/src/init.ts` の `TEMPLATE_RANGES` にあり、`valibot` が `@kivin/valibot` の peer 範囲と一致することをテストが検査する。
+- `@kivinjs/*` の範囲は実行中の CLI のバージョンから `^<version>` で決まる。`valibot` / `typescript` / `@types/bun` の範囲は `packages/cli/src/init.ts` の `TEMPLATE_RANGES` にあり、`valibot` が `@kivinjs/valibot` の peer 範囲と一致することをテストが検査する。
 - 生成直後に `bun install` だけで `bun run dev` と `bun test` が動く。テストは `createTestingApp` を使うため `.kivin/generated` を必要としない。
 - `bun run typecheck`（`tsc`）で、`generate` が出力する `contracts.ts` による handler と schema の不一致検査が走る。先に `bun run generate`（または `dev` / `build`）で `.kivin/generated` を作っておく。
 
@@ -359,7 +359,7 @@ inspect routes  --entry <app.ts> [--format text|json]
 inspect modules --entry <app.ts> [--format text|json]
 ```
 
-`inspect` はエントリから解決される `@kivin/core` 経由でメタデータを読むため、`bunx` やグローバルインストールの CLI でも動く。
+`inspect` はエントリから解決される `@kivinjs/core` 経由でメタデータを読むため、`bunx` やグローバルインストールの CLI でも動く。
 
 `inspect routes` は handler・controller scope・executor mode
 （`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`）・
