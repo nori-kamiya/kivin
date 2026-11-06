@@ -1,4 +1,5 @@
-import { flattenModules, getInjectableMetadata, normalizeModule, type AppDefinition, type AppManifest, type CanActivate, type ModuleLike, type ProviderDefinition, type ProviderScope, type Token } from '@kivin/core';
+import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivin/core';
+import type * as KivinCore from '@kivin/core';
 import { buildOpenApiDocument } from '@kivin/openapi';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -34,6 +35,26 @@ export interface ModuleInspection {
   globalMiddlewareScopes?: ProviderScope[];
   globalFilters?: string[];
   globalFilterScopes?: ProviderScope[];
+}
+
+type CoreRuntime = Pick<typeof KivinCore, 'flattenModules' | 'getInjectableMetadata' | 'normalizeModule'>;
+
+/**
+ * Decorators write metadata into whichever @kivin/core the app resolves, which differs from the CLI's own
+ * copy under bunx or a global install; reading through the CLI's copy then reports every module as undecorated.
+ */
+async function loadCoreFor(absoluteEntry: string): Promise<CoreRuntime> {
+  let appCore: string | undefined;
+  try {
+    appCore = Bun.resolveSync('@kivin/core', dirname(absoluteEntry));
+  } catch {
+    appCore = undefined;
+  }
+  return (await import(appCore ?? '@kivin/core')) as CoreRuntime;
+}
+
+async function loadApp(entry: string): Promise<{ appDefinition: AppDefinition<unknown>; core: CoreRuntime }> {
+  return { appDefinition: await loadAppDefinition(entry), core: await loadCoreFor(resolve(entry)) };
 }
 
 export async function loadAppDefinition(entry: string): Promise<AppDefinition<unknown>> {
@@ -114,9 +135,9 @@ export async function generateOpenApi(input: { entry: string; output: string; ti
 }
 
 export async function inspectRoutes(input: { entry: string }) {
-  const appDefinition = await loadAppDefinition(input.entry);
+  const { appDefinition, core } = await loadApp(input.entry);
   const manifest = await buildManifestFromEntry(input.entry);
-  const inspectionState = buildInspectionState(appDefinition);
+  const inspectionState = buildInspectionState(appDefinition, core);
 
   return manifest.routes.map((route): RouteInspection => ({
     method: route.method,
@@ -137,8 +158,8 @@ export async function inspectRoutes(input: { entry: string }) {
 }
 
 export async function inspectModules(input: { entry: string }) {
-  const appDefinition = await loadAppDefinition(input.entry);
-  const inspectionState = buildInspectionState(appDefinition);
+  const { appDefinition, core } = await loadApp(input.entry);
+  const inspectionState = buildInspectionState(appDefinition, core);
   const state = { inlineModuleCounter: 0 };
   const modules = walkModules(appDefinition.modules, state, inspectionState);
   const rootModule = modules[0];
@@ -183,10 +204,10 @@ async function buildManifestFromEntry(entry: string) {
 function walkModules(
   modules: ModuleLike[],
   state: { inlineModuleCounter: number },
-  inspectionState: { providerScopes: Map<Token, ProviderScope> },
+  inspectionState: { core: CoreRuntime; providerScopes: Map<Token, ProviderScope> },
 ) {
   return modules.flatMap((moduleLike): ModuleInspection[] => {
-    const normalized = normalizeModule(moduleLike);
+    const normalized = inspectionState.core.normalizeModule(moduleLike);
     const name = typeof moduleLike === 'function' ? moduleLike.name : `inline-module-${state.inlineModuleCounter++}`;
     const current: ModuleInspection = {
       name,
@@ -200,7 +221,7 @@ function walkModules(
   });
 }
 
-function buildInspectionState(appDefinition: AppDefinition<unknown>) {
+function buildInspectionState(appDefinition: AppDefinition<unknown>, core: CoreRuntime) {
   const providerScopes = new Map<Token, ProviderScope>();
   const rawGuardTokens = new Set<Token>();
   const checkedRawGuardTokens = new Set<Token>();
@@ -208,7 +229,7 @@ function buildInspectionState(appDefinition: AppDefinition<unknown>) {
   const globalMiddlewareTokens = appDefinition.globals?.middleware ?? [];
   const globalFilterTokens = appDefinition.globals?.filters ?? [];
 
-  for (const moduleDefinition of flattenModules(appDefinition.modules)) {
+  for (const moduleDefinition of core.flattenModules(appDefinition.modules)) {
     for (const provider of moduleDefinition.providers) {
       const token = typeof provider === 'function' ? provider : provider.provide;
       const scope = typeof provider === 'function' ? 'singleton' : (provider.scope ?? 'singleton');
@@ -224,6 +245,7 @@ function buildInspectionState(appDefinition: AppDefinition<unknown>) {
 
   return {
     appDefinition,
+    core,
     checkedRawGuardTokens,
     globalFilterTokens,
     globalGuardTokens,
@@ -233,11 +255,11 @@ function buildInspectionState(appDefinition: AppDefinition<unknown>) {
   };
 }
 
-function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: Token): T | undefined {
+function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: Token, core: CoreRuntime): T | undefined {
   const providerMap = new Map<Token, ProviderDefinition>();
   const singletonCache = new Map<Token, unknown>();
 
-  for (const moduleDefinition of flattenModules(appDefinition.modules)) {
+  for (const moduleDefinition of core.flattenModules(appDefinition.modules)) {
     for (const provider of moduleDefinition.providers) {
       if (typeof provider === 'function') {
         providerMap.set(provider, { provide: provider, useClass: provider });
@@ -266,7 +288,7 @@ function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: 
 
     let instance: unknown;
     if (typeof provider === 'function') {
-      instance = instantiateClass(provider, resolveToken);
+      instance = instantiateClass(provider, resolveToken, core);
     } else if ('useValue' in provider) {
       instance = provider.useValue;
     } else if ('useFactory' in provider) {
@@ -274,7 +296,7 @@ function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: 
         resolve: <TResolved>(nestedToken: Token<TResolved>) => resolveToken(nestedToken) as TResolved,
       });
     } else {
-      instance = instantiateClass(provider.useClass, resolveToken);
+      instance = instantiateClass(provider.useClass, resolveToken, core);
     }
 
     singletonCache.set(currentToken, instance);
@@ -284,8 +306,8 @@ function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: 
   return resolveToken(token) as T | undefined;
 }
 
-function instantiateClass<T>(constructor: new (...args: never[]) => T, resolveToken: (token: Token) => unknown): T {
-  const deps = getInjectableMetadata(constructor).deps.map((token) => resolveToken(token));
+function instantiateClass<T>(constructor: new (...args: never[]) => T, resolveToken: (token: Token) => unknown, core: CoreRuntime): T {
+  const deps = core.getInjectableMetadata(constructor).deps.map((token) => resolveToken(token));
   return new constructor(...(deps as never[]));
 }
 
@@ -294,6 +316,7 @@ function describeExecutionMode(
   state: {
     appDefinition: AppDefinition<unknown>;
     checkedRawGuardTokens: Set<Token>;
+    core: CoreRuntime;
     globalFilterTokens: Token[];
     globalGuardTokens: Token[];
     globalMiddlewareTokens: Token[];
@@ -345,6 +368,7 @@ function tokenSupportsRawGuard(
   state: {
     appDefinition: AppDefinition<unknown>;
     checkedRawGuardTokens: Set<Token>;
+    core: CoreRuntime;
     providerScopes: Map<Token, ProviderScope>;
     rawGuardTokens: Set<Token>;
   },
@@ -362,7 +386,7 @@ function tokenSupportsRawGuard(
     return false;
   }
 
-  const instance = resolveSingletonToken<CanActivate>(state.appDefinition, token);
+  const instance = resolveSingletonToken<CanActivate>(state.appDefinition, token, state.core);
   if (typeof instance?.canActivateRaw === 'function') {
     state.rawGuardTokens.add(token);
     return true;

@@ -60,6 +60,7 @@
 
 ### Fixed
 
+- `@kivin/cli`: `kivin inspect` が、CLI とアプリで別の `@kivin/core` が解決される環境（bunx・グローバルインストール）で「Module metadata is missing」になる不具合を修正。エントリが解決する `@kivin/core` 経由でメタデータを読む（解決できなければ CLI 自身のものを使う）
 - `@kivin/cli`: 公開パッケージから `kivin dev` を起動できなかった不具合を修正（`dist` に無い `bin.ts` を探していた）。生成に失敗した時、まだサーバーが起動していないのに「直前のサーバーを維持する」と表示していたのも直した
 - `@kivin/cli`: `kivin --help` / `-h` と `--version` / `-v` を追加。未知のコマンドは使い方を標準エラーに出して非 0 で終了する
 - `@kivin/decorators`: 標準デコレータでない呼び出しのエラーメッセージに、最小対応の Bun バージョン（1.4.0）を追記

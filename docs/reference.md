@@ -322,6 +322,8 @@ inspect routes  --entry <app.ts> [--format text|json]
 inspect modules --entry <app.ts> [--format text|json]
 ```
 
+`inspect` はエントリから解決される `@kivin/core` 経由でメタデータを読むため、`bunx` やグローバルインストールの CLI でも動く。
+
 `inspect routes` は handler・controller scope・executor mode
 （`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`）・
 guard / middleware / filter の scope を表示する。
