@@ -279,3 +279,18 @@ describe('OpenTelemetry tracing', () => {
 // Route type is exported for custom labels.
 const _routeLabel = (route: ManifestRoute<unknown>) => route.fullPath;
 void _routeLabel;
+
+describe('the first request of a process behind an async guard', () => {
+  const nothing = { serverTiming: false, spansEnded: 0, counted: false, inFlight: null };
+
+  test.each([
+    ['metrics', { ...nothing, counted: true, inFlight: 'http_requests_in_flight 0' }],
+    ['tracing', { ...nothing, spansEnded: 1 }],
+    ['server-timing', { ...nothing, serverTiming: true }],
+  ])('%s finishes on the native route', (factory, expected) => {
+    const fixture = new URL('./fixtures/first-request-after-async-guard.ts', import.meta.url).pathname;
+    const result = Bun.spawnSync(['bun', 'run', fixture, factory], { cwd: import.meta.dir });
+    expect(result.stderr.toString()).toBe('');
+    expect(JSON.parse(result.stdout.toString())).toEqual(expected);
+  });
+});
