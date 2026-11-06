@@ -34,7 +34,7 @@ const route = (method: Route['method'], fullPath: string, methodName: string, fi
 });
 const manifest: AppManifest = {
   routes: [
-    route('GET', '/health', 'health'),
+    { ...route('GET', '/health', 'health'), docs: { tags: [], security: [], responses: [], staticResponse: true } },
     route('GET', '/items/:id', 'show', ['params']),
     route('DELETE', '/items/:id', 'remove', ['params']),
     route('DELETE', '/address', 'address', ['context']),

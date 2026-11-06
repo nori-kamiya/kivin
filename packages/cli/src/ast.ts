@@ -84,6 +84,8 @@ export interface AstRouteNode {
   bodySchema?: AstExpressionRef;
   headerSchema?: AstExpressionRef;
   bodyLimit?: AstExpressionRef;
+  /** `@StaticResponse()`, or a handler that only returns a constant literal. */
+  staticResponse?: boolean;
   /** `@Consumes(...)` request body media type. */
   consumes?: BodyMediaType;
   querySchema?: AstExpressionRef;
@@ -371,6 +373,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   const filters = readExpressionListDecoratorValues(context, source, decorators, 'UseFilters');
   const responses = readResponseDecorators(context, source, decorators);
   const parameters = readHandlerInput(method.value.params, filePath, getPropertyKeyText(source, method.key, method.computed));
+  const staticResponse = Boolean(getDecoratorByName(decorators, 'StaticResponse')) || returnsConstantLiteral(method);
 
   return [{
     methodName: getPropertyKeyText(source, method.key, method.computed),
@@ -384,6 +387,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
     ...(consumes ? { consumes: consumes as BodyMediaType } : {}),
     ...(headerSchema ? { headerSchema } : {}),
     ...(bodyLimit ? { bodyLimit } : {}),
+    ...(staticResponse ? { staticResponse } : {}),
     ...(querySchema ? { querySchema } : {}),
     ...(paramSchema ? { paramSchema } : {}),
     security,
@@ -701,6 +705,55 @@ function findClassDeclaration(program: Program, className: string): Class | unde
     }
   }
   return undefined;
+}
+
+/**
+ * Whether a handler's body is exactly `return <constant literal>;` (object / array / string / number /
+ * boolean / null literals, nothing computed). Only such handlers are safe to evaluate once at startup.
+ */
+function returnsConstantLiteral(method: MethodDefinition) {
+  const fn = method.value as { async?: boolean; generator?: boolean; params: unknown[]; body?: { type: string; body?: Array<{ type: string; argument?: unknown }> } | null };
+  if (fn.async || fn.generator || fn.params.length > 0 || fn.body?.type !== 'BlockStatement' || fn.body.body?.length !== 1) {
+    return false;
+  }
+  const statement = fn.body.body[0]!;
+  return statement.type === 'ReturnStatement' && isConstantLiteral(statement.argument);
+}
+
+function isConstantLiteral(node: unknown): boolean {
+  const value = node as { type?: string; [key: string]: unknown } | null | undefined;
+  switch (value?.type) {
+    // `(…)`, `… as const`, `… satisfies T` do not change the value.
+    case 'ParenthesizedExpression':
+    case 'TSAsExpression':
+    case 'TSSatisfiesExpression':
+      return isConstantLiteral(value.expression);
+    case 'Literal':
+      // Not regular expressions / bigints (not JSON).
+      return !('regex' in value && value.regex) && typeof value.value !== 'bigint';
+    case 'StringLiteral':
+    case 'NumericLiteral':
+    case 'BooleanLiteral':
+    case 'NullLiteral':
+      return true;
+    case 'TemplateLiteral':
+      return (value.expressions as unknown[]).length === 0;
+    case 'UnaryExpression':
+      return value.operator === '-' && isConstantLiteral(value.argument) && typeof (value.argument as { value?: unknown }).value === 'number';
+    case 'ArrayExpression':
+      return (value.elements as unknown[]).every((element) => element !== null && isConstantLiteral(element));
+    case 'ObjectExpression':
+      return (value.properties as Array<{ type: string; kind?: string; computed?: boolean; method?: boolean; shorthand?: boolean; key: { type: string }; value: unknown }>).every((property) =>
+        property.type === 'Property'
+        && property.kind === 'init'
+        && !property.computed
+        && !property.method
+        && !property.shorthand
+        && (property.key.type === 'Identifier' || isConstantLiteral(property.key))
+        && isConstantLiteral(property.value));
+    default:
+      return false;
+  }
 }
 
 function getDecoratorByName(decorators: Decorator[] | undefined, decoratorName: string) {
@@ -1090,6 +1143,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
     route.consumes ? `consumes: ${JSON.stringify(route.consumes)}` : undefined,
     route.headerSchema ? `headerSchema: ${renderExpression(controller.filePath, route.headerSchema, renderer)}` : undefined,
     route.bodyLimit ? `bodyLimit: ${renderExpression(controller.filePath, route.bodyLimit, renderer)}` : undefined,
+    route.staticResponse ? 'staticResponse: true' : undefined,
     route.querySchema ? `querySchema: ${renderExpression(controller.filePath, route.querySchema, renderer)}` : undefined,
     route.paramSchema ? `paramSchema: ${renderExpression(controller.filePath, route.paramSchema, renderer)}` : undefined,
     `security: ${renderSecurity(route.security)}`,

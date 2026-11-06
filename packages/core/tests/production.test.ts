@@ -369,7 +369,7 @@ describe('precomputed handler result under enhancers', () => {
     }
   }
 
-  test('computes the response once and still runs middleware on every request', async () => {
+  test('a static response is computed once and middleware still runs on every request', async () => {
     const app = createApp(defineApplication({
       modules: [defineModule({ providers: [HeaderMiddleware], controllers: [CountingController], imports: [] })],
       schemaAdapter: createValibotAdapter(),
@@ -378,7 +378,7 @@ describe('precomputed handler result under enhancers', () => {
       routes: [{
         method: 'GET', fullPath: '/status', controller: CountingController, methodName: 'status',
         parameters: [], guards: [], middleware: [], filters: [],
-        docs: { tags: [], security: [], responses: [] },
+        docs: { tags: [], security: [], responses: [], staticResponse: true },
       }],
     });
     for (let index = 0; index < 3; index += 1) {
@@ -387,5 +387,39 @@ describe('precomputed handler result under enhancers', () => {
       expect(response.headers.get('x-mw')).not.toBeNull();
     }
     expect(calls).toBe(1);
+  });
+});
+
+describe('handlers are not frozen at startup unless declared static', () => {
+  test('a parameterless GET handler reading mutable state answers fresh data on every request', async () => {
+    const items: string[] = [];
+    let calls = 0;
+    class ListController {
+      list() {
+        calls += 1;
+        return { items: [...items], at: calls };
+      }
+    }
+    const app = createApp(defineApplication({
+      modules: [defineModule({ providers: [], controllers: [ListController], imports: [] })],
+      schemaAdapter: createValibotAdapter(),
+    }), {
+      routes: [{
+        method: 'GET', fullPath: '/items', controller: ListController, methodName: 'list',
+        parameters: [], guards: [], middleware: [], filters: [],
+        docs: { tags: [], security: [], responses: [] },
+      }],
+    });
+    expect(calls).toBe(0);
+    expect(await (await app.fetch(new Request('http://x/items'))).json()).toEqual({ items: [], at: 1 });
+    items.push('a');
+    expect(await (await app.fetch(new Request('http://x/items'))).json()).toEqual({ items: ['a'], at: 2 });
+    const server = app.listen({ port: 0, hostname: '127.0.0.1' });
+    try {
+      items.push('b');
+      expect(await (await fetch(new URL('/items', server.url))).json()).toEqual({ items: ['a', 'b'], at: 3 });
+    } finally {
+      await app.close();
+    }
   });
 });
