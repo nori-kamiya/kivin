@@ -148,9 +148,40 @@ BENCH_ITERATIONS=10 bun run bench:stack > .bench/stack-full-$(date +%Y%m%d%H).tx
 BENCH_ITERATIONS=10 bun run bench:stack:delete > .bench/stack-delete-$(date +%Y%m%d%H).txt
 ```
 
-## Latest paired comparison (CI, 2026-11-06)
+## Latest paired comparison (CI, 2026-11-06, after #45–#53)
 
-`bun run perf:check` の CI 結果（GitHub Actions ランナー、compiled binary 3 つを同時起動し Latin square でペア計測、中央値と bootstrap 95% CI）。PR #38 時点（#18 以降のホットパス改善: 静的ルート + グローバルミドルウェアの実行状態の軽量化、204 / ヘッダ付き応答の生成コスト削減などを含む）:
+`bun run perf:check` の CI 結果（GitHub Actions ランナー、compiled binary 3 つを同時起動し Latin square でペア計測、中央値と bootstrap 95% CI）。#45（promise の段数とリクエスト毎の割り当ての削減）以降、#52（定数でないハンドラの結果を固定しない修正）と #53 までを含む 2 回分:
+
+PR #53 の回:
+
+| workload | kivin req/s | hono req/s | elysia req/s | kivin / hono (95% CI) | kivin / elysia (95% CI) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| health | 63,764 | 52,914 | 66,165 | 120.6% (116.1% … 136.4%) | 99.9% (94.4% … 107.0%) |
+| docs-html | 72,200 | 54,920 | 68,738 | 134.2% (123.5% … 139.9%) | 102.7% (98.0% … 107.1%) |
+| read-users (query validation) | 63,457 | 49,245 | 62,406 | 132.8% (111.3% … 141.8%) | 101.3% (95.3% … 104.1%) |
+| create-user (guard + body validation) | 49,230 | 41,680 | 48,288 | 118.9% (97.9% … 143.4%) | 101.0% (94.1% … 112.9%) |
+| patch-user (guard + body validation) | 53,919 | 50,052 | 55,028 | 100.7% (93.5% … 137.7%) | 96.9% (85.9% … 108.7%) |
+| delete-user (guard) | 67,987 | 57,361 | 63,505 | 116.8% (110.1% … 124.7%) | 105.9% (104.4% … 111.4%) |
+
+PR #52 の回（より速いランナー）:
+
+| workload | kivin req/s | hono req/s | elysia req/s | kivin / hono (95% CI) | kivin / elysia (95% CI) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| health | 85,669 | 80,769 | 88,500 | 110.8% (99.0% … 115.7%) | 101.5% (90.8% … 107.8%) |
+| docs-html | 94,072 | 82,848 | 89,839 | 113.6% (110.2% … 119.8%) | 101.9% (96.6% … 106.9%) |
+| read-users (query validation) | 83,546 | 73,364 | 83,367 | 116.4% (111.9% … 118.7%) | 101.3% (97.7% … 103.5%) |
+| create-user (guard + body validation) | 77,042 | 58,566 | 71,232 | 131.2% (117.0% … 147.5%) | 109.2% (106.2% … 111.8%) |
+| patch-user (guard + body validation) | 81,334 | 71,318 | 77,469 | 114.0% (106.2% … 133.7%) | 101.0% (95.5% … 116.4%) |
+| delete-user (guard) | 92,914 | 84,748 | 90,168 | 109.7% (106.7% … 112.2%) | 101.2% (98.8% … 107.8%) |
+
+- Hono よりおおむね 10〜34% 速い（patch-user の #53 の回だけ CI が 100% をまたぐ）
+- Elysia とは同等（97〜109%）。中央値はほとんどの workload で 100% 以上だが、CI が 100% をまたぐものが多く、回によって数 % 入れ替わる
+- HTTP の計測では Bun のサーバー処理（パース・書き込み）が大半を占め、フレームワーク自体の差は数 µs/リクエストに縮まっている。in-process では、Stack アプリの patch で手書きの最小実装との差（＝フレームワーク自体のオーバーヘッド）を約 950ns から約 420ns に減らした（#45）
+- 個々の PR の判断には `perf:regression`（kivin 自身の base 比較、in-process ペア計測）を使う
+
+## Previous paired comparison (CI, 2026-11-06, PR #38)
+
+PR #38 時点（#18 以降のホットパス改善: 静的ルート + グローバルミドルウェアの実行状態の軽量化、204 / ヘッダ付き応答の生成コスト削減などを含む）:
 
 | workload | kivin req/s | hono req/s | elysia req/s | kivin / hono (95% CI) | kivin / elysia (95% CI) |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -160,10 +191,6 @@ BENCH_ITERATIONS=10 bun run bench:stack:delete > .bench/stack-delete-$(date +%Y%
 | create-user (guard + body validation) | 48,285 | 40,634 | 44,225 | 118.1% (104.3% … 136.0%) | 114.4% (110.7% … 117.6%) |
 | patch-user (guard + body validation) | 55,557 | 45,192 | 53,264 | 119.7% (96.0% … 138.5%) | 106.9% (93.3% … 115.6%) |
 | delete-user (guard) | 66,753 | 55,703 | 62,264 | 119.0% (116.3% … 126.5%) | 106.2% (103.5% … 109.3%) |
-
-- すべての workload で Hono を上回る（118〜131%）
-- Elysia とはすべての workload で同等以上（100〜114%）。query validation は同等（99.6%、CI は 100% をまたぐ）、それ以外は上回る
-- 同じランナーでも回ごとに数 % 振れるため（例えば次の PR #39 の回では Elysia 比 101〜110%）、個々の PR の判断には `perf:regression`（kivin 自身の base 比較、in-process ペア計測）を使う
 
 ## Earlier paired comparison (CI, 2026-11-05)
 
