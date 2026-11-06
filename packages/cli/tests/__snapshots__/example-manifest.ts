@@ -30,9 +30,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["list"]({ query: queryValue ?? {} } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["list"]({ query: queryValue ?? {} } as never));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const result = controller["list"]({ query: queryValue ?? {} } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
@@ -65,9 +64,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["me"]({ headers: rt.headers(params) } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["me"]({ headers: rt.headers(params) } as never));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const result = controller["me"]({ headers: rt.headers(params) } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
@@ -101,9 +99,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["findById"]({ params: paramValue ?? {} } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["findById"]({ params: paramValue ?? {} } as never));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const result = controller["findById"]({ params: paramValue ?? {} } as never);
             return rt.finish(rt.isThenable(result) ? await result : result, context);
@@ -136,10 +133,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                const body = await rt.readBody(request, ctx);
-                return controller["create"]({ body: body, context: ctx } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => rt.readBody(request, ctx).then((body) => controller["create"]({ body: body, context: ctx } as never)));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
@@ -175,10 +170,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                const body = await rt.readBody(request, ctx);
-                return controller["replace"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => rt.readBody(request, ctx).then((body) => controller["replace"]({ params: paramValue ?? {}, body: body, context: ctx } as never)));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
@@ -214,10 +207,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                const body = await rt.readBody(request, ctx);
-                return controller["patch"]({ params: paramValue ?? {}, body: body, context: ctx } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => rt.readBody(request, ctx).then((body) => controller["patch"]({ params: paramValue ?? {}, body: body, context: ctx } as never)));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const ctx = (context ??= rt.createContext(request, params));
             const body = await rt.readBody(request, ctx);
@@ -253,10 +244,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                const body = await rt.readBody(request, ctx);
-                return controller["uploadAvatar"]({ params: paramValue ?? {}, body: body } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => rt.readBody(request, ctx).then((body) => controller["uploadAvatar"]({ params: paramValue ?? {}, body: body } as never)));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const body = await rt.readBody(request, context);
             const result = controller["uploadAvatar"]({ params: paramValue ?? {}, body: body } as never);
@@ -291,9 +280,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["delete"]({ params: paramValue ?? {}, context: ctx } as never);
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["delete"]({ params: paramValue ?? {}, context: ctx } as never));
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const ctx = (context ??= rt.createContext(request, params));
             const result = controller["delete"]({ params: paramValue ?? {}, context: ctx } as never);
