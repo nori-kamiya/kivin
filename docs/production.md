@@ -642,6 +642,8 @@ app.listen({
 });
 ```
 
+GET（GraphiQL を含む）、POST、CORS preflight、SSE のサブスクリプションは実物の Yoga との結合テストで確認しています。`graphql-ws`（WebSocket）は未確認です。
+
 `context` は Yoga がリゾルバのコンテキストに混ぜるサーバーコンテキストです。`HttpError`（`unauthorized()` など）や `Response` を投げるとそのまま応答します。ガードやミドルウェアはコントローラーのルート用なので、GraphQL の認証は `context` か `onRequest` フックで行ってください。
 
 ## 未処理の例外
