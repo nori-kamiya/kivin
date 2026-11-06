@@ -43,6 +43,10 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - `@kivin/security`: Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット、IP 制限
 - `@kivin/http`: 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ
 - `@kivin/observability`: OpenTelemetry トレース、Prometheus メトリクス、Server-Timing、ヘルスチェック
+- `@kivin/config`: 型付き・検証済みの環境変数
+- `@kivin/schedule`: アプリのライフサイクルに連動する cron ジョブ（タイムゾーン・夏時間対応）
+- `@kivin/session`: サーバー側セッション（署名付き Cookie、差し替え可能なストア）
+- `@kivin/graphql`: GraphQL Yoga のマウント
 - `@kivin/static`: 静的ファイル配信（`serveStatic`）
 - `@kivin/decorators`: Module / Controller / Route / Parameter decorators
 - `@kivin/logger`: JSON line の構造化ロガーと request logger middleware

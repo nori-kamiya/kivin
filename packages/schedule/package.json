@@ -1,0 +1,28 @@
+{
+  "name": "@kivin/schedule",
+  "version": "0.0.1",
+  "description": "Cron jobs for kivin that follow the application lifecycle (time zones, no overlap, graceful stop)",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/schedule"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  }
+}
