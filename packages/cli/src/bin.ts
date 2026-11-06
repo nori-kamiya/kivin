@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from 'node:fs';
 import { startDev } from './dev';
+import { initProject } from './init';
 import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
 
 function readFlag(name: string): string | undefined {
@@ -28,6 +29,7 @@ function readFormatFlag() {
 const USAGE = `Usage: kivin <command> [options]
 
 Commands:
+  init      <dir>   Scaffold a new project (installs nothing)
   generate  --entry <file> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
   dev       --entry <file> --outDir <dir> --main <file> [--watch <dir>]...
   openapi   --entry <file> --output <file> [--title <t>] [--version <v>]
@@ -54,6 +56,17 @@ async function main() {
 
   if (command === '--help' || command === '-h' || command === 'help' || process.argv.slice(3).some((arg) => arg === '--help' || arg === '-h')) {
     console.log(USAGE);
+    return;
+  }
+
+  if (command === 'init') {
+    const dir = process.argv[3];
+    if (!dir || dir.startsWith('-')) {
+      throw new Error('init requires a target directory: kivin init <dir>');
+    }
+    const result = initProject({ dir, version: readCliVersion() });
+    console.log(`Created ${result.name} in ${result.root}\n`);
+    console.log(`Next steps:\n  cd ${dir}\n  bun install\n  bun run dev`);
     return;
   }
 
