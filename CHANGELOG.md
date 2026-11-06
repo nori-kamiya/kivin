@@ -60,6 +60,7 @@
 
 ### Fixed
 
+- `@kivin/cli`: `kivin generate` が途中で失敗すると manifest・contracts・client だけが更新され `openapi.json` が古いまま残っていた。生成を一時ディレクトリで行い、すべて成功した時だけ出力先に移すようにした（失敗時は以前の成果物がそのまま残る）
 - `@kivin/cli`: `kivin inspect` が、CLI とアプリで別の `@kivin/core` が解決される環境（bunx・グローバルインストール）で「Module metadata is missing」になる不具合を修正。エントリが解決する `@kivin/core` 経由でメタデータを読む（解決できなければ CLI 自身のものを使う）
 - `@kivin/cli`: 公開パッケージから `kivin dev` を起動できなかった不具合を修正（`dist` に無い `bin.ts` を探していた）。生成に失敗した時、まだサーバーが起動していないのに「直前のサーバーを維持する」と表示していたのも直した
 - `@kivin/cli`: `kivin --help` / `-h` と `--version` / `-v` を追加。未知のコマンドは使い方を標準エラーに出して非 0 で終了する

@@ -297,6 +297,8 @@ manifest・contracts・client・OpenAPI を生成する。`client.ts` はサー�
 generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
 ```
 
+4 ファイルは all-or-nothing で書かれる。生成に失敗した場合、`--outDir` の以前の成果物は変更されない。
+
 ### `dev`
 
 ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する（まだ一度も起動していなければ、そう表示して次の保存を待つ）。

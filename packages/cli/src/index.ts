@@ -1,7 +1,7 @@
 import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivin/core';
 import type * as KivinCore from '@kivin/core';
 import { buildOpenApiDocument } from '@kivin/openapi';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
@@ -71,40 +71,48 @@ export async function loadAppDefinition(entry: string): Promise<AppDefinition<un
 
 export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string; aot?: boolean }) {
   const outDir = resolve(input.outDir);
-  const manifestPath = resolve(outDir, 'manifest.ts');
-  const contractsPath = resolve(outDir, 'contracts.ts');
-  const clientPath = resolve(outDir, 'client.ts');
+  // A sibling of outDir keeps the generated relative imports identical, and the final step is renames within one filesystem.
+  await mkdir(dirname(outDir), { recursive: true });
+  const stagingDir = await mkdtemp(resolve(dirname(outDir), '.kivin-gen-'));
+  const staged = (name: string) => resolve(stagingDir, name);
 
-  await mkdir(outDir, { recursive: true });
-  const generated = await buildManifestSourceFromAst({
-    entry: input.entry,
-    outFile: manifestPath,
-    contractsOutFile: contractsPath,
-    clientOutFile: clientPath,
-    ...(input.aot === false ? { aot: false } : {}),
-  });
-  await writeFile(manifestPath, generated.source, 'utf8');
-  await writeFile(contractsPath, generated.contractsSource ?? 'export {};\n', 'utf8');
-  await writeFile(clientPath, generated.clientSource ?? 'export {};\n', 'utf8');
+  try {
+    const generated = await buildManifestSourceFromAst({
+      entry: input.entry,
+      outFile: staged('manifest.ts'),
+      contractsOutFile: staged('contracts.ts'),
+      clientOutFile: staged('client.ts'),
+      ...(input.aot === false ? { aot: false } : {}),
+    });
+    await writeFile(staged('manifest.ts'), generated.source, 'utf8');
+    await writeFile(staged('contracts.ts'), generated.contractsSource ?? 'export {};\n', 'utf8');
+    await writeFile(staged('client.ts'), generated.clientSource ?? 'export {};\n', 'utf8');
 
-  const appDefinition = await loadAppDefinition(input.entry);
-  const manifest = await loadManifest(manifestPath);
-  const openApi = buildOpenApiDocument({
-    manifest,
-    schemaAdapter: appDefinition.schemaAdapter,
-    info: {
-      title: input.title ?? 'kivin app',
-      version: input.version ?? '0.1.0',
-    },
-    ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
-  });
+    const appDefinition = await loadAppDefinition(input.entry);
+    const manifest = await loadManifest(staged('manifest.ts'));
+    const openApi = buildOpenApiDocument({
+      manifest,
+      schemaAdapter: appDefinition.schemaAdapter,
+      info: {
+        title: input.title ?? 'kivin app',
+        version: input.version ?? '0.1.0',
+      },
+      ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
+    });
+    await writeFile(staged('openapi.json'), JSON.stringify(openApi, null, 2), 'utf8');
 
-  await writeFile(resolve(outDir, 'openapi.json'), JSON.stringify(openApi, null, 2), 'utf8');
+    await mkdir(outDir, { recursive: true });
+    for (const name of ['manifest.ts', 'contracts.ts', 'client.ts', 'openapi.json']) {
+      await rename(staged(name), resolve(outDir, name));
+    }
+  } finally {
+    await rm(stagingDir, { recursive: true, force: true });
+  }
 
   return {
-    manifestPath,
-    contractsPath,
-    clientPath,
+    manifestPath: resolve(outDir, 'manifest.ts'),
+    contractsPath: resolve(outDir, 'contracts.ts'),
+    clientPath: resolve(outDir, 'client.ts'),
     openApiPath: resolve(outDir, 'openapi.json'),
   };
 }
