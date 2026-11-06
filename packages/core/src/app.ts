@@ -105,9 +105,14 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     const exactMatch = exactMethodMatch ?? exactGetMatch;
 
     if (exactMatch) {
-      const response = exactMatch.nativeStaticResponse
-        ? exactMatch.nativeStaticResponse.clone()
-        : await (afterResponseInUse ? finishAfterResponse(request, exactMatch.execute(request, EMPTY_PARAMS)) : exactMatch.execute(request, EMPTY_PARAMS));
+      if (exactMatch.nativeStaticResponse) {
+        const response = exactMatch.nativeStaticResponse.clone();
+        return isHeadRequest ? toHeadResponse(response) : response;
+      }
+
+      // Read the flag after starting the route: the route's own middleware may be what sets it.
+      const execution = exactMatch.execute(request, EMPTY_PARAMS);
+      const response = await (afterResponseInUse ? finishAfterResponse(request, execution) : execution);
 
       return isHeadRequest ? toHeadResponse(response) : response;
     }

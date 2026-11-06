@@ -1,13 +1,13 @@
 # 引き継ぎメモ
 
-kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #56 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
+kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #76 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
 
 ## 1. 現状
 
 - **段階**: 全パッケージ `0.0.1`、npm 未公開（ルートは `private: true`）。Bun 専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）。公開準備は [#57](https://github.com/nori-kamiya/kivin/issues/57)
 - **性能**: CI のペア計測で Hono より約 10〜34% 速く、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
 - **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
-- **テスト**: `bun test` で約 600 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 3 ジョブ
+- **テスト**: `bun test` で約 620 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
 
 ## 2. パッケージ構成
 
@@ -49,11 +49,12 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 ### PR の作り方（これまでの約束事）
 
-- ブランチを切って PR にし、CI の 3 ジョブが通ってからマージする。**`main` にはブランチ保護が無い**ので、ルールとしては強制されていない（[#67](https://github.com/nori-kamiya/kivin/issues/67)）
+- ブランチを切って PR にし、CI が通ってからマージする。`main` のブランチ保護で `Typecheck, test, smoke` と `Performance regression vs base` を必須にしている
 - 性能ゲートが落ちた PR はマージしない（判定は §4）
 - 不具合修正には「修正前に失敗するテスト」を付ける
 - 利用者に見える変更は `CHANGELOG.md` の `[Unreleased]`（Added / Fixed / Changed、日本語）と、`docs/reference.md` / `docs/production.md` / `README.md` の該当箇所を同じ PR で更新する
 - PR の本文は日本語
+- サプライチェーン対策のため依存を最小に保つ。npm 依存は原則追加せず、Bun 組み込みや自前実装を先に検討する（結合テスト用の devDependencies は例外として判断した）
 
 ### 生成物とスナップショット
 
@@ -105,11 +106,9 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 | 内容 | issue |
 | --- | --- |
-| OpenTelemetry SDK・GraphQL Yoga とは偽物でしかテストしていない（npm に接続できない環境で作ったため） | [#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60) |
 | セッション・レートリミットはメモリストアのみ同梱。cron は全インスタンスで実行される | [#61](https://github.com/nori-kamiya/kivin/issues/61) |
 | `anyGuard` はコンストラクタ依存を持つガードを合成できない | [#62](https://github.com/nori-kamiya/kivin/issues/62) |
 | メトリクスはルートに一致しなかったリクエストを数えない | [#63](https://github.com/nori-kamiya/kivin/issues/63) |
-| CI は Linux のみ | [#69](https://github.com/nori-kamiya/kivin/issues/69) |
 
 ## 7. 残課題（issue）
 
@@ -117,17 +116,14 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 | 優先度 | issue | 内容 |
 | --- | --- | --- |
-| 高 | [#67](https://github.com/nori-kamiya/kivin/issues/67) | `main` のブランチ保護と古いブランチの整理（管理者作業） |
 | 高 | [#57](https://github.com/nori-kamiya/kivin/issues/57) | npm 公開の準備（特に `@kivin/core` を peerDependency にすること） |
-| 高 | [#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60) | OpenTelemetry / GraphQL Yoga の実物との結合確認 |
 | 中 | [#58](https://github.com/nori-kamiya/kivin/issues/58) | `kivin init`（#57 の後） |
 | 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
-| 中 | [#69](https://github.com/nori-kamiya/kivin/issues/69) | CI の macOS 対応 |
 | 低 | [#62](https://github.com/nori-kamiya/kivin/issues/62), [#63](https://github.com/nori-kamiya/kivin/issues/63) | `anyGuard` の DI 対応、未マッチリクエストのメトリクス |
 | 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |
 | 判断 | [#68](https://github.com/nori-kamiya/kivin/issues/68) | Hono / Elysia との残りの差分（JSX・SSG・Cache・tRPC など）の要否 |
 
-## 8. 最近の変更（#38〜#56）
+## 8. 最近の変更（#38〜#76）
 
 | PR | 内容 |
 | --- | --- |
@@ -146,6 +142,12 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | #54 | Hono / Elysia との最新比較 |
 | #55 | `defineApplication({ basePath })` |
 | #56 | セッション ID の遅延生成 |
+| #71 | プロセス起動直後のリクエストで `afterResponse` が呼ばれない不具合の修正、`enableAfterResponse()` |
+| #72 | CI の macOS ジョブ |
+| #73 | 実物の OpenTelemetry SDK との結合テスト |
+| #74 | 実物の GraphQL Yoga との結合テストと、`createGraphqlRoutes` の型の修正 |
+| #75 | `listen({ onShutdownStart, shutdownDelayMs })` |
+| #76 | `graphql-ws` の結合テストと配線例 |
 
 それ以前の変更は `CHANGELOG.md` を見てください。
 
@@ -155,6 +157,5 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 - 実際の `oxc-parser` での動作は CI で確認している（CI は通常どおり `bun install --frozen-lockfile`）
 - そうした環境で `bun install` を実行すると依存が壊れることがある（ローカルで npm に接続できるなら問題ない）
-- GitHub のブランチ削除ができなかったため、マージ済みブランチが残っている（#67）
 
 通常の開発環境（npm に接続できる）では、`bun install` から §3 のコマンドがそのまま使えます。

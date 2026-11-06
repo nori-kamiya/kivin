@@ -27,5 +27,10 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "graphql": "^17.1.0",
+    "graphql-ws": "^6.4.1",
+    "graphql-yoga": "^6.0.1"
   }
 }

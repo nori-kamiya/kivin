@@ -511,6 +511,7 @@ defineApplication({ ..., globals: { middleware: [Tracing /* 先頭に置く */, 
 
 - リクエストごとに SERVER スパン（名前は `GET /users/:id`）を作り、`http.request.method` / `http.route` / `url.path` / `server.address` / `client.address` / `user_agent.original` / `http.response.status_code` を付けます。
 - `propagation` と `context` を渡すと受信した `traceparent` からトレースを継続します。ハンドラの実行中はスパンがアクティブなので、計装された fetch や DB ドライバのスパンは子になります。
+- 親子関係には `@opentelemetry/context-async-hooks` の `AsyncLocalStorageContextManager` を `context.setGlobalContextManager` で登録してください。継続には `@opentelemetry/core` の `W3CTraceContextPropagator` の登録も必要です。Bun 上で `await` をまたいで親子になることを結合テストで確認しています。
 - スパンは最終レスポンスで終わり、5xx ならエラーにして元の例外を記録します（フィルタが 4xx にしたものはエラーにしません）。
 
 ### Server-Timing
@@ -638,6 +639,59 @@ app.listen({
     context: async (request) => ({ users: app.get(UserService), userId: await authenticate(request) }),
   }),
 });
+```
+
+GET（GraphiQL を含む）、POST、CORS preflight、SSE のサブスクリプションは実物の Yoga との結合テストで確認しています。
+
+WebSocket のサブスクリプションには `graphql-ws` を `listen({ websockets })` に載せます。`upgrade` の戻り値をコンテキストに渡せます。
+
+```ts
+import { defineWebSocket } from '@kivin/core';
+import { GRAPHQL_TRANSPORT_WS_PROTOCOL, makeServer } from 'graphql-ws';
+
+const graphqlWs = makeServer<Record<string, unknown>, { userId: string }>({
+  execute: (args) => args.rootValue.execute(args),
+  subscribe: (args) => args.rootValue.subscribe(args),
+  onSubscribe: async (context, _id, payload) => {
+    const { schema, execute, subscribe, contextFactory, parse, validate } = yoga.getEnveloped({ userId: context.extra.userId });
+    const document = parse(payload.query);
+    const errors = validate(schema, document);
+    if (errors.length > 0) {
+      return errors;
+    }
+    return {
+      schema, document,
+      operationName: payload.operationName,
+      variableValues: payload.variables,
+      contextValue: await contextFactory(),
+      rootValue: { execute, subscribe },
+    };
+  },
+});
+
+const sessions = new WeakMap<object, { receive?: (message: string) => Promise<void>; closed?: (code?: number, reason?: string) => Promise<void> }>();
+
+const graphqlSocket = defineWebSocket<{ userId: string }>({
+  upgrade: (request) => authenticate(request) ?? new Response('Unauthorized', { status: 401 }),
+  open(socket) {
+    const session: { receive?: (message: string) => Promise<void>; closed?: (code?: number, reason?: string) => Promise<void> } = {};
+    sessions.set(socket, session);
+    session.closed = graphqlWs.opened({
+      protocol: GRAPHQL_TRANSPORT_WS_PROTOCOL,
+      send: (message) => { socket.send(message); },
+      close: (code, reason) => { socket.close(code, reason); },
+      onMessage: (receive) => { session.receive = receive; },
+    }, { userId: socket.data.data.userId });
+  },
+  async message(socket, message) {
+    await sessions.get(socket)?.receive?.(String(message));
+  },
+  async close(socket, code, reason) {
+    await sessions.get(socket)?.closed?.(code, reason);
+  },
+});
+
+app.listen({ port: 3000, routes: createGraphqlRoutes(yoga, { context }), websockets: { '/graphql/ws': graphqlSocket } });
 ```
 
 `context` は Yoga がリゾルバのコンテキストに混ぜるサーバーコンテキストです。`HttpError`（`unauthorized()` など）や `Response` を投げるとそのまま応答します。ガードやミドルウェアはコントローラーのルート用なので、GraphQL の認証は `context` か `onRequest` フックで行ってください。

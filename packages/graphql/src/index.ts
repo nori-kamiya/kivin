@@ -41,7 +41,8 @@ export interface GraphqlRouteOptions<TServerContext> {
  * controller routes): authenticate in `context` or in a hook.
  */
 export function createGraphqlRoutes<TServerContext extends object = Record<string, never>>(
-  server: FetchGraphqlServer<TServerContext>,
+  // NoInfer: Yoga's `fetch` is overloaded, and TypeScript would infer from its last overload (`RequestInit`).
+  server: FetchGraphqlServer<NoInfer<TServerContext>>,
   options: GraphqlRouteOptions<TServerContext> = {},
 ) {
   const path = options.path ?? '/graphql';
@@ -55,7 +56,7 @@ export function createGraphqlRoutes<TServerContext extends object = Record<strin
 
 /** The request handler behind `createGraphqlRoutes`, for mounting it some other way. */
 export function createGraphqlHandler<TServerContext extends object = Record<string, never>>(
-  server: FetchGraphqlServer<TServerContext>,
+  server: FetchGraphqlServer<NoInfer<TServerContext>>,
   options: Pick<GraphqlRouteOptions<TServerContext>, 'context'> = {},
 ) {
   return async (request: Request): Promise<Response> => {
