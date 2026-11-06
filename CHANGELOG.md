@@ -9,6 +9,8 @@
 ### Added
 
 - `@kivin/security`: IP 制限 `createIpRestrictionGuard` / `createIpRestriction` / `createIpMatcher` / `parseIpAddress` を追加（IPv4 / IPv6 のアドレス・CIDR・`*`・判定関数。拒否リスト優先、IPv4-mapped IPv6 は IPv4 扱い、不明なアドレスは既定で拒否）
+- `@kivin/core`: ルーティング前のフック `defineApplication({ onRequest })` を追加。`Response` を返すと即応答、`Request` を返すとそのリクエストとしてルーティングし直す。Bun のネイティブルートに載ったルートでも動き、未設定ならコストはない。書き換えたリクエストでも `getClientAddress` は元の接続元を返す（ボディ制限で作り直したリクエストも同様）
+- `@kivin/http`: コンテンツネゴシエーション `accepts` / `acceptsType` / `acceptsLanguage` / `negotiate` / `parseAcceptHeader`、ストリーミング `stream` / `streamText` / `streamNdjson`（バックプレッシャー、切断検知）、`?pretty` で JSON をインデントする `createPrettyJsonMiddleware`、`onRequest` フックとして使う `createMethodOverride`（フォームの `_method` / ヘッダ / クエリ）と `createTrailingSlash`（301 / 308 で正規 URL へ。オープンリダイレクト対策済み）を追加
 - `@kivin/core`: 署名付き Cookie を追加。`context.setSignedCookie` / `context.signedCookie` と、単体の `signCookieValue` / `verifyCookieValue` / `getSignedCookie` / `serializeSignedCookie`。HMAC-SHA256（Web Crypto、定数時間の検証）で、署名は Cookie 名と値の両方にかかる。鍵の配列を渡すとローテーションできる
 - `@kivin/core`: `createRequestIdMiddleware` と `getRequestId` を追加（受信した ID は形式を検証し、不正なら UUID を発行。`@kivin/logger` の requestId にも反映）
 - `@kivin/core` / `@kivin/decorators`: ルート単位のボディサイズ制限 `@BodyLimit(bytes)` とアプリ全体の既定 `defineApplication({ bodyLimit })` を追加（413。Content-Length が超えていれば読まずに返し、チャンク転送は読みながら打ち切る）
@@ -47,6 +49,7 @@
 
 ### Fixed
 
+- `@kivin/http`: `acceptsEncoding` が `gzip;q=0, *` のように明示的に拒否されたエンコーディングを `*` によって許可していたのを修正。`createCompressMiddleware` は q 値の高いエンコーディングを選ぶようにした（同じ q ならこれまでどおり `encodings` の順）
 - `@kivin/core`（セキュリティ）: ガードが 1 つだけのルートで、そのガードの `canActivateRaw` が `async` 宣言ではない通常のメソッドで Promise を返す場合（`canActivateRaw(req) { return this.auth.check(req); }`）、Promise が真値として扱われて**全リクエストが許可されていた**問題を修正（#38）
 
 - `@kivin/core`: フィルタで処理されなかった例外は 500 になるだけでどこにも記録されず、`@kivin/logger` を入れていないアプリでは原因が失われていた。`console.error('[kivin] Unhandled error', error)` に 1 回出すようにした（`HttpError` とフィルタで処理された例外は出さない。`@kivin/logger` の `RequestLoggerMiddleware` が記録した例外は二重に出さない）。他のロガーからは `markErrorReported(error)` で同様に抑止できる

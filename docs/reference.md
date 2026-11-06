@@ -22,6 +22,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createApp(appDefinition, manifest)` | function | アプリ定義とコンパイル済み manifest から、`fetch` と `listen(portOrOptions)` を持つアプリを生成する。`listen({ port, hostname, routes })` の `routes` は app のルートと一緒に Bun native routes に載る |
 | `buildManifest(appDefinition)` | function | アプリ定義から実行時 manifest を組み立てる（通常は生成 manifest 経由で呼ばれる） |
 | `defineApplication(input)` | function | アプリ定義（root module / OpenAPI 設定など）を宣言する |
+| `defineApplication({ onRequest })`, `RequestHook` | option / type | ルーティング前に全リクエストで走るフック（順番に実行）。`Response` を返すと即応答、`Request` を返すとそのリクエストとしてルーティングし直す。未設定ならコストゼロ |
 | `defineModule(input)` | function | モジュール（controllers / providers / imports / グローバル enhancer）を宣言する |
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
@@ -123,7 +124,15 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createCompressMiddleware(options)` | function | gzip / brotli 圧縮ミドルウェア（Accept-Encoding の交渉、閾値、型フィルタ、NDJSON はストリーム圧縮） |
 | `createEtagMiddleware(options)` | function | ボディのハッシュから弱い ETag を付け、If-None-Match に 304 を返すミドルウェア |
 | `createRequestIdMiddleware(options)` / `getRequestId(request)` | function | リクエスト ID の付与（受信 ID は形式を検証）とレスポンスへの反映、ロガー連携 |
-| `acceptsEncoding(header, encoding)` | function | `Accept-Encoding` がエンコーディングを（q > 0 で）許すか |
+| `accepts(request, header, supported, fallback?)` | function | コンテンツネゴシエーション（Hono の `accepts`）。`Accept` / `Accept-Language` / `Accept-Encoding` / `Accept-Charset` から最適な値を返す。q 値（最も具体的な範囲の q が効く）→ 具体性 → 順序で選び、無ければ `fallback` |
+| `acceptsType(request, types)` / `acceptsLanguage(request, languages)` | function | `Accept` / `Accept-Language` 用の短縮形（言語は `en` ⇔ `en-US` の前方一致に対応） |
+| `negotiate(headerName, headerValue, supported)`, `parseAcceptHeader(header)` | function | ヘッダ文字列に対する交渉とパース |
+| `acceptsEncoding(header, encoding)` | function | `Accept-Encoding` がエンコーディングを（q > 0 で）許すか。明示した `q=0` は `*` より優先、空のヘッダは identity のみ |
+| `stream(handler, options?)` / `streamText(handler, options?)` | function | ストリーミングレスポンス（Hono の `stream` / `streamText`）。`write` / `writeln` / `pipe` / `sleep` / `onAbort`、バックプレッシャー対応、切断で `aborted` |
+| `streamNdjson(source, options?)` | function | NDJSON（`application/x-ndjson`）を（async）iterable か書き込み関数からストリームする |
+| `createPrettyJsonMiddleware(options?)` | function | `?pretty` のときだけ JSON レスポンスをインデントする（Hono の `prettyJSON`） |
+| `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
+| `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
 
 ## @kivin/static
 

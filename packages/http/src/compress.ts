@@ -6,7 +6,7 @@
 // against, the uncompressed representation.
 import { brotliCompressSync, constants as zlib } from 'node:zlib';
 import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
-import { acceptsEncoding } from './accepts';
+import { negotiate } from './accepts';
 
 export type CompressionEncoding = 'br' | 'gzip';
 
@@ -49,7 +49,8 @@ export function createCompressMiddleware(options: CompressOptions = {}) {
       return response;
     }
     const accepted = request.headers.get('accept-encoding') ?? '';
-    const encoding = encodings.find((candidate) => acceptsEncoding(accepted, candidate));
+    // Highest q wins; equal q goes by `encodings` order (brotli first by default).
+    const encoding = negotiate('accept-encoding', accepted, encodings);
     // Vary on every compressible response, so caches never serve a compressed body to a client
     // that did not ask for one (or the reverse).
     if (!encoding) {
