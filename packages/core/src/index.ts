@@ -80,3 +80,4 @@ export { createRateLimitMiddleware, createTimeoutMiddleware, getClientAddress, t
 export { createCompressMiddleware, createEtagMiddleware, type CompressionEncoding, type CompressOptions, type EtagOptions } from './compress';
 export { serveStatic, type ServeStaticOptions } from './static';
 export { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials, readBearerToken, safeCompare, type BasicAuthOptions, type BasicCredentials, type BearerAuthOptions, type CsrfOptions } from './auth';
+export { createRequestIdMiddleware, getRequestId, type RequestIdOptions } from './request-id';

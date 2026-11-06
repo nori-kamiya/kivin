@@ -200,6 +200,11 @@ export function Consumes(mediaType: BodyMediaType): MethodDecorator {
   return (_value, context) => updateDocs(context, 'Consumes', (current) => ({ ...current, consumes: mediaType }));
 }
 
+/** Maximum request body size in bytes for this route (413 above it); overrides the app's `bodyLimit`. */
+export function BodyLimit(bytes: number): MethodDecorator {
+  return (_value, context) => updateDocs(context, 'BodyLimit', (current) => ({ ...current, bodyLimit: bytes }));
+}
+
 /** Validates the request headers (lower-case names, e.g. `'x-api-version'`) passed as the input's `headers`. */
 export function UseHeaderSchema(schema: unknown): MethodDecorator {
   return (_value, context) => updateDocs(context, 'UseHeaderSchema', (current) => ({ ...current, headerSchema: schema }));

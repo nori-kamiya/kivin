@@ -1,4 +1,4 @@
-import { createToken, defineModule, markErrorReported, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { createToken, defineModule, getRequestId, markErrorReported, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 import { Injectable } from '@kivin/decorators';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -96,7 +96,8 @@ export class RequestLoggerMiddleware implements NestLikeMiddleware {
     const errorEnabled = this.rootLogger.isLevelEnabled('error');
     const startedAt = performance.now();
     const request = context.request;
-    const requestId = request.headers.get('x-request-id') ?? context.get<string>('requestId') ?? crypto.randomUUID();
+    // Prefer the ID createRequestIdMiddleware validated / assigned over the raw header.
+    const requestId = getRequestId(request) ?? context.get<string>('requestId') ?? request.headers.get('x-request-id') ?? crypto.randomUUID();
     context.set(REQUEST_LOGGER_KEY, this.rootLogger);
     let requestLogger: Logger | undefined;
     const getRequestLogger = () => {

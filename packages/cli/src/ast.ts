@@ -83,6 +83,7 @@ export interface AstRouteNode {
   tags: string[];
   bodySchema?: AstExpressionRef;
   headerSchema?: AstExpressionRef;
+  bodyLimit?: AstExpressionRef;
   /** `@Consumes(...)` request body media type. */
   consumes?: BodyMediaType;
   querySchema?: AstExpressionRef;
@@ -361,6 +362,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
   const bodySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseBodySchema');
   const querySchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseQuerySchema');
   const headerSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseHeaderSchema');
+  const bodyLimit = readSingleExpressionDecoratorValue(context, source, decorators, 'BodyLimit');
   const paramSchema = readSingleExpressionDecoratorValue(context, source, decorators, 'UseParamSchema');
   const security = readSecurityDecorators(decorators, filePath);
   const tags = readStringDecoratorValues(decorators, 'Tag', filePath);
@@ -381,6 +383,7 @@ function readRoute(context: AstImportContext, source: ParsedSource, method: Meth
     ...(bodySchema ? { bodySchema } : {}),
     ...(consumes ? { consumes: consumes as BodyMediaType } : {}),
     ...(headerSchema ? { headerSchema } : {}),
+    ...(bodyLimit ? { bodyLimit } : {}),
     ...(querySchema ? { querySchema } : {}),
     ...(paramSchema ? { paramSchema } : {}),
     security,
@@ -1086,6 +1089,7 @@ function renderRoute(controller: AstControllerNode, route: AstRouteNode, rendere
     route.bodySchema ? `bodySchema: ${renderExpression(controller.filePath, route.bodySchema, renderer)}` : undefined,
     route.consumes ? `consumes: ${JSON.stringify(route.consumes)}` : undefined,
     route.headerSchema ? `headerSchema: ${renderExpression(controller.filePath, route.headerSchema, renderer)}` : undefined,
+    route.bodyLimit ? `bodyLimit: ${renderExpression(controller.filePath, route.bodyLimit, renderer)}` : undefined,
     route.querySchema ? `querySchema: ${renderExpression(controller.filePath, route.querySchema, renderer)}` : undefined,
     route.paramSchema ? `paramSchema: ${renderExpression(controller.filePath, route.paramSchema, renderer)}` : undefined,
     `security: ${renderSecurity(route.security)}`,

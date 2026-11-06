@@ -89,6 +89,22 @@ export const AuthGuard = createJwtGuard({
 - 再取得に失敗した場合は直前の鍵セットを使い続けます。初回取得に失敗した場合、ガードは `503`（`Retry-After`）を返します（`401` ではないため、クライアントがログアウト扱いにしません）
 - 固定の鍵セットを使う場合は `createLocalJwks({ keys: [...] })`。`verifyJwt(token, { key: resolver, ... })` でガード以外からも使えます
 
+## リクエストボディのサイズ制限
+
+```ts
+defineApplication({ /* ... */ bodyLimit: 1024 * 1024 });   // POST / PUT / PATCH / DELETE の既定（1 MiB）
+
+@Post('/:id/avatar')
+@BodyLimit(5 * 1024 * 1024)                                 // このルートだけ 5 MiB
+@Consumes('multipart/form-data')
+uploadAvatar(/* ... */) {}
+```
+
+- 上限を超えると `413 { message: 'Payload Too Large', limit }`。`Content-Length` が上限を超えていれば何も読まずに返します
+- `Content-Length` の無いチャンク転送は、読みながら数えて超えた時点で打ち切ります（上限内なら読んだ内容をそのまま後段へ渡します）
+- 制限のあるルート（ボディを持つメソッド）だけが判定を通り、GET や制限の無いルートには一切コストがかかりません
+- Bun の `listen({ maxRequestBodySize })`（既定 128 MiB）はサーバ全体の上限、こちらはルートごとの上限です
+
 ## タイムアウトとレートリミット
 
 ```ts
@@ -258,6 +274,20 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 - `@Consumes` のない JSON ルートには一切コストがかかりません
 
 `context.formData()` / `context.form()` は従来どおり使え、`@Consumes` ルートでも `body` と同じ解析結果を共有します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。
+
+## リクエスト ID
+
+```ts
+import { createRequestIdMiddleware, getRequestId } from '@kivin/core';
+import { RequestLoggerMiddleware } from '@kivin/logger';
+
+// ID を先（外側）に置くと、ロガーの request.* レコードに同じ requestId が入ります
+globals: { middleware: [createRequestIdMiddleware(), RequestLoggerMiddleware] },
+```
+
+- 受け取った `x-request-id`（ロードバランサが付けたものなど）が `[A-Za-z0-9._:-]{1,128}` ならそのまま使い、それ以外（空白・制御文字・長すぎるもの）は新しい UUID に置き換えます。ログやレスポンスヘッダへの注入を防ぐためです
+- レスポンスに同じヘッダを付け、ハンドラからは `getRequestId(request)` / `context.get('requestId')` で読めます
+- `header`（既定 `x-request-id`）、`trustIncoming: false`（常に新規発行）、`generate` を変更できます
 
 ## 未処理の例外
 

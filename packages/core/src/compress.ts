@@ -7,6 +7,7 @@
 import { brotliCompressSync, constants as zlib } from 'node:zlib';
 import type { RequestContext } from './context';
 import type { NestLikeMiddleware } from './runtime-types';
+import { acceptsEncoding } from './static';
 
 export type CompressionEncoding = 'br' | 'gzip';
 
@@ -84,19 +85,6 @@ export function createCompressMiddleware(options: CompressOptions = {}) {
       return compress(request, await next());
     }
   };
-}
-
-/** Whether `Accept-Encoding` allows `encoding` (explicitly or via `*`) with a non-zero q. */
-function acceptsEncoding(header: string, encoding: string) {
-  return header.split(',').some((part) => {
-    const [name, ...params] = part.trim().split(';');
-    const token = name?.trim().toLowerCase();
-    if (token !== encoding && token !== '*') {
-      return false;
-    }
-    const q = params.map((param) => param.trim()).find((param) => param.startsWith('q='));
-    return q === undefined || Number(q.slice(2)) > 0;
-  });
 }
 
 function withVary(response: Response) {
