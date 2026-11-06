@@ -8,6 +8,8 @@
 
 ### Added
 
+- `@kivin/core`: `createTimeoutMiddleware`（時間切れで 504）、`createRateLimitMiddleware`（固定ウィンドウ、429 / Retry-After / RateLimit-* ヘッダ、キーは既定でクライアントアドレス）、`getClientAddress(request)` を追加
+
 - `@kivin/core`: `globals` やルートで指定したガード / ミドルウェア / フィルタのクラスは、モジュールの `providers` に書かなくても自動で登録されるようにした（依存はモジュールから解決）。`globals` の `guards` / `middleware` / `filters` は個別に省略できる
 
 - `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、ハンドラの入力型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
