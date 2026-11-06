@@ -18,6 +18,7 @@
     { "path": "./packages/observability" },
     { "path": "./packages/cli" },
     { "path": "./tests/types" },
+    { "path": "./packages/observability/tests" },
     { "path": "./examples/basic" },
     { "path": "./examples/benchmark-kivin" },
     { "path": "./examples/benchmark-hono" },

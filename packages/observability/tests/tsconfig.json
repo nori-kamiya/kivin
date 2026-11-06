@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "../../..",
+    "outDir": "../../../.cache/observability-tests",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "references": [
+    { "path": "../../core" },
+    { "path": "../../valibot" },
+    { "path": ".." }
+  ],
+  "include": ["opentelemetry.integration.test.ts"]
+}

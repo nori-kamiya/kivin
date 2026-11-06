@@ -102,7 +102,7 @@ BENCH_ITERATIONS=10 bun run bench:kivin:create > .bench/kivin-create-breakdown-$
 
 まだ薄い領域は次です。
 
-- OpenTelemetry SDK / GraphQL Yoga の実物との結合テスト（[#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60)）
+- GraphQL Yoga の実物との結合テスト（[#60](https://github.com/nori-kamiya/kivin/issues/60)）
 
 OpenAPI と runtime manifest の整合は、snapshot だけでなく example app と dedicated fixture について requestBody / parameters / responses / security / tags / summary / description の semantic diff でも固定しています。特に fixture 側では multi-security、controller + route tag merge、required/optional query params、`204` no-content response を押さえています。
 
