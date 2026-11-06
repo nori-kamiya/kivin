@@ -1,6 +1,7 @@
 // Path lookup, allowed-method tables and the Bun native `routes` table.
 import type { Router } from '../router';
 import type { HttpMethod } from '../types';
+import { afterResponseInUse, finishAfterResponse } from '../after-response';
 import { toHeadResponse } from './results';
 import { type BunRouteDefinition, type BunRouteHandler, type CompiledRoute, HTTP_METHOD_ORDER } from './types';
 
@@ -71,7 +72,11 @@ export function createBunServeRoutes<TSchema>(compiledRoutes: CompiledRoute<TSch
     }
     methods.add(method);
 
-    const handler: BunRouteHandler = (request) => compiledRoute.execute(request, request.params ?? {});
+    const handler: BunRouteHandler = (request) => {
+      const execution = compiledRoute.execute(request, request.params ?? {});
+      // `afterResponse` callbacks see the final response (after filters and CORS).
+      return afterResponseInUse ? finishAfterResponse(request, execution) : execution;
+    };
     const current = routes[fullPath];
     const routeValue = compiledRoute.nativeStaticResponse ? compiledRoute.nativeStaticResponse.clone() : handler;
 
@@ -105,7 +110,10 @@ export function createBunServeRoutes<TSchema>(compiledRoutes: CompiledRoute<TSch
 
     current.HEAD = compiledRoute.nativeStaticResponse
       ? toHeadResponse(compiledRoute.nativeStaticResponse.clone())
-      : async (request) => toHeadResponse(await compiledRoute.execute(request, request.params ?? {}));
+      : async (request) => {
+          const execution = compiledRoute.execute(request, request.params ?? {});
+          return toHeadResponse(await (afterResponseInUse ? finishAfterResponse(request, execution) : execution));
+        };
   }
 
   return routes;

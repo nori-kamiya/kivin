@@ -51,6 +51,7 @@
 
 ### Fixed
 
+- `@kivin/core`: `onRequest` フックが書き換えたリクエストで、ミドルウェアが登録した `afterResponse` コールバックが呼ばれなかったのを修正（メトリクス・トレース・Server-Timing が記録されなかった）。あわせて `afterResponse` の判定をルートのラッパーからルート呼び出し箇所へ移し、ラップ 1 段分のコストをなくした
 - `@kivin/http`: `acceptsEncoding` が `gzip;q=0, *` のように明示的に拒否されたエンコーディングを `*` によって許可していたのを修正。`createCompressMiddleware` は q 値の高いエンコーディングを選ぶようにした（同じ q ならこれまでどおり `encodings` の順）
 - `@kivin/core`（セキュリティ）: ガードが 1 つだけのルートで、そのガードの `canActivateRaw` が `async` 宣言ではない通常のメソッドで Promise を返す場合（`canActivateRaw(req) { return this.auth.check(req); }`）、Promise が真値として扱われて**全リクエストが許可されていた**問題を修正（#38）
 

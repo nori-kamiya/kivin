@@ -3,13 +3,13 @@
 // the handler throws (filters run outside the middleware chain), so metrics / tracing middleware
 // register here to record the real status.
 import { originalRequest } from './client-address';
-import { isPromiseLike } from './runtime/utils';
 
 export type AfterResponseCallback = (response: Response) => Response | void;
 
 const callbacks = new WeakMap<Request, AfterResponseCallback[]>();
-// Routes check this flag before touching the map, so apps that never register a callback pay nothing.
-let inUse = false;
+// Route call sites check this flag (a live binding) before anything else, so apps that never
+// register a callback pay one boolean read per request.
+export let afterResponseInUse = false;
 
 /**
  * Calls `callback` with the final response of the route handling `request` (one call per request).
@@ -17,7 +17,7 @@ let inUse = false;
  * ignored. Only requests that reach a route are finalised (not 404 / 405 answers).
  */
 export function afterResponse(request: Request, callback: AfterResponseCallback) {
-  inUse = true;
+  afterResponseInUse = true;
   const key = originalRequest(request);
   const list = callbacks.get(key);
   if (list) {
@@ -28,11 +28,14 @@ export function afterResponse(request: Request, callback: AfterResponseCallback)
 }
 
 function finish(request: Request, response: Response): Response {
-  const list = callbacks.get(request);
+  // Callbacks are keyed by the received request: a request rewritten by an `onRequest` hook (or
+  // re-wrapped by the body limit) finds the callbacks its middleware registered.
+  const key = originalRequest(request);
+  const list = callbacks.get(key);
   if (!list) {
     return response;
   }
-  callbacks.delete(request);
+  callbacks.delete(key);
   let current = response;
   for (const callback of list) {
     try {
@@ -47,18 +50,13 @@ function finish(request: Request, response: Response): Response {
   return current;
 }
 
-/** @internal Wraps a route executor so registered callbacks run on its final response. */
-export function withAfterResponse<TParams>(execute: (request: Request, params: TParams) => Promise<Response>) {
-  return (request: Request, params: TParams): Promise<Response> => {
-    const result = execute(request, params);
-    if (!inUse) {
-      return result;
-    }
-    return isPromiseLike<Response>(result)
-      ? result.then((response) => finish(request, response), (error: unknown) => {
-          finish(request, new Response(null, { status: 500 }));
-          throw error;
-        })
-      : Promise.resolve(finish(request, result));
-  };
+/**
+ * @internal Runs the request's callbacks on a route's final response. Call sites check
+ * `afterResponseInUse` first.
+ */
+export function finishAfterResponse(request: Request, result: Promise<Response>): Promise<Response> {
+  return result.then((response) => finish(request, response), (error: unknown) => {
+    finish(request, new Response(null, { status: 500 }));
+    throw error;
+  });
 }
