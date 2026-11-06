@@ -2,7 +2,7 @@ import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefin
 import type * as KivinCore from '@kivin/core';
 import { buildOpenApiDocument } from '@kivin/openapi';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
 import { GENERATE_STAGING_PREFIX, INSPECT_STAGING_PREFIX } from './staging';
@@ -89,7 +89,9 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     await writeFile(staged('contracts.ts'), generated.contractsSource ?? 'export {};\n', 'utf8');
     await writeFile(staged('client.ts'), generated.clientSource ?? 'export {};\n', 'utf8');
 
-    const { appDefinition, core } = await loadApp(input.entry);
+    const { appDefinition, core } = await loadApp(input.entry).catch((error: unknown) => {
+      throw explainGeneratedImport(error, outDir) ?? error;
+    });
     assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
     const manifest = await loadManifest(staged('manifest.ts'));
     const openApi = buildOpenApiDocument({
@@ -117,6 +119,22 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     clientPath: resolve(outDir, 'client.ts'),
     openApiPath: resolve(outDir, 'openapi.json'),
   };
+}
+
+/**
+ * Generation is staged, so a file under outDir that does not exist yet cannot be imported while the entry loads.
+ * Returns a targeted error for that case, or undefined when the failure is something else.
+ */
+function explainGeneratedImport(error: unknown, outDir: string): Error | undefined {
+  const match = error instanceof Error ? /Cannot find module '([^']+)' imported from (.+)$/.exec(error.message) : null;
+  if (!match?.[1] || !match[2] || !match[1].startsWith('.')) {
+    return undefined;
+  }
+  const missing = resolve(dirname(match[2]), match[1]);
+  if (!missing.startsWith(outDir + sep)) {
+    return undefined;
+  }
+  return new Error(`${match[2]} imports ${match[1]} at runtime, but that generated file does not exist yet. The entry must not import generated files at runtime (kivin generate has to load it before it can write them); import them from main.ts instead.`);
 }
 
 export async function generateOpenApi(input: { entry: string; output: string; title?: string; version?: string }) {
