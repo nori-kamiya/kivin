@@ -39,6 +39,8 @@ export interface RouteDocsMetadata {
   consumes?: BodyMediaType;
   /** `@UseHeaderSchema`: validates the request headers (lower-case names) passed as `headers`. */
   headerSchema?: unknown;
+  /** `@BodyLimit`: maximum request body size in bytes (413 above it). */
+  bodyLimit?: number;
   querySchema?: unknown;
   paramSchema?: unknown;
   security: RouteSecurityRequirement[];
@@ -110,6 +112,8 @@ export interface AppDefinition<TSchema = unknown> {
   schemaAdapter: import('./types').SchemaAdapter<TSchema>;
   /** App-wide guards / middleware / filters (each list optional). Classes need not be listed as providers. */
   globals?: Partial<AppEnhancerMetadata>;
+  /** Default request body limit in bytes for POST / PUT / PATCH / DELETE routes (`@BodyLimit` overrides). */
+  bodyLimit?: number;
   openApi?: AppOpenApiConfig;
   /** Enables CORS headers on app routes and automatic preflight responses. */
   cors?: import('./cors').CorsOptions;

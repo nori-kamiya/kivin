@@ -139,6 +139,7 @@ export interface ManifestRoute<TSchema = unknown> {
     /** `@Consumes` media type; form types read the body as a form (see `runtime/form-body.ts`). */
     consumes?: import('../metadata').BodyMediaType;
     headerSchema?: TSchema;
+    bodyLimit?: number;
     querySchema?: TSchema;
     paramSchema?: TSchema;
     security: Array<{ scheme: string; scopes: string[] }>;
