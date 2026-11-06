@@ -311,9 +311,10 @@ init <dir>
 
 - `<dir>` が存在して空でない場合（ファイル、シンボリックリンクを含む）は、何も書かずに非 0 で終わる。既存のファイルを上書きすることはない。空のディレクトリは使える。
 - パッケージ名は `<dir>` の最後の要素から決まり、小文字・数字・`.`・`_`・`-` だけで先頭が英小文字か数字であることを検証する（満たさなければエラー）。`<dir>` は引数として明示された相対・絶対パスをそのまま解決し、テンプレートの値からパスをたどることはない。
-- 生成物: `package.json`（`dev` / `generate` / `build` / `test`）、`tsconfig.json`（TC39 デコレータ、`experimentalDecorators` なし、`types: ["bun"]`、`lib: ["ESNext"]`、strict）、`.gitignore`、`README.md`、`src/app.ts`、`src/main.ts`、`src/greeting.{module,controller,service,schemas}.ts`（valibot による検証つき）、`src/greeting.test.ts`。
+- 生成物: `package.json`（`dev` / `generate` / `build` / `typecheck` / `test`）、`tsconfig.json`（TC39 デコレータ、`experimentalDecorators` なし、`types: ["bun"]`、`lib: ["ESNext"]`、strict）、`.gitignore`、`README.md`、`src/app.ts`、`src/main.ts`、`src/greeting.{module,controller,service,schemas}.ts`（valibot による検証つき）、`src/greeting.test.ts`。
 - `@kivin/*` の範囲は実行中の CLI のバージョンから `^<version>` で決まる。`valibot` / `typescript` / `@types/bun` の範囲は `packages/cli/src/init.ts` の `TEMPLATE_RANGES` にあり、`valibot` が `@kivin/valibot` の peer 範囲と一致することをテストが検査する。
 - 生成直後に `bun install` だけで `bun run dev` と `bun test` が動く。テストは `createTestingApp` を使うため `.kivin/generated` を必要としない。
+- `bun run typecheck`（`tsc`）で、`generate` が出力する `contracts.ts` による handler と schema の不一致検査が走る。先に `bun run generate`（または `dev` / `build`）で `.kivin/generated` を作っておく。
 
 ### `generate`
 
@@ -327,7 +328,9 @@ generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot
 
 公開型定義と生成クライアントは DOM ライブラリに依存しないため、`bun init` の既定（`lib: ["ESNext"]`）の tsconfig でそのまま型検査できる。
 
-**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。
+**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。ただし schema は `export` してください。式として直接書いた（インラインの）schema は実行時には検証されますが、`generate` は警告を出して contracts の検査を省き、型付きクライアントの入力型もゆるくなります。
+
+**エントリは生成ファイル（`.kivin/generated/*`）を実行時に import してはいけません。** `generate` はエントリを実行するため、まだ存在しない生成ファイルを import すると、クリーンチェックアウトでは失敗します。生成物の import は `main.ts` など、エントリから辿れない場所で行ってください。
 
 生成に失敗した場合（解析・OpenAPI 変換のエラーなど）、`--outDir` の以前の成果物は変更されない。生成が済んだ 4 ファイルは最後に 1 つずつ置き換えるため、出力先に同名のディレクトリがあるなど置き換え自体が失敗した場合は、一部だけ新しくなることがある。
 
