@@ -1,5 +1,5 @@
 // Server-Timing header (equivalent of Hono's `timing`): total time plus metrics recorded by handlers.
-import { afterResponse, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { afterResponse, enableAfterResponse, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 import { withHeader } from './shared';
 
 interface Metric {
@@ -96,6 +96,7 @@ export interface ServerTimingOptions {
  * (shown in the browser's network panel).
  */
 export function createServerTimingMiddleware(options: ServerTimingOptions = {}) {
+  enableAfterResponse();
   const total = options.total ?? true;
   const allowOrigin = options.crossOrigin === true ? '*' : options.crossOrigin || undefined;
 

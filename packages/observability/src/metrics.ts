@@ -1,6 +1,6 @@
 // Prometheus metrics: a small dependency-free registry (counters, gauges, histograms with labels),
 // request metrics middleware and a `/metrics` handler in the text exposition format (0.0.4).
-import { afterResponse, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { afterResponse, enableAfterResponse, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 
 export type Labels = Record<string, string | number>;
 
@@ -280,6 +280,7 @@ function registerProcessMetrics(registry: MetricsRegistry) {
  * ```
  */
 export function createMetrics(options: MetricsOptions = {}) {
+  enableAfterResponse();
   const registry = options.registry ?? new MetricsRegistry();
   const prefix = options.prefix ?? 'http_';
   const routeLabel = options.routeLabel ?? ((route: ManifestRoute<unknown>) => route.fullPath);
