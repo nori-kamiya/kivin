@@ -10,6 +10,8 @@
 
 ## Package split
 
+全パッケージの一覧と依存関係は [handoff.md](handoff.md#2-パッケージ構成) にあります。core は実行時の中核だけを持ち、独立した機能（認証・HTTP ヘルパー・静的ファイル・観測・設定・cron・セッション・GraphQL）は領域ごとのパッケージに分けています。core はどのプラグインにも依存しません。以下は中核パッケージの詳細です。
+
 ### `@kivin/core`
 
 - `defineModule`
