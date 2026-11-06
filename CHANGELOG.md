@@ -71,6 +71,8 @@
 
 ### Changed
 
+- `@kivin/core`: リクエスト処理の promise の段数と割り当てを削減した。raw executor（app 全体 / ルートの raw middleware・raw guard・exception filter を使うルート）は body の読み込み・検証・ハンドラ呼び出しを 1 段の `.then` で行い、リクエスト毎の状態をクロージャではなくクラスで持つ。promise でない値は `await` しない。AOT 生成コードのミドルウェア `next` も async を挟まない。`HttpError` の応答生成も軽量化。in-process のペア計測で幾何平均 +5.9%（param +20%、filter 経由の 404 +23%、guard + body +15%、app 全体の middleware + body +8%、403 +6%）。なお raw executor のルートで body を読まないルートの exception filter が `context.jsonBody()` を呼ぶと、以前は `undefined` が返る場合があったが、実際のリクエストボディを読むようになった
+
 - core とプラグインを分離した（破壊的変更）。`@kivin/core` には実行時の中核（ルーティング・DI・ライフサイクル・入力検証・Cookie / SSE / WebSocket・CORS・クライアントアドレス）だけを残し、独立したミドルウェアを領域ごとのパッケージに移した: `@kivin/security`（`createBasicAuthGuard` / `createBearerAuthGuard` / `createCsrfMiddleware` / `createSecureHeadersMiddleware` / `SecureHeadersMiddleware` / `createRateLimitMiddleware` など）、`@kivin/http`（`createCompressMiddleware` / `createEtagMiddleware` / `createTimeoutMiddleware` / `createRequestIdMiddleware` / `getRequestId` / `acceptsEncoding`）、`@kivin/static`（`serveStatic`）。import 元を変更してください。`@kivin/logger` はリクエスト ID をコンテキストの `requestId` から読む
 
 - `@kivin/core`: 検証エラー（400）の `issues` を `{ path, message }` の配列に正規化した。valibot の生 issue は各要素に `input` と親オブジェクト全体を含むため、パスワードなどリクエストボディ全体がエラーレスポンスに複製されていた。形式も schema adapter によらず同じになる。`toValidationIssues` を export

@@ -53,6 +53,10 @@ export const scenarios: BenchScenario[] = [
   { name: 'request-scoped', status: 200, request: () => new Request(`${BASE}/scoped`) },
   { name: 'unknown-404', status: 404, request: () => new Request(`${BASE}/nope`) },
   { name: 'health-global-mw', status: 200, app: 'global-middleware', header: 'x-request-id', request: () => new Request(`${BASE}/health`) },
+  // App-wide raw middleware in front of validated routes (the common production shape): these run the
+  // specialised raw executors (guard + filter + middleware + params/body, and middleware + query).
+  { name: 'patch-global-mw', status: 200, app: 'global-middleware', header: 'x-request-id', request: () => new Request(`${BASE}/users/3`, { method: 'PATCH', headers: jsonHeaders, body: '{"name":"Grace"}' }) },
+  { name: 'list-global-mw', status: 200, app: 'global-middleware', header: 'x-request-id', request: () => new Request(`${BASE}/users?search=user`) },
   { name: 'guard-403', status: 403, request: () => new Request(`${BASE}/users`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }) },
 ];
 
