@@ -337,6 +337,87 @@ console.log(\`imported \${count} entry points\`);
   }
   assert(!stillListening, 'kivin dev left its server child running after SIGTERM');
 
+  step('kivin --help lists init');
+  const help = await mustRun('kivin --help', [kivin, '--help']);
+  assert(/^\s+init\b/m.test(help), `kivin --help does not list init:\n${help}`);
+
+  step('kivin init scaffolds a project and installs nothing');
+  const scaffoldName = 'scaffold-app';
+  const scaffoldDir = join(work, scaffoldName);
+  const initOutput = await mustRun('kivin init', [kivin, 'init', scaffoldName], work);
+  for (const next of [`cd ${scaffoldName}`, 'bun install', 'bun run dev']) {
+    assert(initOutput.includes(next), `kivin init did not print the next step "${next}":\n${initOutput}`);
+  }
+  for (const generated of ['package.json', 'tsconfig.json', '.gitignore', 'README.md', 'src/app.ts', 'src/main.ts', 'src/greeting.test.ts']) {
+    assert(existsSync(join(scaffoldDir, generated)), `kivin init did not write ${generated}`);
+  }
+  assert(!existsSync(join(scaffoldDir, 'node_modules')) && !existsSync(join(scaffoldDir, 'bun.lock')), 'kivin init installed dependencies');
+  assert(!existsSync(join(scaffoldDir, '.kivin')), 'kivin init generated .kivin output');
+
+  const scaffoldManifest = JSON.parse(readFileSync(join(scaffoldDir, 'package.json'), 'utf8')) as {
+    name: string;
+    scripts: Record<string, string>;
+    dependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+  };
+  assert(scaffoldManifest.name === scaffoldName, `scaffold package name is ${scaffoldManifest.name}`);
+  assert(['dev', 'generate', 'build', 'test'].every((script) => scaffoldManifest.scripts[script]), 'scaffold is missing one of dev, generate, build, test');
+  for (const name of ['@kivin/core', '@kivin/decorators', '@kivin/valibot']) {
+    assert(scaffoldManifest.dependencies[name] === `^${expectedVersion}`, `scaffold ${name} is ${scaffoldManifest.dependencies[name]}, expected ^${expectedVersion}`);
+  }
+  assert(scaffoldManifest.devDependencies['@kivin/cli'] === `^${expectedVersion}`, 'scaffold @kivin/cli does not track the CLI version');
+  const scaffoldTsconfig = JSON.parse(readFileSync(join(scaffoldDir, 'tsconfig.json'), 'utf8')) as { compilerOptions: Record<string, unknown> };
+  assert(!('experimentalDecorators' in scaffoldTsconfig.compilerOptions), 'scaffold tsconfig sets experimentalDecorators');
+  assert(JSON.stringify(scaffoldTsconfig.compilerOptions.types) === '["bun"]' && JSON.stringify(scaffoldTsconfig.compilerOptions.lib) === '["ESNext"]' && scaffoldTsconfig.compilerOptions.strict === true, 'scaffold tsconfig lacks types bun, lib ESNext or strict');
+  const scaffoldIgnore = readFileSync(join(scaffoldDir, '.gitignore'), 'utf8');
+  for (const ignored of ['node_modules', '.kivin']) assert(scaffoldIgnore.includes(ignored), `scaffold .gitignore does not cover ${ignored}`);
+
+  step('kivin init refuses a non-empty directory and overwrites nothing');
+  const packageBefore = readFileSync(join(scaffoldDir, 'package.json'), 'utf8');
+  const refused = await exec([kivin, 'init', scaffoldName], { cwd: work });
+  assert(refused.exitCode !== 0, 'kivin init succeeded on a non-empty directory');
+  assert(refused.stderr.includes('not empty'), `kivin init gave no clear refusal:\n${refused.stderr}`);
+  assert(readFileSync(join(scaffoldDir, 'package.json'), 'utf8') === packageBefore, 'kivin init modified an existing file');
+
+  step('scaffold: bun install with the tarball overrides, then bun test before anything is generated');
+  writeFileSync(join(scaffoldDir, 'package.json'), `${JSON.stringify({ ...scaffoldManifest, overrides: tarballs }, null, 2)}\n`);
+  await mustRun('scaffold bun install', ['bun', 'install'], scaffoldDir);
+  assert(!existsSync(join(scaffoldDir, '.kivin')), 'bun install created .kivin');
+  // bun test reports on stderr.
+  const scaffoldTestRun = await exec(['bun', 'test'], { cwd: scaffoldDir });
+  assert(scaffoldTestRun.exitCode === 0, `scaffold bun test exited with ${scaffoldTestRun.exitCode}\n${scaffoldTestRun.stdout}\n${scaffoldTestRun.stderr}`);
+  const scaffoldTests = scaffoldTestRun.stdout + scaffoldTestRun.stderr;
+  assert(!existsSync(join(scaffoldDir, '.kivin')), 'bun test created .kivin');
+  assert(/\b3 pass\b/.test(scaffoldTests), 'scaffold bun test did not report 3 passing tests');
+
+  step('scaffold: bun run dev answers HTTP straight after bun install and bun test, before generate');
+  assert(!existsSync(join(scaffoldDir, '.kivin')), 'scaffold .kivin exists before the dev step');
+  const scaffoldDevPort = freePort();
+  const scaffoldDev = spawnServer(['bun', 'run', 'dev'], scaffoldDir, scaffoldDevPort);
+  await waitFor(`http://127.0.0.1:${scaffoldDevPort}/greetings/Ada`, scaffoldDev, 'scaffold bun run dev');
+  await exercise(`http://127.0.0.1:${scaffoldDevPort}`, 'scaffold bun run dev');
+  killGroup(scaffoldDev, 'SIGTERM');
+  const scaffoldDevStopped = await Promise.race([scaffoldDev.exited, Bun.sleep(10_000).then(() => 'timeout' as const)]);
+  assert(scaffoldDevStopped !== 'timeout', 'scaffold bun run dev did not exit within 10s of SIGTERM');
+  children.delete(scaffoldDev);
+
+  step('scaffold: bun run generate, strict tsc --noEmit');
+  await mustRun('scaffold bun run generate', ['bun', 'run', 'generate'], scaffoldDir);
+  assert(existsSync(join(scaffoldDir, '.kivin/generated/manifest.ts')), 'scaffold generate did not write manifest.ts');
+  await mustRun('scaffold tsc', [join(scaffoldDir, 'node_modules/.bin/tsc'), '--noEmit', '-p', 'tsconfig.json', '--pretty', 'false'], scaffoldDir);
+
+  step('scaffold: bun run build, then run the built binary');
+  await mustRun('scaffold bun run build', ['bun', 'run', 'build'], scaffoldDir);
+  const scaffoldBinary = join(scaffoldDir, 'bin', scaffoldName);
+  assert(existsSync(scaffoldBinary), `scaffold build did not write bin/${scaffoldName}`);
+  const scaffoldPort = freePort();
+  const scaffoldServer = spawnServer([scaffoldBinary], scaffoldDir, scaffoldPort);
+  await waitFor(`http://127.0.0.1:${scaffoldPort}/greetings/Ada`, scaffoldServer, 'scaffold binary');
+  await exercise(`http://127.0.0.1:${scaffoldPort}`, 'scaffold binary');
+  scaffoldServer.kill('SIGTERM');
+  await scaffoldServer.exited;
+  children.delete(scaffoldServer);
+
   finished = true;
   cleanup();
   console.log('\npack-smoke passed');

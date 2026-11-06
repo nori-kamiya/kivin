@@ -21,6 +21,14 @@ bun add -d @kivin/cli @types/bun typescript
 
 `@kivin/cli` must be installed in your project as a dev dependency (not only run from elsewhere): it generates the route manifest by loading your app against the `@kivin/core` your project installed. Packages that plug into the core (`@kivin/security`, `@kivin/http`, ...) list `@kivin/core` as a peer dependency; install them with `bun add` the same way. Zod, ArkType and other Standard Schema validators use `@kivin/standard-schema` instead of `@kivin/valibot` ([docs/schema-adapter.md](docs/schema-adapter.md), Japanese).
 
+To scaffold a project instead of wiring it by hand:
+
+```bash
+bunx --package @kivin/cli kivin init my-app
+```
+
+(Use the scoped `--package @kivin/cli` form. The unscoped npm name `kivin` is not this project.)
+
 ### TypeScript setup
 
 ```jsonc

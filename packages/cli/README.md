@@ -14,7 +14,7 @@ bun add -d @kivin/cli @kivin/core
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
 
-Install it as a dev dependency of your project and call it from `package.json` scripts, for example `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`. `kivin generate` imports your entry file and everything it imports, so top-level side effects in those modules run during the build.
+Install it as a dev dependency of your project and call it from `package.json` scripts, for example `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`. To scaffold a new project: `bunx --package @kivin/cli kivin init my-app` (always with `--package @kivin/cli`; the unscoped npm name `kivin` is not this project). `kivin generate` imports your entry file and everything it imports, so top-level side effects in those modules run during the build.
 
 ## Usage
 
@@ -49,7 +49,7 @@ bun add -d @kivin/cli @kivin/core
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
 
-プロジェクトの開発依存として入れ、`package.json` の scripts から呼びます（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）。`kivin generate` はエントリファイルとその import 先を実際に import するため、それらのモジュールのトップレベルの副作用はビルド時に実行されます。
+プロジェクトの開発依存として入れ、`package.json` の scripts から呼びます（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）。新しいプロジェクトの雛形は `bunx --package @kivin/cli kivin init my-app` で作れます（必ず `--package @kivin/cli` を付けてください。スコープなしの npm 名 `kivin` は本プロジェクトのものではありません）。`kivin generate` はエントリファイルとその import 先を実際に import するため、それらのモジュールのトップレベルの副作用はビルド時に実行されます。
 
 ### 使い方
 

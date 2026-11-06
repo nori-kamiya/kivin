@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/cli`: `kivin init <dir>` を追加。`dev` / `generate` / `build` / `test` スクリプト、TC39 デコレータの `tsconfig.json`、valibot で検証するモジュール・コントローラー・サービス、`createTestingApp` を使うテストを備えた新規プロジェクトを生成する（依存のインストールやスクリプトの実行はしない。空でないディレクトリは拒否し、既存ファイルは上書きしない）。`@kivin/*` の依存範囲は実行中の CLI のバージョンから決まる。`pack:smoke` が tarball から `kivin init` を実行し、`bun install` 直後の `bun test` / `bun run dev`、`generate`、`tsc`、`build` まで確認する
 - 全パッケージに `README.md`（英語 + 日本語）を追加し、ルートの `README.md` を英語に、日本語版を `README.ja.md` にした。npm からの導入手順（`bun add`、必要な `tsconfig`、`@types/bun`）を載せた。Bun は 1.4.0 以上が必須（`engines.bun`）で、Node では動かない
 - リリース基盤: `bun run release:pack`（`bun pm pack` で 16 パッケージを依存順に `.release/` へ）、`bun run release:verify`（tarball の中身・タグ・`origin/main` の祖先を検査）、`bun run pack:smoke`（16 個すべての tarball を一時プロジェクトに入れ、各パッケージの公開エントリを import できることと `kivin generate` / `tsc` / `bun build --compile` / `kivin dev` を確認）、タグで動く `release.yml`（build と publish を分離、provenance 付き）。手順は `docs/release.md`
 - `@kivin/core`: `listen({ onShutdownStart, shutdownDelayMs })` を追加。シグナル受信後、`onShutdownStart` → 待機 → `app.close()` の順に実行し、`createHealthCheck()` の readiness を先に落としてからロードバランサが外すまで受け付けを続けられる
