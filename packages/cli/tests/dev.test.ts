@@ -108,6 +108,8 @@ describe('kivin dev first generate failure', () => {
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, 'app.ts'), 'export default defineApplication(');
     await writeFile(join(dir, 'main.ts'), '');
+    // Let the fixture writes above drain from the OS event queue so they are not mistaken for staging noise.
+    await Bun.sleep(500);
     const seen: DevEvent[] = [];
     const handle = startDev({ entry: join(dir, 'app.ts'), outDir: join(dir, 'out'), main: join(dir, 'main.ts'), onEvent: (event) => seen.push(event) });
     await handle.ready;
@@ -115,5 +117,39 @@ describe('kivin dev first generate failure', () => {
     await rm(dir, { recursive: true, force: true });
     const failed = seen.find((event) => event.type === 'generate-failed');
     expect(failed && failed.type === 'generate-failed' && failed.serverRunning).toBe(false);
+  }, 30000);
+
+  test('given an outDir outside .kivin, when generating, then the staging files do not retrigger the watcher', async () => {
+    const dir = join(import.meta.dir, '.generated/dev-outdir-src');
+    await rm(dir, { recursive: true, force: true });
+    await mkdir(join(dir, 'src'), { recursive: true });
+    await writeFile(join(dir, 'src/controller.ts'), controllerSource('only'));
+    await writeFile(join(dir, 'src/app.ts'), `import { defineApplication, defineModule } from '@kivin/core';
+import { createValibotAdapter } from '@kivin/valibot';
+import { HelloController } from './controller';
+
+export default defineApplication({
+  modules: [defineModule({ providers: [], controllers: [HelloController], imports: [] })],
+  schemaAdapter: createValibotAdapter(),
+});
+`);
+    await writeFile(join(dir, 'src/main.ts'), 'setInterval(() => {}, 1000);\n');
+    // Let the fixture writes above drain from the OS event queue so they are not mistaken for staging noise.
+    await Bun.sleep(500);
+    const seen: DevEvent[] = [];
+    const handle = startDev({
+      entry: join(dir, 'src/app.ts'),
+      outDir: join(dir, 'src/generated'),
+      main: join(dir, 'src/main.ts'),
+      onEvent: (event) => seen.push(event),
+    });
+    try {
+      await handle.ready;
+      await Bun.sleep(1500);
+      expect(seen.filter((event) => event.type === 'started')).toHaveLength(1);
+      expect(seen.filter((event) => event.type === 'change')).toHaveLength(0);
+    } finally {
+      await handle.stop();
+    }
   }, 30000);
 });

@@ -190,8 +190,17 @@ function assertOpaqueModulesDeclareNoControllers(generated: { opaqueModules: str
   if (generated.opaqueModules.length === 0) {
     return;
   }
-  const known = new Set(generated.controllerNames);
-  const missing = core.flattenModules(appDefinition.modules).flatMap((module) => module.controllers).filter((controller) => !known.has(controller.name));
+  // Names alone are not identity: two classes may share one. Each statically read name is consumed once per distinct runtime class.
+  const remaining = new Map<string, number>();
+  for (const name of generated.controllerNames) {
+    remaining.set(name, (remaining.get(name) ?? 0) + 1);
+  }
+  const runtimeControllers = new Set(core.flattenModules(appDefinition.modules).flatMap((module) => module.controllers));
+  const missing = [...runtimeControllers].filter((controller) => {
+    const left = remaining.get(controller.name) ?? 0;
+    remaining.set(controller.name, left - 1);
+    return left <= 0;
+  });
   if (missing.length > 0) {
     throw new Error(`Module expression(s) ${generated.opaqueModules.join(', ')} declare controllers (${[...new Set(missing.map((controller) => controller.name))].join(', ')}) that kivin generate cannot read; routes must be declared with @Module or defineModule`);
   }

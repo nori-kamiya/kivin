@@ -30,6 +30,8 @@ export interface DevHandle {
   stop: () => Promise<void>;
 }
 
+// generateArtifacts stages next to outDir, not inside it (relative imports must not change), so the outDir ignore does not cover it.
+const GENERATE_STAGING_PREFIX = '.kivin-gen-';
 const IGNORED_SEGMENTS = new Set(['node_modules', '.git', '.kivin', 'dist', 'bin']);
 
 /** The published package ships only compiled `bin.js`; the monorepo runs `bin.ts` from src. */
@@ -118,7 +120,7 @@ export function startDev(options: DevOptions): DevHandle {
       return;
     }
     const absolute = resolve(root, fileName);
-    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment))) {
+    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment) || segment.startsWith(GENERATE_STAGING_PREFIX))) {
       return;
     }
     if (!/\.(ts|tsx|mts|cts|js|mjs|json)$/.test(absolute)) {

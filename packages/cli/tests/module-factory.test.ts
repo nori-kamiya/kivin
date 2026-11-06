@@ -88,4 +88,24 @@ export default defineApplication({
 });`);
     await expect(inspectRoutes({ entry: app.entry })).rejects.toThrow(/@Module or defineModule/);
   });
+
+  test('given a factory-declared controller sharing its class name with a statically read one, when generating, then it fails', async () => {
+    const app = await makeApp('same-name', `export default defineApplication({
+  modules: [defineModule({ providers: [], controllers: [PingController], imports: [createOtherModule()] })],
+  schemaAdapter: createValibotAdapter(),
+});`);
+    const dir = join(root, 'same-name');
+    await mkdir(join(dir, 'other'), { recursive: true });
+    await writeFile(join(dir, 'other/controller.ts'), controllerSource.replace('/ping', '/other'));
+    await writeFile(join(dir, 'other/module.ts'), `import { defineModule } from '@kivin/core';
+import { PingController } from './controller';
+
+export function createOtherModule() {
+  return defineModule({ providers: [], controllers: [PingController], imports: [] });
+}
+`);
+    const appSource = await readFile(app.entry, 'utf8');
+    await writeFile(app.entry, `import { createOtherModule } from './other/module';\n${appSource}`);
+    await expect(generateArtifacts(app)).rejects.toThrow(/createOtherModule\(\).*PingController/s);
+  });
 });
