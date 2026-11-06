@@ -127,6 +127,8 @@ interface GeneratedManifestResult {
   opaqueModules: string[];
   /** Names of every controller the manifest was built from. */
   controllerNames: string[];
+  /** Routes whose schemas are inline expressions: they get no contract check and no typed client input. */
+  warnings: string[];
 }
 
 interface RenderImportEntry {
@@ -172,7 +174,36 @@ export async function buildManifestSourceFromAst(input: { entry: string; outFile
     ...(input.clientOutFile ? { clientSource: renderClient(controllers, resolve(input.clientOutFile)) } : {}),
     opaqueModules,
     controllerNames: controllers.map((controller) => controller.className),
+    warnings: inlineSchemaWarnings(controllers),
   };
+}
+
+/** A schema can be named in generated types only when it is an identifier path; anything else is an inline expression. */
+export function isNamedSchemaExpression(expression: AstExpressionRef) {
+  return TYPEOF_EXPRESSION_PATTERN.test(expression.text);
+}
+
+function inlineSchemaWarnings(controllers: AstControllerNode[]) {
+  const warnings: string[] = [];
+  for (const controller of controllers) {
+    for (const route of controller.routes) {
+      if (route.methodName.startsWith('[')) {
+        continue;
+      }
+      const slots: Array<[string, AstExpressionRef | undefined]> = [
+        ['@UseParamSchema', route.paramSchema],
+        ['@UseQuerySchema', route.querySchema],
+        ['@UseBodySchema', route.bodySchema],
+        ['@UseHeaderSchema', route.headerSchema],
+        ...route.responses.map((response): [string, AstExpressionRef | undefined] => [`${response.status} response`, response.schema]),
+      ];
+      const inline = slots.filter(([, expression]) => expression && !isNamedSchemaExpression(expression)).map(([name]) => name);
+      if (inline.length > 0) {
+        warnings.push(`${controller.className}.${route.methodName} (${route.method} ${joinPaths(controller.basePath, route.path)}): inline schema in ${inline.join(', ')}; export the schema to get contract checks and typed client input`);
+      }
+    }
+  }
+  return warnings;
 }
 
 export const TYPEOF_EXPRESSION_PATTERN = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
@@ -193,8 +224,7 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
     if (!expression) {
       return undefined;
     }
-    const rendered = renderExpression(controller.filePath, expression, renderer);
-    return TYPEOF_EXPRESSION_PATTERN.test(rendered) ? `typeof ${rendered}` : undefined;
+    return isNamedSchemaExpression(expression) ? `typeof ${renderExpression(controller.filePath, expression, renderer)}` : undefined;
   };
 
   for (const controller of controllers) {
@@ -213,6 +243,8 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
         // The input kivin builds from the declared schemas must satisfy the handler's parameter type,
         // e.g. `RouteInput<{ params: typeof IdParams }>` while the route says `@UseParamSchema(IdParams)`.
         const schemas = { params: route.paramSchema, query: route.querySchema, body: route.bodySchema, headers: route.headerSchema };
+        // An inline schema cannot be named here, and a spec that silently omits it would reject a correctly typed handler.
+        const hasInline = Object.values(schemas).some((expression) => expression && !isNamedSchemaExpression(expression));
         const spec = (['params', 'query', 'body', 'headers'] as const)
           .map((field) => {
             const schema = schemaType(controller, schemas[field]);
@@ -220,7 +252,9 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
           })
           .filter(Boolean);
         const specType = spec.length > 0 ? `{ ${spec.join('; ')} }` : '{}';
-        add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema / @UseHeaderSchema`)}>`);
+        if (!hasInline) {
+          add(`${contract}.Input<${specType}, Parameters<${handler}>[0], ${JSON.stringify(`${label}: the handler input type does not match the route's @UseParamSchema / @UseQuerySchema / @UseBodySchema / @UseHeaderSchema`)}>`);
+        }
       }
 
       const successResponses = route.responses.filter((response) => response.status >= 200 && response.status < 300 && response.schema);

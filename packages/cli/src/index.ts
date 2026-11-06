@@ -76,6 +76,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   await mkdir(dirname(outDir), { recursive: true });
   const stagingDir = await mkdtemp(resolve(dirname(outDir), GENERATE_STAGING_PREFIX));
   const staged = (name: string) => resolve(stagingDir, name);
+  let warnings: string[] = [];
 
   try {
     const generated = await buildManifestSourceFromAst({
@@ -85,6 +86,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
       clientOutFile: staged('client.ts'),
       ...(input.aot === false ? { aot: false } : {}),
     });
+    warnings = generated.warnings;
     await writeFile(staged('manifest.ts'), generated.source, 'utf8');
     await writeFile(staged('contracts.ts'), generated.contractsSource ?? 'export {};\n', 'utf8');
     await writeFile(staged('client.ts'), generated.clientSource ?? 'export {};\n', 'utf8');
@@ -118,6 +120,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     contractsPath: resolve(outDir, 'contracts.ts'),
     clientPath: resolve(outDir, 'client.ts'),
     openApiPath: resolve(outDir, 'openapi.json'),
+    warnings,
   };
 }
 

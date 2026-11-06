@@ -1,4 +1,4 @@
-import { ImportRenderer, joinPaths, renderExpression, TYPEOF_EXPRESSION_PATTERN, type AstControllerNode, type AstExpressionRef, type AstRouteNode } from './ast';
+import { ImportRenderer, isNamedSchemaExpression, joinPaths, renderExpression, type AstControllerNode, type AstExpressionRef, type AstRouteNode } from './ast';
 
 /**
  * Renders a typed HTTP client (`client.ts`) for every route in the app.
@@ -20,8 +20,7 @@ export function renderClient(controllers: AstControllerNode[], outFile: string) 
     if (!expression) {
       return undefined;
     }
-    const rendered = renderExpression(controller.filePath, expression, renderer);
-    return TYPEOF_EXPRESSION_PATTERN.test(rendered) ? `typeof ${rendered}` : undefined;
+    return isNamedSchemaExpression(expression) ? `typeof ${renderExpression(controller.filePath, expression, renderer)}` : undefined;
   };
 
   for (const controller of controllers) {

@@ -94,6 +94,9 @@ async function main() {
       ...(process.argv.includes('--no-aot') ? { aot: false } : {}),
     });
 
+    for (const warning of result.warnings) {
+      console.error(`warning: ${warning}`);
+    }
     console.log(`manifest: ${result.manifestPath}`);
     console.log(`contracts: ${result.contractsPath}`);
     console.log(`client: ${result.clientPath}`);
