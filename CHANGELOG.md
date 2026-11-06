@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/core` / `@kivin/cli`: 全ルートに共通のパス接頭辞 `defineApplication({ basePath: '/api' })` を追加（Hono の `basePath`、Elysia の `prefix`、NestJS の `setGlobalPrefix` 相当）。`kivin generate` が manifest・OpenAPI・生成クライアントに反映し、CLI を使わない `buildManifest` でも適用される
 - `@kivin/http`: リバースプロキシ `proxy`、自動エスケープの HTML テンプレート `html` / `raw` / `htmlResponse`、AsyncLocalStorage による `createRequestStorageMiddleware` / `getCurrentRequest` / `getRequestValue` / `setRequestValue` を追加
 - `@kivin/security`: いずれかのガードが通れば許可する `anyGuard` を追加。`createRateLimitMiddleware` の `store` で共有ストア（Redis など）を使えるようにした（`RateLimitStore` / `MemoryRateLimitStore`）
 - `@kivin/decorators`: `@StaticResponse()` を追加（ハンドラの結果が変わらないことを宣言し、応答を起動時に 1 回だけ計算する）

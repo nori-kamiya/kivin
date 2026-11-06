@@ -147,9 +147,12 @@ const resolver = new ResolverFactory({
 
 export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string; aot?: boolean }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
-  const moduleRefs = await readAppModules(entryFile);
+  const { modules: moduleRefs, basePath: appBasePath } = await readAppModules(entryFile);
   const controllerRefs = await collectControllerRefs(moduleRefs);
-  const controllers = await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name)));
+  // `defineApplication({ basePath })` prefixes every route, so the manifest, OpenAPI document,
+  // contracts and client all use the full path.
+  const controllers = (await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name))))
+    .map((controller) => (appBasePath ? { ...controller, basePath: joinPaths(appBasePath, controller.basePath) } : controller));
   const renderer = new ImportRenderer(resolve(input.outFile));
   renderer.addTypeImport('@kivin/core', 'AppManifest');
   const aot = input.aot !== false;
@@ -225,7 +228,7 @@ function renderContracts(controllers: AstControllerNode[], outFile: string) {
   return `${header}${renderer.render()}\n${checks.length > 0 ? checks.join('\n') : 'export {};'}\n`;
 }
 
-async function readAppModules(filePath: string): Promise<AstModuleRef[]> {
+async function readAppModules(filePath: string): Promise<{ modules: AstModuleRef[]; basePath: string | undefined }> {
   const source = await parseSource(filePath);
   const context = createImportContext(filePath, source);
   const defineApplicationCall = findCallExpression(source.program, 'defineApplication');
@@ -246,7 +249,16 @@ async function readAppModules(filePath: string): Promise<AstModuleRef[]> {
     throw new Error(`defineApplication({ modules: [...] }) is required in ${filePath}`);
   }
 
-  return modulesProperty.value.elements.map((element) => readModuleReference(context, source, asExpression(element), 'application modules'));
+  const basePathProperty = findPropertyAssignment(source, config, 'basePath');
+  const basePath = basePathProperty ? readStringLiteral(basePathProperty.value, filePath, 'defineApplication({ basePath })') : undefined;
+  if (basePath !== undefined && !basePath.startsWith('/')) {
+    throw new Error(`${filePath}: defineApplication({ basePath }) must start with "/" (got ${JSON.stringify(basePath)})`);
+  }
+
+  return {
+    modules: modulesProperty.value.elements.map((element) => readModuleReference(context, source, asExpression(element), 'application modules')),
+    basePath: basePath === '/' ? undefined : basePath,
+  };
 }
 
 async function collectControllerRefs(moduleRefs: AstModuleRef[]): Promise<AstSymbolRef[]> {
