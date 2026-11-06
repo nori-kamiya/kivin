@@ -9,7 +9,7 @@ Authentication guards (Basic / Bearer), CSRF protection, secure headers, rate li
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/security
+bun add @kivin/core @kivin/security @kivin/valibot valibot
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -17,10 +17,11 @@ bun add @kivin/core @kivin/security
 ## Usage
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createBearerAuthGuard, createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivin/security';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 // Use on a route with @UseGuards(ApiKeyGuard)
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_TOKEN ?? ''] });
@@ -49,7 +50,7 @@ kivin 用の認証ガード（Basic / Bearer）、CSRF 保護、secure headers�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/security
+bun add @kivin/core @kivin/security @kivin/valibot valibot
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
@@ -57,10 +58,11 @@ bun add @kivin/core @kivin/security
 ### 使い方
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createBearerAuthGuard, createRateLimitMiddleware, createSecureHeadersMiddleware } from '@kivin/security';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 // Use on a route with @UseGuards(ApiKeyGuard)
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_TOKEN ?? ''] });

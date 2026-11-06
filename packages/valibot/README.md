@@ -19,9 +19,10 @@ bun add @kivin/core @kivin/valibot valibot
 ## Usage
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 export default defineApplication({
   modules: [AppModule],
@@ -55,9 +56,10 @@ bun add @kivin/core @kivin/valibot valibot
 ### 使い方
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 export default defineApplication({
   modules: [AppModule],

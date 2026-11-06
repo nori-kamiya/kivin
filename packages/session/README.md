@@ -9,7 +9,7 @@ Server-side sessions for kivin: signed session-ID cookie and pluggable stores (a
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/session
+bun add @kivin/core @kivin/session @kivin/decorators
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -57,7 +57,7 @@ kivin 用のサーバー側セッションです。署名付きのセッショ�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/session
+bun add @kivin/core @kivin/session @kivin/decorators
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。

@@ -9,7 +9,7 @@ Module / Controller / Route / Enhancer / OpenAPI decorators for kivin, using TC3
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/decorators
+bun add @kivin/core @kivin/decorators valibot
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -53,7 +53,7 @@ kivin の Module / Controller / Route / Enhancer / OpenAPI デコレータです
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/decorators
+bun add @kivin/core @kivin/decorators valibot
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。

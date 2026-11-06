@@ -9,7 +9,7 @@ Structured JSON-line logger and request logger middleware for kivin.
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/logger
+bun add @kivin/core @kivin/logger @kivin/valibot valibot
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -51,7 +51,7 @@ kivin 用の JSON line の構造化ロガーと request logger ミドルウェ�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/logger
+bun add @kivin/core @kivin/logger @kivin/valibot valibot
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。

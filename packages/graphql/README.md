@@ -23,7 +23,7 @@ import { createApp } from '@kivin/core';
 import { createGraphqlRoutes } from '@kivin/graphql';
 import { createSchema, createYoga } from 'graphql-yoga';
 import manifest from '../.kivin/generated/manifest';
-import definition from './valibot';
+import definition from './app';
 
 const yoga = createYoga({
   schema: createSchema({
@@ -65,7 +65,7 @@ import { createApp } from '@kivin/core';
 import { createGraphqlRoutes } from '@kivin/graphql';
 import { createSchema, createYoga } from 'graphql-yoga';
 import manifest from '../.kivin/generated/manifest';
-import definition from './valibot';
+import definition from './app';
 
 const yoga = createYoga({
   schema: createSchema({

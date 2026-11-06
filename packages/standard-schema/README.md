@@ -19,9 +19,10 @@ Install the validator you use (Zod is shown above).
 ## Usage
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createStandardSchemaAdapter } from '@kivin/standard-schema';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 // Works with Zod, ArkType, Valibot, or any other Standard Schema validator
 export default defineApplication({
@@ -57,9 +58,10 @@ bun add @kivin/core @kivin/standard-schema zod
 ### 使い方
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createStandardSchemaAdapter } from '@kivin/standard-schema';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 // Works with Zod, ArkType, Valibot, or any other Standard Schema validator
 export default defineApplication({

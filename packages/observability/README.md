@@ -9,7 +9,7 @@ Observability for kivin: Prometheus metrics, OpenTelemetry tracing, Server-Timin
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/observability
+bun add @kivin/core @kivin/observability @kivin/valibot valibot
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -19,11 +19,12 @@ OpenTelemetry is optional: `createTracingMiddleware` accepts the `@opentelemetry
 ## Usage
 
 ```ts
-import { createApp, defineApplication } from '@kivin/core';
+import { createApp, defineApplication, defineModule } from '@kivin/core';
 import { createHealthCheck, createMetrics } from '@kivin/observability';
 import { createValibotAdapter } from '@kivin/valibot';
 import manifest from '../.kivin/generated/manifest';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 const metrics = createMetrics();
 const health = createHealthCheck({ checks: { self: () => true } });
@@ -56,7 +57,7 @@ kivin 用の観測機能です。Prometheus メトリクス、OpenTelemetry ト�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/observability
+bun add @kivin/core @kivin/observability @kivin/valibot valibot
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
@@ -66,11 +67,12 @@ OpenTelemetry は任意です。`createTracingMiddleware` は渡された `@open
 ### 使い方
 
 ```ts
-import { createApp, defineApplication } from '@kivin/core';
+import { createApp, defineApplication, defineModule } from '@kivin/core';
 import { createHealthCheck, createMetrics } from '@kivin/observability';
 import { createValibotAdapter } from '@kivin/valibot';
 import manifest from '../.kivin/generated/manifest';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 const metrics = createMetrics();
 const health = createHealthCheck({ checks: { self: () => true } });

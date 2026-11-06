@@ -22,7 +22,7 @@ bun add @kivin/core @kivin/static
 import { createApp } from '@kivin/core';
 import { serveStatic } from '@kivin/static';
 import manifest from '../.kivin/generated/manifest';
-import definition from './valibot';
+import definition from './app';
 
 createApp(definition, manifest).listen({
   port: 3000,
@@ -61,7 +61,7 @@ bun add @kivin/core @kivin/static
 import { createApp } from '@kivin/core';
 import { serveStatic } from '@kivin/static';
 import manifest from '../.kivin/generated/manifest';
-import definition from './valibot';
+import definition from './app';
 
 createApp(definition, manifest).listen({
   port: 3000,

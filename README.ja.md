@@ -21,14 +21,6 @@ bun add -d @kivin/cli @types/bun typescript
 
 `@kivin/cli` は、プロジェクトの開発依存として入れてください（どこか別の場所から実行するだけでは不十分です）。ルートマニフェストの生成時に、プロジェクトに入っている `@kivin/core` に対してアプリを読み込むためです。core に差し込むパッケージ（`@kivin/security`、`@kivin/http` など）は `@kivin/core` を peer dependency に持つので、同じく `bun add` で入れます。Zod や ArkType など他の Standard Schema 対応 validator は、`@kivin/valibot` の代わりに `@kivin/standard-schema` を使います（[docs/schema-adapter.md](docs/schema-adapter.md)）。
 
-手で組み立てずに雛形から始めるには:
-
-```bash
-bunx --package @kivin/cli kivin init my-app
-```
-
-（必ず `--package @kivin/cli` を付けてください。スコープなしの npm 名 `kivin` は本プロジェクトのものではありません。）
-
 ### TypeScript の設定
 
 ```jsonc

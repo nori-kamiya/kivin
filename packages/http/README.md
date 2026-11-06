@@ -9,7 +9,7 @@ HTTP middleware and helpers for kivin: compression, ETag, timeout, request IDs, 
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/http
+bun add @kivin/core @kivin/http @kivin/valibot valibot
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -17,10 +17,11 @@ bun add @kivin/core @kivin/http
 ## Usage
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createCompressMiddleware, createEtagMiddleware, createRequestIdMiddleware, createTimeoutMiddleware } from '@kivin/http';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 export default defineApplication({
   modules: [AppModule],
@@ -47,7 +48,7 @@ kivin 用の HTTP ミドルウェアとヘルパーです。圧縮、ETag、タ�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/http
+bun add @kivin/core @kivin/http @kivin/valibot valibot
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
@@ -55,10 +56,11 @@ bun add @kivin/core @kivin/http
 ### 使い方
 
 ```ts
-import { defineApplication } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
 import { createCompressMiddleware, createEtagMiddleware, createRequestIdMiddleware, createTimeoutMiddleware } from '@kivin/http';
 import { createValibotAdapter } from '@kivin/valibot';
-import { AppModule } from './app.module';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
 export default defineApplication({
   modules: [AppModule],

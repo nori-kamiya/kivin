@@ -9,7 +9,7 @@ JWT verification and signing (Web Crypto), JWKS key resolvers (remote and local)
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/jwt
+bun add @kivin/core @kivin/jwt @kivin/decorators
 ```
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
@@ -56,7 +56,7 @@ kivin 用の JWT の検証・署名（Web Crypto）、JWKS の鍵リゾルバ（
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/jwt
+bun add @kivin/core @kivin/jwt @kivin/decorators
 ```
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
