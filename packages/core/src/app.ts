@@ -293,6 +293,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
           for (const name of signals) {
             process.off(name, onSignal);
           }
+          let exitCode = 0;
           void (async () => {
             try {
               await onShutdownStart?.(signal);
@@ -302,8 +303,13 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
             if (shutdownDelayMs > 0) {
               await Bun.sleep(shutdownDelayMs);
             }
-            await app.close({ signal });
-          })().finally(() => process.exit(0));
+            try {
+              await app.close({ signal });
+            } catch (error) {
+              console.error('[kivin] app.close failed', error);
+              exitCode = 1;
+            }
+          })().finally(() => process.exit(exitCode));
         };
         for (const signal of signals) {
           process.once(signal, onSignal);

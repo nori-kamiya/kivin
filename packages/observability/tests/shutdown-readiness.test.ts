@@ -49,4 +49,14 @@ describe('listen({ shutdownSignals, shutdownDelayMs, onShutdownStart })', () => 
     expect(await rest).toContain('shutdown SIGTERM');
     expect(await new Response(child.stderr).text()).toContain('hook failed');
   });
+
+  test('a failing onApplicationShutdown is logged and the process exits 1', async () => {
+    const { child } = await start({ DELAY_MS: '0', FAIL_SHUTDOWN: '1' });
+    child.kill('SIGTERM');
+
+    expect(await child.exited).toBe(1);
+    const stderr = await new Response(child.stderr).text();
+    expect(stderr).toContain('[kivin] app.close failed');
+    expect(stderr).toContain('db pool close failed');
+  });
 });
