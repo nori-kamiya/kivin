@@ -14,6 +14,10 @@
       "@kivin/security": ["./packages/security/src/index.ts"],
       "@kivin/http": ["./packages/http/src/index.ts"],
       "@kivin/static": ["./packages/static/src/index.ts"],
+      "@kivin/graphql": ["./packages/graphql/src/index.ts"],
+      "@kivin/session": ["./packages/session/src/index.ts"],
+      "@kivin/schedule": ["./packages/schedule/src/index.ts"],
+      "@kivin/config": ["./packages/config/src/index.ts"],
       "@kivin/observability": ["./packages/observability/src/index.ts"],
       "@kivin/cli": ["./packages/cli/src/index.ts"]
     },

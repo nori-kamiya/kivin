@@ -8,6 +8,10 @@
 
 ### Added
 
+- `@kivin/config` を追加: `loadEnv` / `envProvider`（Standard Schema または schema adapter で環境変数を検証・変換。不正な変数をまとめて報告し値は出さない。`prefix` 対応）
+- `@kivin/schedule` を追加: `Scheduler` / `createScheduler` / `parseCron`（5 / 6 フィールドの cron 式、IANA タイムゾーンと夏時間、重複実行の抑止、手動実行、`app.init()` / `app.close()` に連動し停止時は実行中のジョブを待つ）
+- `@kivin/session` を追加: `createSessionMiddleware` / `getSession` / `MemorySessionStore`（署名付きセッション ID Cookie、変更時のみ保存、`regenerate()` による固定化攻撃対策、`rolling`、ストアは差し替え可能）
+- `@kivin/graphql` を追加: `createGraphqlRoutes` / `createGraphqlHandler`（GraphQL Yoga など fetch ベースの GraphQL サーバーをネイティブルートに載せ、サーバーコンテキストを渡す）
 - `@kivin/observability` を追加: Prometheus メトリクス（`createMetrics`、依存なしのレジストリ、ルートテンプレート単位の件数・レイテンシ・処理中件数・プロセスメトリクス）、OpenTelemetry の SERVER スパン（`createTracingMiddleware`、`@opentelemetry/api` を構造的に受け取る）、`Server-Timing`（`createServerTimingMiddleware` / `serverTiming`）、`/livez` / `/readyz`（`createHealthCheck`）
 - `@kivin/core`: `afterResponse(request, callback)` を追加。例外フィルタや CORS を経た最終レスポンスでコールバックを呼ぶ（ミドルウェアからは、ハンドラが投げた例外がフィルタで何になったかが見えないため）。使われるまでは各ルートで真偽値の確認 1 回だけ
 - `@kivin/security`: IP 制限 `createIpRestrictionGuard` / `createIpRestriction` / `createIpMatcher` / `parseIpAddress` を追加（IPv4 / IPv6 のアドレス・CIDR・`*`・判定関数。拒否リスト優先、IPv4-mapped IPv6 は IPv4 扱い、不明なアドレスは既定で拒否）
