@@ -7,6 +7,7 @@ import { readNamedQueryParam } from '../request-url';
 import { createJsonResponseWithStatus, createNoContentResponse } from '../response';
 import type { Token } from '../types';
 import { aotEnabled, createAotRuntime } from './aot';
+import { resolveBodyLimit, withBodyLimit } from './body-limit';
 import { isFormMediaType, withFormBody } from './form-body';
 import { routeUsesHeaders, withRouteHeaders } from './headers';
 import { createArgumentResolver, createCompiledHandlerExecutor, createHandlerInvoker } from './arguments';
@@ -191,6 +192,11 @@ export function compileRouteExecutor<TSchema>(input: {
   let compiled = compileRouteExecutorFor(input);
   if (isFormMediaType(input.route.docs.consumes)) {
     compiled = withFormBody(compiled);
+  }
+  // Outside the form reader: the limit applies before any body is parsed.
+  const bodyLimit = resolveBodyLimit(input.route, input.definition.bodyLimit);
+  if (bodyLimit !== undefined) {
+    compiled = withBodyLimit(compiled, bodyLimit);
   }
   // Headers are validated before the form body is installed / anything else runs.
   return routeUsesHeaders(input.route) ? withRouteHeaders(compiled, input.definition, input.route) : compiled;

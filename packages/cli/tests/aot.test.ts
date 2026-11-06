@@ -69,6 +69,8 @@ const cases: Case[] = [
   { name: 'multipart route rejects json (415)', status: 415, request: json('POST', '/aot/upload', { title: 'Doc' }) },
   { name: 'header schema ok', status: 200, request: get('/aot/versioned/4', { 'x-api-version': '2' }) },
   { name: 'header schema invalid', status: 400, request: get('/aot/versioned/4', { 'x-api-version': '9' }) },
+  { name: 'body limit ok', status: 200, request: json('POST', '/aot/limited', { a: 1 }) },
+  { name: 'body limit exceeded', status: 413, request: json('POST', '/aot/limited', { a: 'x'.repeat(100) }) },
   { name: 'response schema violation', request: get('/aot/invalid-response') },
   { name: 'queued 204 status', request: get('/aot/no-content') },
   { name: 'method not allowed', request: get('/aot/scoped', {}, 'POST') },
