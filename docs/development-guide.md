@@ -220,14 +220,3 @@ runtime は次の責務に絞ります。
 - 未使用 route や未使用 package に cost を持ち込まない
 
 改善幅が小さくても code shape が単純になるなら採用候補です。逆に benchmark が少し良くても、構成が読みにくくなり maintenance cost が増えるなら見送ります。
-
-## Current Guidance
-
-2026-03-12 時点では、今後の優先順位を次のように置きます。
-
-1. `compiled create` を route-specific specialization で詰める
-2. full stack benchmark を継続して truth source にする
-3. logger / security headers / OpenAPI exposure を含む app-like route で zero-cost default を徹底する
-4. core の内部 fast path を整理し、同じ効果をより少ない分岐で実現できる形へ寄せる
-
-この document を今後の design review と performance discussion の基準にします。新しい機能や最適化は「この方針に沿っているか」を先に確認してから進めます。

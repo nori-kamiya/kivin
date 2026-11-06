@@ -79,9 +79,9 @@
 3. `createApp()` 時に事前コンパイルした route executor を選ぶ
 4. `RequestContext` か request-scoped provider が必要な route では request-local child container を作る
 5. `RequestContext` を作って request container に登録する
-6. schema validation を実行する
+6. path / query / header の schema validation を実行する
 7. guard を評価する
-8. middleware chain を通す
+8. middleware chain を通す（body の読み取りと validate はガードの後、ハンドラ直前に行う）
 9. controller method を呼び出す
 10. response schema があれば validate する
 11. Response を返す
@@ -96,9 +96,8 @@ single binary deployment 前提なので、method も runtime discovery では�
 
 - current: `GET`, `HEAD`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
 - current runtime behavior: `HEAD` fallback, explicit `HEAD` / `OPTIONS`, `405 Method Not Allowed`, `Allow` header
-- next focus: `PUT` / `PATCH` / `DELETE` を production 向けに使うための周辺 contract を固める
 
-特に `PUT` / `PATCH` / `DELETE` については、単に method を通すだけでは不十分です。single-binary 向け framework としては次を明示的に扱う必要があります。
+`PUT` / `PATCH` / `DELETE` は、単に method を通すだけでは不十分なので、次を明示的に扱います。
 
 - idempotency を意識した handler 設計
 - `204 No Content` を含む response contract

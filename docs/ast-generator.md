@@ -4,11 +4,13 @@
 
 CLI は decorator metadata を runtime で実行せず、TypeScript source を AST 解析して route manifest を生成します。
 
+ただし `kivin generate` / `openapi` / `inspect` は、AST 解析に加えてエントリ（`app.ts`）を `import()` して `defineApplication` の実体（`schemaAdapter` など）を読み込みます。**エントリとその import 先のトップレベルのコードは、`generate` の間に実際に実行されます。** 環境変数の検証（`loadEnv`）・DB 接続・ネットワークアクセスをモジュールの先頭で行うと、シークレットの無いビルド環境や CI で `generate` が失敗します。そうした処理は DI（`envProvider` など）か `main.ts` に置いてください（[production.md](production.md#環境変数kivinconfig)）。
+
 構文解析は [oxc-parser](https://www.npmjs.com/package/oxc-parser)、module 解決は [oxc-resolver](https://www.npmjs.com/package/oxc-resolver) で行い、`typescript` パッケージには依存しません(利用者の TypeScript のバージョンに左右されない)。
 
 ## Why
 
-- Bun の TS 直実行で legacy decorators metadata に依存しない
+- デコレータの実行時メタデータ（reflection）に依存しない
 - `bun build --compile` 前提でも安定する
 - route discovery を build-time に固定できる
 
@@ -53,12 +55,4 @@ import { SharedSchema as __SharedSchema_0 } from '../feature-b/schemas';
 
 - `controllers`, `imports`, `modules` は identifier 配列前提
 - decorator 引数は literal か import 済み identifier / namespace access 前提
-- local non-export symbol を decorator 引数に使う形は未対応
-
-## Next step
-
-より Hono / NestJS に近い実用性へ進めるなら、次が候補です。
-
-- tsconfig path alias 解決の強化
-- local symbol rewrite の追加
-- OpenAPI operationId / securitySchemes の生成
+- local non-export symbol を decorator 引数に使う形は未対応。decorator に渡す schema・guard・middleware は `export` するか、その場で式として書く（`const IdSchema = ...` を `export` せずに `@UseParamSchema(IdSchema)` へ渡すと `generate` が失敗する）
