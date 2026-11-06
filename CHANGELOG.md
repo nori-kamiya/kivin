@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/core`: `createRequestIdMiddleware` と `getRequestId` を追加（受信した ID は形式を検証し、不正なら UUID を発行。`@kivin/logger` の requestId にも反映）
 - `@kivin/core` / `@kivin/decorators`: ルート単位のボディサイズ制限 `@BodyLimit(bytes)` とアプリ全体の既定 `defineApplication({ bodyLimit })` を追加（413。Content-Length が超えていれば読まずに返し、チャンク転送は読みながら打ち切る）
 
 - `@kivin/core`: `createTimeoutMiddleware`（時間切れで 504）、`createRateLimitMiddleware`（固定ウィンドウ、429 / Retry-After / RateLimit-* ヘッダ、キーは既定でクライアントアドレス）、`getClientAddress(request)` を追加

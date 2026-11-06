@@ -36,6 +36,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
 | `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
 | `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
+| `createRequestIdMiddleware(options)` / `getRequestId(request)` | function | リクエスト ID の付与（受信 ID は形式を検証）とレスポンスへの反映、ロガー連携 |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |

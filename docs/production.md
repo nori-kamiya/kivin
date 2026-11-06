@@ -275,6 +275,20 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 
 `context.formData()` / `context.form()` は従来どおり使え、`@Consumes` ルートでも `body` と同じ解析結果を共有します。アップロードサイズの上限は `app.listen({ maxRequestBodySize })` で設定します。
 
+## リクエスト ID
+
+```ts
+import { createRequestIdMiddleware, getRequestId } from '@kivin/core';
+import { RequestLoggerMiddleware } from '@kivin/logger';
+
+// ID を先（外側）に置くと、ロガーの request.* レコードに同じ requestId が入ります
+globals: { middleware: [createRequestIdMiddleware(), RequestLoggerMiddleware] },
+```
+
+- 受け取った `x-request-id`（ロードバランサが付けたものなど）が `[A-Za-z0-9._:-]{1,128}` ならそのまま使い、それ以外（空白・制御文字・長すぎるもの）は新しい UUID に置き換えます。ログやレスポンスヘッダへの注入を防ぐためです
+- レスポンスに同じヘッダを付け、ハンドラからは `getRequestId(request)` / `context.get('requestId')` で読めます
+- `header`（既定 `x-request-id`）、`trustIncoming: false`（常に新規発行）、`generate` を変更できます
+
 ## 未処理の例外
 
 フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。
