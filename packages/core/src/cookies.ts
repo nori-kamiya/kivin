@@ -117,3 +117,113 @@ function safeDecode(value: string) {
     return value;
   }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Signed cookies (HMAC-SHA256, Web Crypto).
+//
+// A signed value is `<value>.<signature>` where the signature is the base64url (unpadded) HMAC of
+// `<name>=<value>`: binding the cookie name means a value signed for one cookie cannot be replayed
+// under another name with the same secret. Verification uses `crypto.subtle.verify` (constant time).
+
+/** A signing secret: a string (UTF-8), raw key bytes, or an HMAC-SHA256 `CryptoKey`. */
+export type CookieSecret = string | ArrayBuffer | ArrayBufferView<ArrayBuffer> | CryptoKey;
+/**
+ * One secret, or several for rotation: values are signed with the first and accepted when any of
+ * them verifies, so a new secret can be put first while cookies signed with the old one stay valid.
+ */
+export type CookieSecrets = CookieSecret | readonly CookieSecret[];
+
+const HMAC = { name: 'HMAC', hash: 'SHA-256' } as const;
+const textEncoder = new TextEncoder();
+const stringKeys = new Map<string, Promise<CryptoKey>>();
+const objectKeys = new WeakMap<object, Promise<CryptoKey>>();
+const MAX_CACHED_STRING_KEYS = 64;
+
+function importSecret(secret: CookieSecret): Promise<CryptoKey> {
+  if (typeof secret === 'string') {
+    let key = stringKeys.get(secret);
+    if (!key) {
+      if (secret.length === 0) {
+        throw new TypeError('Cookie secret must not be empty');
+      }
+      if (stringKeys.size >= MAX_CACHED_STRING_KEYS) {
+        stringKeys.delete(stringKeys.keys().next().value!);
+      }
+      key = crypto.subtle.importKey('raw', textEncoder.encode(secret), HMAC, false, ['sign', 'verify']);
+      stringKeys.set(secret, key);
+    }
+    return key;
+  }
+  if (secret instanceof CryptoKey) {
+    return Promise.resolve(secret);
+  }
+  let key = objectKeys.get(secret);
+  if (!key) {
+    if (secret.byteLength === 0) {
+      throw new TypeError('Cookie secret must not be empty');
+    }
+    key = crypto.subtle.importKey('raw', secret, HMAC, false, ['sign', 'verify']);
+    objectKeys.set(secret, key);
+  }
+  return key;
+}
+
+function secretList(secret: CookieSecrets): readonly CookieSecret[] {
+  const list = Array.isArray(secret) ? secret as readonly CookieSecret[] : [secret as CookieSecret];
+  if (list.length === 0) {
+    throw new TypeError('At least one cookie secret is required');
+  }
+  return list;
+}
+
+function toBase64Url(bytes: ArrayBuffer) {
+  return Buffer.from(bytes).toString('base64url');
+}
+
+const SIGNATURE_LENGTH = 43; // base64url of 32 bytes, unpadded
+const BASE64URL = /^[A-Za-z0-9_-]+$/;
+
+/** Signs `value` for the cookie `name`: returns `<value>.<signature>`. */
+export async function signCookieValue(name: string, value: string, secret: CookieSecrets): Promise<string> {
+  const key = await importSecret(secretList(secret)[0]!);
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(`${name}=${value}`));
+  return `${value}.${toBase64Url(signature)}`;
+}
+
+/**
+ * Verifies a value produced by `signCookieValue` for the same cookie `name`. Returns the original
+ * value, or `false` when the signature is missing, malformed or does not match any secret.
+ */
+export async function verifyCookieValue(name: string, signedValue: string, secret: CookieSecrets): Promise<string | false> {
+  const separator = signedValue.lastIndexOf('.');
+  if (separator === -1 || signedValue.length - separator - 1 !== SIGNATURE_LENGTH) {
+    return false;
+  }
+  const encodedSignature = signedValue.slice(separator + 1);
+  if (!BASE64URL.test(encodedSignature)) {
+    return false;
+  }
+  const value = signedValue.slice(0, separator);
+  const signature = Buffer.from(encodedSignature, 'base64url');
+  const data = textEncoder.encode(`${name}=${value}`);
+  for (const candidate of secretList(secret)) {
+    if (await crypto.subtle.verify('HMAC', await importSecret(candidate), signature, data)) {
+      return value;
+    }
+  }
+  return false;
+}
+
+/**
+ * Reads and verifies a signed cookie: the value, `undefined` when the cookie is absent, or `false`
+ * when it is present but its signature does not verify (tampered, or signed with another secret).
+ */
+export async function getSignedCookie(request: Request, name: string, secret: CookieSecrets): Promise<string | undefined | false> {
+  const signed = getCookie(request, name);
+  return signed === undefined ? undefined : verifyCookieValue(name, signed, secret);
+}
+
+/** `Set-Cookie` header value for a signed cookie (see `signCookieValue`). */
+export async function serializeSignedCookie(name: string, value: string, secret: CookieSecrets, options?: CookieOptions): Promise<string> {
+  return serializeCookie(name, await signCookieValue(name, value, secret), options);
+}

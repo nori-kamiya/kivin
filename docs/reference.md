@@ -38,6 +38,8 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `defineApplication({ cors })`, `CorsOptions` | option | アプリ全体の CORS ヘッダと preflight 自動応答 |
 | `context.cookie(name)` / `cookies()` / `setCookie()` / `deleteCookie()` | method | Cookie の読み書き（複数の `Set-Cookie` に対応） |
 | `parseCookies`, `serializeCookie`, `serializeDeletedCookie`, `getCookie` | function | Cookie の単体ユーティリティ |
+| `context.signedCookie(name, secrets)` / `setSignedCookie(name, value, secrets, options?)` | method | HMAC-SHA256 で署名した Cookie の読み書き。読み取りは値 / `undefined`（無い）/ `false`（署名不一致） |
+| `signCookieValue`, `verifyCookieValue`, `getSignedCookie`, `serializeSignedCookie`, `CookieSecrets` | function / type | 署名付き Cookie の単体ユーティリティ。署名は Cookie 名と値の両方にかかり、鍵の配列でローテーションできる |
 | `context.formData()` / `context.form()` | method | multipart / urlencoded のボディ（`form()` はフィールドを string / File / 配列にしたオブジェクト） |
 | `context.sse(handler, options?)`, `createEventStream`, `formatEvent` | method / function | Server-Sent Events のレスポンス |
 | `defineWebSocket(route)`, `listen({ websockets })` | function / option | Bun ネイティブの WebSocket ルート（`upgrade` で認証・拒否） |
