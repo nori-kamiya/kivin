@@ -38,6 +38,8 @@ jobs:
         with:
           name: release
           path: .release
+          # .release is a dot directory; without this the action excludes it and uploads zero files.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 

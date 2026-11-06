@@ -151,13 +151,19 @@ export function verifyTarball(input: { files: ReadonlyMap<string, Uint8Array>; e
   if (text.includes('workspace:')) report('package.json still contains a "workspace:" protocol; pack with bun pm pack, not npm pack');
   if (manifest.version !== input.expectedVersion) report(`version ${String(manifest.version)} does not equal the expected ${input.expectedVersion}`);
 
-  const targets: string[] = [];
-  collectTargets(manifest.exports, targets);
-  collectTargets(manifest.main, targets);
-  collectTargets(manifest.types, targets);
-  collectTargets(manifest.bin, targets);
-  for (const target of new Set(targets)) {
-    if (target.startsWith('./') && !targetExists(target, paths)) report(`entry point ${target} is not in the tarball`);
+  // npm accepts main/types/bin without a leading "./"; exports targets must have it or npm rejects the package.
+  const exportTargets: string[] = [];
+  collectTargets(manifest.exports, exportTargets);
+  for (const target of new Set(exportTargets)) {
+    if (!target.startsWith('./')) report(`exports target ${target} must start with "./"`);
+    else if (!targetExists(target, paths)) report(`entry point ${target} is not in the tarball`);
+  }
+  const fileTargets: string[] = [];
+  collectTargets(manifest.main, fileTargets);
+  collectTargets(manifest.types, fileTargets);
+  collectTargets(manifest.bin, fileTargets);
+  for (const target of new Set(fileTargets)) {
+    if (!targetExists(target, paths)) report(`entry point ${target} is not in the tarball`);
   }
 
   for (const required of ['README.md', 'LICENSE']) {

@@ -105,6 +105,22 @@ describe('verifyTarball', () => {
     }
   });
 
+  test('given main, types and bin targets without a leading ./ that are missing, when verifying, then each is reported', () => {
+    const problems = verify(validFiles(validPackageJson({ main: 'dist/gone-main.js', types: 'dist/gone-types.d.ts', bin: { kivin: 'bin/gone-bin.js' } })));
+    const text = problems.join('\n');
+    for (const target of ['gone-main.js', 'gone-types.d.ts', 'gone-bin.js']) expect(text).toContain(target);
+  });
+
+  test('given main and bin targets without a leading ./ that exist, when verifying, then there are no problems', () => {
+    const files = { ...validFiles(validPackageJson({ main: 'dist/index.js', bin: 'dist/cli.js' })), 'dist/cli.js': '#!/usr/bin/env bun' };
+    expect(verify(files)).toEqual([]);
+  });
+
+  test('given an exports target without a leading ./, when verifying, then it is reported', () => {
+    const problems = verify(validFiles(validPackageJson({ exports: { '.': 'dist/index.js' } })));
+    expect(problems.join('\n')).toMatch(/must start with "\.\/"/);
+  });
+
   test('given a string bin and a nested conditional export that exist, when verifying, then there are no problems', () => {
     const files = {
       ...validFiles(validPackageJson({ bin: './dist/cli.js', exports: { '.': { import: { types: './dist/index.d.ts', default: './dist/index.js' } }, './package.json': './package.json' } })),
