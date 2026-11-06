@@ -55,7 +55,7 @@ bun run perf:regression -- --base HEAD~1
 PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 ```
 
-- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 11 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403）。base 側も同じソースを使い、`@kivin/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
+- **計測対象**: `scripts/perf/app/`（デコレータで書いたアプリ）に対する 14 シナリオ（static / context.json / query・param・body validation / guard / middleware / filter / request-scoped / 404 / 403、app 全体の raw middleware を前に置いた health / patch / list）。base 側も同じソースを使い、`@kivin/*` だけを base の worktree に向けます。manifest はそれぞれの側の `kivin generate` で生成するので、生成器の変更（AOT など）も計測に含まれます。
 - **in-process（ブロッキング）**: base と current の 2 つのアプリを 1 プロセスに読み込み、短い計測ブロックを A→B / B→A と交互に回して、隣り合うペアの比を取ります（`scripts/perf/paired.ts`）。CPU クロックや他プロセスの影響が両側に等しく乗るので、2 コアの共有 VM でも同一コード同士の差は ±1% 程度に収まります。
 - **判定**:
   - いずれかのシナリオで中央値が **4% 以上** 遅く、かつ bootstrap 95% 信頼区間が全体として 1 を下回る。疑わしいシナリオは 2 倍のラウンドで再計測し、それでも該当する場合のみ失敗にします。
@@ -750,6 +750,11 @@ app-like suite を `docs` / `create` / `delete` まで広げた `3` sample media
 - `context` を使わない route は compile 時に separate executor を生成し、RequestContext の遅延構築自体を消す
 - schema-backed query object は `URLSearchParams` / `Object.fromEntries(...)` を使わず lightweight parser で組み立てる
 - request logger middleware は log level が実際に emit しない場合、request child logger と URL object を eager に作らない
+- raw executor は promise の段数を最小にする。body はルートごとの `request.json().then(validate, rethrowJsonBodyError)` 1 段で読み、ハンドラは同じ reaction 内で呼ぶ（以前は async の body loader → map → async ラッパー → finalize の 4〜5 段）。body の無いルートは `next()` 内で同期的にハンドラを呼ぶ
+- raw executor のリクエスト毎状態はクラス（prototype メソッド）で持ち、クロージャを作らない。`finalize` などリクエストに依存しない関数は compile 時に 1 回だけ作る
+- 値が promise の時だけ `await` する（`await undefined` / `await 同期値` でも microtask を 1 つ消費するため）。guard・body・ハンドラ結果のすべてで適用
+- AOT 生成コードのミドルウェア `next` は async 関数を挟まず、body 読み込みとハンドラ呼び出しを 1 つの `.then` で行う
+- `HttpError` に独自ヘッダが無ければ `Response.json(body, { status })` で応答する（`Headers` と `JSON.stringify` を省略。403 / 404 / 400 が約 140ns 速い）
 
 この最適化で `read-users` の hot path から無駄な object 生成と分岐をいくつか外しています。現在は benchmark 側も複数回実行の中央値集計に変えてあるため、単発 run より比較しやすくなっています。
 

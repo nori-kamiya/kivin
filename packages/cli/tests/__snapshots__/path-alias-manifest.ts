@@ -29,9 +29,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["list"]();
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["list"]());
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const result = controller["list"]();
             return rt.finish(rt.isThenable(result) ? await result : result, context);
@@ -64,9 +63,8 @@ export const manifest: AppManifest = {
             }
             if (hasMiddleware) {
               const ctx = (context ??= rt.createContext(request, params));
-              return await rt.runMiddleware(ctx, async () => {
-                return controller["list"]();
-              });
+              const handled = rt.runMiddleware(ctx, () => controller["list"]());
+              return rt.isThenable(handled) ? await handled : handled;
             }
             const result = controller["list"]();
             return rt.finish(rt.isThenable(result) ? await result : result, context);

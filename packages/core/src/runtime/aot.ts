@@ -112,19 +112,16 @@ export function createAotRuntime(input: {
     readQueryParam: readNamedQueryParam,
     headers: getRouteHeaders,
 
-    async readBody(request, context) {
+    readBody(request, context) {
       if (!readsBody) {
-        return undefined;
+        return Promise.resolve(undefined);
       }
-      let raw: unknown;
-      try {
-        raw = await request.json();
-      } catch (error) {
-        rethrowJsonBodyError(error);
-      }
-      const value = validateBody ? validateBody(raw) : raw;
-      context?.primeJsonBody(value);
-      return value;
+      // One reaction (no async frame): parse, validate, prime the context.
+      return request.json().then((raw: unknown) => {
+        const value = validateBody ? validateBody(raw) : raw;
+        context?.primeJsonBody(value);
+        return value;
+      }, rethrowJsonBodyError);
     },
 
     runGuards(request, params, context) {

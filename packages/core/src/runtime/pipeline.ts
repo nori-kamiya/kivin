@@ -168,89 +168,19 @@ export async function runMiddlewareChain(input: {
   return dispatch(0);
 }
 
-export function createRawExecutionState(
-  request: Request,
-  params: Record<string, string>,
-  container: Container,
-): RawExecutionState {
-  let context: RequestContext | undefined;
-  let parsedBody: unknown;
-  let parsedBodyLoaded = false;
-  let responseState = new ResponseState();
-
-  const getContext = () => {
-    if (!context) {
-      context = new RequestContext(request, params, {
-        resolve<T>(token: Token<T>) {
-          return container.resolve(token);
-        },
-      });
-
-      if (parsedBodyLoaded) {
-        context.primeJsonBody(parsedBody);
-      }
-
-      if (responseState.hasQueuedResponseState()) {
-        responseState.copyResponseStateTo(context);
-        responseState = new ResponseState();
-      }
-    }
-
-    return context;
-  };
-
-  const getJsonBody = async () => {
-    if (!parsedBodyLoaded) {
-      try {
-        parsedBody = await request.json();
-      } catch (error) {
-        rethrowJsonBodyError(error);
-      }
-      parsedBodyLoaded = true;
-
-      if (context) {
-        context.primeJsonBody(parsedBody);
-      }
-    }
-
-    return parsedBody;
-  };
-
-  const setBodyPayload = (value: unknown) => {
-    parsedBody = value;
-    parsedBodyLoaded = true;
-
-    if (context) {
-      context.primeJsonBody(value);
-    }
-  };
-
-  return {
-    applyQueuedState(response: Response) {
-      return responseState.hasQueuedResponseState()
-        ? responseState.applyResponseHeaders(response)
-        : response;
-    },
-    getContext,
-    getJsonBody,
-    getResponseState: () => responseState,
-    setBodyPayload,
-  };
-}
-
 /**
  * Per-request state for the raw (context-free) executors. A class with prototype methods: the body
- * readers are only materialised (as bound functions) for routes that read a body, so a route without
- * one allocates just this object and its `ResponseState`.
+ * readers are only materialised (as bound functions) for routes that use the deferred loaders, so a
+ * route allocates just this object and its `ResponseState`.
  */
 class RawResponseExecution implements RawResponseExecutionState {
-  private readonly responseState = new ResponseState();
-  private parsedBody: unknown;
-  private parsedBodyLoaded = false;
+  protected responseState = new ResponseState();
+  protected parsedBody: unknown;
+  protected parsedBodyLoaded = false;
   private boundGetJsonBody: (() => Promise<unknown>) | undefined;
   private boundSetBodyPayload: ((value: unknown) => void) | undefined;
 
-  constructor(private readonly request: Request) {}
+  constructor(protected readonly request: Request) {}
 
   applyQueuedState(response: Response) {
     return this.responseState.hasQueuedResponseState()
@@ -262,27 +192,84 @@ class RawResponseExecution implements RawResponseExecutionState {
     return this.responseState;
   }
 
-  get getJsonBody() {
-    return (this.boundGetJsonBody ??= async () => {
-      if (!this.parsedBodyLoaded) {
-        try {
-          this.parsedBody = await this.request.json();
-        } catch (error) {
-          rethrowJsonBodyError(error);
-        }
-        this.parsedBodyLoaded = true;
-      }
+  primeBody(value: unknown) {
+    this.parsedBody = value;
+    this.parsedBodyLoaded = true;
+  }
 
-      return this.parsedBody;
-    });
+  get getJsonBody() {
+    return (this.boundGetJsonBody ??= () => this.loadJsonBody());
   }
 
   get setBodyPayload() {
-    return (this.boundSetBodyPayload ??= (value: unknown) => {
-      this.parsedBody = value;
-      this.parsedBodyLoaded = true;
-    });
+    return (this.boundSetBodyPayload ??= (value: unknown) => this.primeBody(value));
   }
+
+  // One promise reaction (no async frame): the body is parsed once and cached.
+  private loadJsonBody(): Promise<unknown> {
+    if (this.parsedBodyLoaded) {
+      return Promise.resolve(this.parsedBody);
+    }
+    return this.request.json().then((value) => {
+      this.primeBody(value);
+      return value;
+    }, rethrowJsonBodyError);
+  }
+}
+
+/** Raw state for routes with exception filters: a `RequestContext` is created only when one runs. */
+class RawExecution extends RawResponseExecution implements RawExecutionState {
+  private context: RequestContext | undefined;
+  private boundGetContext: (() => RequestContext) | undefined;
+
+  constructor(
+    request: Request,
+    private readonly params: Record<string, string>,
+    private readonly container: Container,
+  ) {
+    super(request);
+  }
+
+  get getContext() {
+    return (this.boundGetContext ??= () => this.ensureContext());
+  }
+
+  override primeBody(value: unknown) {
+    super.primeBody(value);
+    this.context?.primeJsonBody(value);
+  }
+
+  private ensureContext() {
+    if (!this.context) {
+      const container = this.container;
+      const context = new RequestContext(this.request, this.params, {
+        resolve<T>(token: Token<T>) {
+          return container.resolve(token);
+        },
+      });
+      this.context = context;
+
+      if (this.parsedBodyLoaded) {
+        context.primeJsonBody(this.parsedBody);
+      }
+
+      // Headers queued by raw middleware move to the context, which finalises the response from now on.
+      if (this.responseState.hasQueuedResponseState()) {
+        this.responseState.copyResponseStateTo(context);
+        this.responseState = new ResponseState();
+      }
+    }
+
+    return this.context;
+  }
+}
+
+export function createRawExecutionState(
+  request: Request,
+  params: Record<string, string>,
+  container: Container,
+): RawExecutionState {
+  return new RawExecution(request, params, container);
 }
 
 export function createRawResponseExecutionState(request: Request): RawResponseExecutionState {
@@ -377,12 +364,8 @@ export function createRawMiddlewareDispatcher(
   }
 
   if (middleware.length === 0) {
-    return async (_request: Request, _params: Record<string, string>, _responseState: ResponseState, next: NextResponseFactory) => {
-      const result = next();
-      return isPromiseLike<Response>(result)
-        ? await result
-        : result;
-    };
+    // No middleware between the executor and the handler: the executor awaits `next()`'s result itself.
+    return (_request: Request, _params: Record<string, string>, _responseState: ResponseState, next: NextResponseFactory) => next();
   }
 
   return async (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => {

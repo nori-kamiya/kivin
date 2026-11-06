@@ -9,15 +9,23 @@ export class HttpError extends Error {
   readonly body: unknown;
   readonly headers: HeadersInit | undefined;
 
-  constructor(status: number, message: string, options: HttpErrorOptions = {}) {
+  constructor(status: number, message: string, options?: HttpErrorOptions) {
     super(message);
     this.name = 'HttpError';
     this.status = status;
-    this.body = Object.prototype.hasOwnProperty.call(options, 'body') ? options.body : { message };
-    this.headers = options.headers;
+    this.body = options !== undefined && Object.hasOwn(options, 'body') ? options.body : { message };
+    this.headers = options?.headers;
   }
 
   toResponse() {
+    if (this.headers === undefined) {
+      // No custom headers: Bun's native JSON response writes exactly JSON_CONTENT_TYPE, without a
+      // Headers object or a separate JSON.stringify.
+      return this.body === undefined
+        ? new Response(null, { status: this.status })
+        : Response.json(this.body, { status: this.status });
+    }
+
     const headers = new Headers(this.headers);
     if (!headers.has('content-type') && this.body !== undefined) {
       headers.set('content-type', JSON_CONTENT_TYPE);

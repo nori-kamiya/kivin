@@ -40,101 +40,45 @@ export function selectCompiledRouteExecutor<TSchema>(
   return undefined;
 }
 
-export function createSpecializedRawBodyExecutor(input: {
-  createBodyPayloadLoader: DeferredPayloadLoaderFactory<unknown>;
-  createState: (request: Request, params: Record<string, string>) => RawExecutionState | RawResponseExecutionState;
+type RawState = RawExecutionState | RawResponseExecutionState;
+
+interface SpecializedRawExecutorInput {
+  createState: (request: Request, params: Record<string, string>) => RawState;
   ensureGuardsAllowed: ((request: Request, params: Record<string, string>) => void | Promise<void>) | undefined;
-  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
-  finalizeDirectResult: (result: Response, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response;
-  handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
-  prepareNext: (input: {
-    loadBodyPayload: DeferredPayloadLoader<unknown>;
-    params: Record<string, string>;
-    request: Request;
-    requestUrl: string;
-    responseState: ResponseState;
-  }) => NextResponseFactory;
-  useRequestUrl?: boolean;
-}) {
-  return async (request: Request, params: Record<string, string>) => {
-    const requestUrl = input.useRequestUrl ? request.url : '';
-    const state = input.createState(request, params);
-    const responseState = state.getResponseState();
-    const loadBodyPayload = input.createBodyPayloadLoader(state.getJsonBody, state.setBodyPayload);
-
-    try {
-      // Await only an async guard: `await undefined` would still cost a microtask per request.
-      const guarded = input.ensureGuardsAllowed?.(request, params);
-      if (guarded) {
-        await guarded;
-      }
-
-      const next = input.prepareNext({
-        loadBodyPayload,
-        params,
-        request,
-        requestUrl,
-        responseState,
-      });
-
-      const middlewareResult = input.executeMiddleware(request, params, responseState, next);
-      const resolvedDirectResult = isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult;
-      return input.finalizeDirectResult(resolvedDirectResult, state, responseState);
-    } catch (error) {
-      return input.handleError(error, state, responseState);
-    }
-  };
-}
-
-export function createSpecializedRawHandlerExecutor(input: {
-  createBodyPayloadLoader?: DeferredPayloadLoaderFactory<unknown>;
-  createState: (request: Request, params: Record<string, string>) => RawExecutionState | RawResponseExecutionState;
-  ensureGuardsAllowed: ((request: Request, params: Record<string, string>) => void | Promise<void>) | undefined;
-  executeHandler: (input: {
-    loadBodyPayload: DeferredPayloadLoader<unknown> | undefined;
-    params: Record<string, string>;
-    request: Request;
-    requestUrl: string;
-    responseState: ResponseState;
-  }) => unknown | PromiseLike<unknown>;
   executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
   finalizeHandlerResult: (result: unknown, responseState: ResponseState) => Response;
-  handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
+  handleError: (error: unknown, state: RawState, responseState: ResponseState) => Response | Promise<Response>;
   useRequestUrl?: boolean;
+}
+
+/**
+ * Raw executor for a route that reads no body. Per request it allocates the state and the `next`
+ * closure only; a synchronous handler behind a synchronous middleware adds no promise hop.
+ */
+export function createSpecializedRawHandlerExecutor(input: SpecializedRawExecutorInput & {
+  executeHandler: (params: Record<string, string>, requestUrl: string) => unknown | PromiseLike<unknown>;
 }) {
+  const { createState, ensureGuardsAllowed, executeHandler, executeMiddleware, finalizeHandlerResult, handleError } = input;
+  const useRequestUrl = input.useRequestUrl === true;
+  const finalize = finalizeHandlerResult as (value: unknown, context: ResponseStateAdapter) => Response;
+
   return async (request: Request, params: Record<string, string>) => {
-    const requestUrl = input.useRequestUrl ? request.url : '';
-    const state = input.createState(request, params);
+    const requestUrl = useRequestUrl ? request.url : '';
+    const state = createState(request, params);
     const responseState = state.getResponseState();
-    const loadBodyPayload = input.createBodyPayloadLoader
-      ? input.createBodyPayloadLoader(state.getJsonBody, state.setBodyPayload)
-      : undefined;
-    const finalize = (value: unknown, context: ResponseStateAdapter) => input.finalizeHandlerResult(value, context as ResponseState);
 
     try {
       // Await only an async guard: `await undefined` would still cost a microtask per request.
-      const guarded = input.ensureGuardsAllowed?.(request, params);
+      const guarded = ensureGuardsAllowed?.(request, params);
       if (guarded) {
         await guarded;
       }
 
-      const next = () => finalizeRawResult(
-        input.executeHandler({
-          loadBodyPayload,
-          params,
-          request,
-          requestUrl,
-          responseState,
-        }),
-        responseState,
-        finalize,
-      );
-
-      const middlewareResult = input.executeMiddleware(request, params, responseState, next);
-      const resolvedDirectResult = isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult;
-      return resolveRawMiddlewareResult(resolvedDirectResult, state, finalize);
+      const next = () => finalizeRawResult(executeHandler(params, requestUrl), responseState, finalize);
+      const middlewareResult = executeMiddleware(request, params, responseState, next);
+      return resolveRawMiddlewareResult(isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult, state, finalize);
     } catch (error) {
-      return input.handleError(error, state, responseState);
+      return handleError(error, state, responseState);
     }
   };
 }
@@ -161,24 +105,42 @@ export function createSpecializedPlainHandlerExecutor(input: {
   };
 }
 
-export function createSpecializedRawHandlerBodyExecutor(input: {
-  createBodyPayloadLoader: DeferredPayloadLoaderFactory<unknown>;
-  createState: (request: Request, params: Record<string, string>) => RawExecutionState | RawResponseExecutionState;
-  ensureGuardsAllowed: ((request: Request, params: Record<string, string>) => void | Promise<void>) | undefined;
-  executeHandler: (bodyPayload: unknown, params: Record<string, string>) => unknown | PromiseLike<unknown>;
-  executeMiddleware: (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | Promise<Response>;
-  finalizeHandlerResult: (result: unknown, responseState: ResponseState) => Response;
-  handleError: (error: unknown, state: RawExecutionState | RawResponseExecutionState, responseState: ResponseState) => Response | Promise<Response>;
+/**
+ * Raw executor for a route that reads a body. `readBody` is the route's one-reaction JSON reader
+ * (`request.json().then(validate, rethrowJsonBodyError)`); the handler runs in the same reaction, so a
+ * synchronous handler costs two promise hops in total (body, then the middleware's await).
+ */
+export function createSpecializedRawHandlerBodyExecutor(input: SpecializedRawExecutorInput & {
+  readBody: (request: Request) => Promise<unknown>;
+  executeHandler: (bodyPayload: unknown, params: Record<string, string>, requestUrl: string) => unknown | PromiseLike<unknown>;
 }) {
-  return createSpecializedRawHandlerExecutor({
-    createBodyPayloadLoader: input.createBodyPayloadLoader,
-    createState: input.createState,
-    ensureGuardsAllowed: input.ensureGuardsAllowed,
-    executeMiddleware: input.executeMiddleware,
-    executeHandler: async ({ loadBodyPayload, params }) => input.executeHandler(await loadBodyPayload!(), params),
-    finalizeHandlerResult: input.finalizeHandlerResult,
-    handleError: input.handleError,
-  });
+  const { createState, ensureGuardsAllowed, executeHandler, executeMiddleware, finalizeHandlerResult, handleError, readBody } = input;
+  const useRequestUrl = input.useRequestUrl === true;
+  const finalize = finalizeHandlerResult as (value: unknown, context: ResponseStateAdapter) => Response;
+
+  return async (request: Request, params: Record<string, string>) => {
+    const requestUrl = useRequestUrl ? request.url : '';
+    const state = createState(request, params);
+    const responseState = state.getResponseState();
+
+    try {
+      const guarded = ensureGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
+
+      // The body is read once even if a middleware calls `next()` more than once.
+      let pendingBody: Promise<unknown> | undefined;
+      const next = () => (pendingBody ??= readBody(request)).then((bodyPayload) => {
+        state.primeBody(bodyPayload);
+        return finalizeRawResult(executeHandler(bodyPayload, params, requestUrl), responseState, finalize);
+      });
+      const middlewareResult = executeMiddleware(request, params, responseState, next);
+      return resolveRawMiddlewareResult(isPromiseLike<Response>(middlewareResult) ? await middlewareResult : middlewareResult, state, finalize);
+    } catch (error) {
+      return handleError(error, state, responseState);
+    }
+  };
 }
 
 export function compileRouteExecutor<TSchema>(input: {
@@ -299,6 +261,12 @@ function compileRouteExecutorFor<TSchema>(input: {
     ? (request: Request, params: Record<string, string>) => createRawExecutionState(request, params, input.container)
     : (request: Request) => createRawResponseExecutionState(request);
   const resolveBodyPayload = createBodyPayloadResolver(input.definition, input.route, requiresBody);
+  // One-reaction body reader for the raw executors (`createBodyPayloadResolver` returns a promise for
+  // every method that has a body; GET / HEAD routes resolve to `undefined`).
+  const readsRequestBody = requiresBody && input.route.method !== 'GET' && input.route.method !== 'HEAD';
+  const readBodyPayload = readsRequestBody
+    ? resolveBodyPayload as (request: Request) => Promise<unknown>
+    : () => Promise.resolve(undefined);
   const resolveBodyPayloadFromJsonLoader = createBodyPayloadFromJsonLoaderResolver(input.definition, input.route, requiresBody);
   const createBodyPayloadLoader = createBodyPayloadLoaderFactory(input.definition, input.route, requiresBody);
   const finalizeCompiledContextResult = !mapCompiledResponseBody
@@ -380,7 +348,8 @@ function compileRouteExecutorFor<TSchema>(input: {
   const executeWithoutContext = async (request: Request, params: Record<string, string>) => {
     try {
       if (executeSingletonHandler && requiresBody && !requiresRequestUrl && !hasPathParameter && !requiresParamObject && singletonGuards.length === 0) {
-        const result = await executeSingletonHandler(await resolveBodyPayload(request), undefined, undefined, params, undefined, '');
+        const pending = executeSingletonHandler(await resolveBodyPayload(request), undefined, undefined, params, undefined, '');
+        const result = isPromiseLike<unknown>(pending) ? await pending : pending;
         if (result instanceof Response) {
           return result;
         }
@@ -397,10 +366,13 @@ function compileRouteExecutorFor<TSchema>(input: {
         await guarded;
       }
 
-      const bodyPayload = await resolveBodyPayload(request);
+      // `await` only real promises: awaiting a plain value still costs a microtask per request.
+      const loadedBody = readsRequestBody ? resolveBodyPayload(request) : undefined;
+      const bodyPayload = isPromiseLike<unknown>(loadedBody) ? await loadedBody : loadedBody;
 
       if (executeSingletonHandler) {
-        const result = await executeSingletonHandler(bodyPayload, undefined, paramPayload, params, queryPayload, requestUrl);
+        const pending = executeSingletonHandler(bodyPayload, undefined, paramPayload, params, queryPayload, requestUrl);
+        const result = isPromiseLike<unknown>(pending) ? await pending : pending;
         if (result instanceof Response) {
           return result;
         }
@@ -537,7 +509,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     ? createSpecializedRawHandlerExecutor({
         createState: createRawState,
         ensureGuardsAllowed: ensureSingleRawGuardAllowed,
-        executeHandler: ({ params }) => executeSingletonHandler!(undefined, undefined, resolveParamPayload(params), params, undefined, ''),
+        executeHandler: (params) => executeSingletonHandler!(undefined, undefined, resolveParamPayload(params), params, undefined, ''),
         executeMiddleware: executeSingleRawMiddleware!,
         finalizeHandlerResult: finalizeCompiledContextResult,
         handleError: handleRawExecutionError,
@@ -553,7 +525,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !hasPathParameter
     && !requiresParamObject
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: ensureSingleRawGuardAllowed,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
@@ -574,7 +546,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !hasPathParameter
     && !requiresParamObject
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: ensureSingleRawGuardAllowed,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
@@ -586,7 +558,7 @@ function compileRouteExecutorFor<TSchema>(input: {
 
   const executeWithSingleRawGuardAndMiddlewareNoQuery = singleRawGuard && invokeSingleRawGuard && invokeSingleRawMiddleware && requiresBody && !requiresRequestUrl
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: ensureSingleRawGuardAllowed,
         executeHandler: (bodyPayload, params) => executeSingletonHandler!(
@@ -613,7 +585,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !requiresRequestUrl
     && hasPathParameter
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: ensureSingleRawGuardAllowed,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(
@@ -631,30 +603,47 @@ function compileRouteExecutorFor<TSchema>(input: {
     : undefined;
 
   const executeWithSingleRawGuardAndMiddleware = singleRawGuard && invokeSingleRawGuard && invokeSingleRawMiddleware
-    ? createSpecializedRawHandlerExecutor({
-        ...(requiresBody ? { createBodyPayloadLoader } : {}),
-        createState: createRawState,
-        ensureGuardsAllowed: ensureSingleRawGuardAllowed,
-        executeHandler: async ({ loadBodyPayload, params, requestUrl }) => executeSingletonHandler!(
-          loadBodyPayload ? await loadBodyPayload() : undefined,
-          undefined,
-          resolveParamPayload(params),
-          params,
-          resolveQueryPayload(requestUrl),
-          requestUrl,
-        ),
-        executeMiddleware: executeSingleRawMiddleware!,
-        finalizeHandlerResult: finalizeCompiledContextResult,
-        handleError: handleRawExecutionError,
-        useRequestUrl: requiresRequestUrl,
-      })
+    ? (requiresBody
+        ? createSpecializedRawHandlerBodyExecutor({
+            readBody: readBodyPayload,
+            createState: createRawState,
+            ensureGuardsAllowed: ensureSingleRawGuardAllowed,
+            executeHandler: (bodyPayload, params, requestUrl) => executeSingletonHandler!(
+              bodyPayload,
+              undefined,
+              resolveParamPayload(params),
+              params,
+              resolveQueryPayload(requestUrl),
+              requestUrl,
+            ),
+            executeMiddleware: executeSingleRawMiddleware!,
+            finalizeHandlerResult: finalizeCompiledContextResult,
+            handleError: handleRawExecutionError,
+            useRequestUrl: requiresRequestUrl,
+          })
+        : createSpecializedRawHandlerExecutor({
+            createState: createRawState,
+            ensureGuardsAllowed: ensureSingleRawGuardAllowed,
+            executeHandler: (params, requestUrl) => executeSingletonHandler!(
+              undefined,
+              undefined,
+              resolveParamPayload(params),
+              params,
+              resolveQueryPayload(requestUrl),
+              requestUrl,
+            ),
+            executeMiddleware: executeSingleRawMiddleware!,
+            finalizeHandlerResult: finalizeCompiledContextResult,
+            handleError: handleRawExecutionError,
+            useRequestUrl: requiresRequestUrl,
+          }))
     : undefined;
 
   const executeWithSingleRawMiddlewareNoInput = singleRawMiddleware && invokeSingleRawMiddleware && !requiresBody && !requiresRequestUrl
     ? createSpecializedRawHandlerExecutor({
         createState: createRawState,
         ensureGuardsAllowed: undefined,
-        executeHandler: ({ params }) => executeSingletonHandler!(undefined, undefined, resolveParamPayload(params), params, undefined, ''),
+        executeHandler: (params) => executeSingletonHandler!(undefined, undefined, resolveParamPayload(params), params, undefined, ''),
         executeMiddleware: executeSingleRawMiddleware!,
         finalizeHandlerResult: finalizeCompiledContextResult,
         handleError: handleRawExecutionError,
@@ -669,7 +658,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !hasPathParameter
     && !requiresParamObject
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: undefined,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
@@ -689,7 +678,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !hasPathParameter
     && !requiresParamObject
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: undefined,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(bodyPayload, undefined, undefined, params, undefined, ''),
@@ -701,7 +690,7 @@ function compileRouteExecutorFor<TSchema>(input: {
 
   const executeWithSingleRawMiddlewareNoQuery = singleRawMiddleware && invokeSingleRawMiddleware && requiresBody && !requiresRequestUrl
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: undefined,
         executeHandler: (bodyPayload, params) => executeSingletonHandler!(
@@ -727,7 +716,7 @@ function compileRouteExecutorFor<TSchema>(input: {
     && !requiresRequestUrl
     && hasPathParameter
     ? createSpecializedRawHandlerBodyExecutor({
-        createBodyPayloadLoader,
+        readBody: readBodyPayload,
         createState: createRawState,
         ensureGuardsAllowed: undefined,
         executeHandler: (bodyPayload, params) => executeSingletonHandler(
@@ -745,29 +734,45 @@ function compileRouteExecutorFor<TSchema>(input: {
     : undefined;
 
   const executeWithSingleRawMiddleware = singleRawMiddleware && invokeSingleRawMiddleware
-    ? createSpecializedRawHandlerExecutor({
-        ...(requiresBody ? { createBodyPayloadLoader } : {}),
-        createState: createRawState,
-        ensureGuardsAllowed: undefined,
-        executeHandler: async ({ loadBodyPayload, params, requestUrl }) => executeSingletonHandler!(
-          loadBodyPayload ? await loadBodyPayload() : undefined,
-          undefined,
-          resolveParamPayload(params),
-          params,
-          resolveQueryPayload(requestUrl),
-          requestUrl,
-        ),
-        executeMiddleware: executeSingleRawMiddleware!,
-        finalizeHandlerResult: finalizeCompiledContextResult,
-        handleError: handleRawExecutionError,
-        useRequestUrl: requiresRequestUrl,
-      })
+    ? (requiresBody
+        ? createSpecializedRawHandlerBodyExecutor({
+            readBody: readBodyPayload,
+            createState: createRawState,
+            ensureGuardsAllowed: undefined,
+            executeHandler: (bodyPayload, params, requestUrl) => executeSingletonHandler!(
+              bodyPayload,
+              undefined,
+              resolveParamPayload(params),
+              params,
+              resolveQueryPayload(requestUrl),
+              requestUrl,
+            ),
+            executeMiddleware: executeSingleRawMiddleware!,
+            finalizeHandlerResult: finalizeCompiledContextResult,
+            handleError: handleRawExecutionError,
+            useRequestUrl: requiresRequestUrl,
+          })
+        : createSpecializedRawHandlerExecutor({
+            createState: createRawState,
+            ensureGuardsAllowed: undefined,
+            executeHandler: (params, requestUrl) => executeSingletonHandler!(
+              undefined,
+              undefined,
+              resolveParamPayload(params),
+              params,
+              resolveQueryPayload(requestUrl),
+              requestUrl,
+            ),
+            executeMiddleware: executeSingleRawMiddleware!,
+            finalizeHandlerResult: finalizeCompiledContextResult,
+            handleError: handleRawExecutionError,
+            useRequestUrl: requiresRequestUrl,
+          }))
     : undefined;
 
   const executeWithRawPipeline = async (request: Request, params: Record<string, string>) => {
     const requestUrl = requiresRequestUrl ? request.url : '';
     const state = createRawState(request, params);
-    const loadBodyPayload = createBodyPayloadLoader(state.getJsonBody, state.setBodyPayload);
 
     try {
       const paramPayload = resolveParamPayload(params);
@@ -778,16 +783,26 @@ function compileRouteExecutorFor<TSchema>(input: {
         await guarded;
       }
 
-      const executeHandler = async () => {
-        const bodyPayload = await loadBodyPayload();
-        return finalizeRawResult(
-          executeSingletonHandler!(bodyPayload, undefined, paramPayload, params, queryPayload, requestUrl),
-          state.getResponseState(),
-          finalizeCompiledContextResult,
-        );
-      };
+      const responseState = state.getResponseState();
+      // As in the specialised executors: no body → the handler runs synchronously inside `next()`;
+      // a body → one reaction reads + validates it and runs the handler (read once per request).
+      let pendingBody: Promise<unknown> | undefined;
+      const executeHandler: NextResponseFactory = requiresBody
+        ? () => (pendingBody ??= readBodyPayload(request)).then((bodyPayload) => {
+            state.primeBody(bodyPayload);
+            return finalizeRawResult(
+              executeSingletonHandler!(bodyPayload, undefined, paramPayload, params, queryPayload, requestUrl),
+              responseState,
+              finalizeCompiledContextResult,
+            );
+          })
+        : () => finalizeRawResult(
+            executeSingletonHandler!(undefined, undefined, paramPayload, params, queryPayload, requestUrl),
+            responseState,
+            finalizeCompiledContextResult,
+          ) as Response | Promise<Response>;
 
-      const dispatched = dispatchRawMiddleware(request, params, state.getResponseState(), executeHandler);
+      const dispatched = dispatchRawMiddleware(request, params, responseState, executeHandler);
       const directResult = isPromiseLike<Response>(dispatched) ? await dispatched : dispatched;
 
       return resolveRawMiddlewareResult(directResult, state, finalizeCompiledContextResult);
@@ -958,7 +973,6 @@ function compileRouteExecutorFor<TSchema>(input: {
         const paramPayload = resolveParamPayload(params);
         const queryPayload = resolveQueryPayload(requestUrl);
         const loadBodyPayload = createBodyPayloadLoader(getJsonBody, setBodyPayload);
-        const getBodyPayload = async () => requiresBody ? loadBodyPayload() : undefined;
 
         const resolvedGuards = guards.requestScoped
           ? resolveCompiledDependencies(guards, getRequestContainer())
@@ -969,8 +983,8 @@ function compileRouteExecutorFor<TSchema>(input: {
 
         if (singletonGuardsUseRawOnly) {
           for (const guard of singletonGuards) {
-            const allowed = await guard.canActivateRaw!(request, params, input.route);
-            if (!allowed) {
+            const allowed = guard.canActivateRaw!(request, params, input.route);
+            if (isPromiseLike<boolean>(allowed) ? !(await allowed) : !allowed) {
               throw new HttpError(403, 'Forbidden');
             }
           }
@@ -993,7 +1007,7 @@ function compileRouteExecutorFor<TSchema>(input: {
           const current = singletonMiddlewareOnly[0]!;
           const contextValue = getContext();
           const next = async () => {
-            const bodyPayload = await getBodyPayload();
+            const bodyPayload = requiresBody ? await loadBodyPayload() : undefined;
             return finalizeRawResult(
               executeSingletonHandler(bodyPayload, contextValue, paramPayload, params, queryPayload, requestUrl),
               contextValue,
@@ -1024,8 +1038,7 @@ function compileRouteExecutorFor<TSchema>(input: {
           throw new Error(`Handler not found: ${input.route.controller.name}.${input.route.methodName}`);
         }
 
-        const executeResolvedHandler = async () => {
-          const bodyPayload = await getBodyPayload();
+        const runResolvedHandler = (bodyPayload: unknown) => {
           const argumentInput = {
             bodyValue: bodyPayload,
             context: hasContextParameter ? getContext() : undefined,
@@ -1041,16 +1054,25 @@ function compileRouteExecutorFor<TSchema>(input: {
                 ? invokeHandler(controller, handler, argumentInput)
                 : handler.apply(controller, resolveArguments(argumentInput)));
         };
+        // Without a body the handler runs synchronously; only real promises are awaited below.
+        const executeResolvedHandler = requiresBody
+          ? () => loadBodyPayload().then(runResolvedHandler)
+          : () => runResolvedHandler(undefined);
 
-        const result = resolvedMiddleware.length > 0
-          ? await runMiddlewareChain({
-              middleware: resolvedMiddleware,
-              context: getContext(),
-              defaultSuccessStatus,
-              route: input.route,
-              execute: executeResolvedHandler,
-            })
-          : await executeResolvedHandler();
+        let result: unknown;
+        if (resolvedMiddleware.length > 0) {
+          result = await runMiddlewareChain({
+            middleware: resolvedMiddleware,
+            context: getContext(),
+            defaultSuccessStatus,
+            route: input.route,
+            // Middleware sees `next()` reject (never throw synchronously), as before.
+            execute: async () => executeResolvedHandler(),
+          });
+        } else {
+          const pending = executeResolvedHandler();
+          result = isPromiseLike<unknown>(pending) ? await pending : pending;
+        }
 
         if (result instanceof Response) {
           if (!context) {

@@ -97,19 +97,17 @@ export type RawGuardSyncInvoker = (request: Request, params: Record<string, stri
 
 export type RawMiddlewareInvoker = (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => Response | PromiseLike<Response>;
 
-export interface RawExecutionState {
-  applyQueuedState: (response: Response) => Response;
-  getContext: () => RequestContext;
-  getJsonBody: () => Promise<unknown>;
-  getResponseState: () => ResponseState;
-  setBodyPayload: (value: unknown) => void;
-}
-
 export interface RawResponseExecutionState {
   applyQueuedState: (response: Response) => Response;
   getJsonBody: () => Promise<unknown>;
   getResponseState: () => ResponseState;
   setBodyPayload: (value: unknown) => void;
+  /** Records the (validated) body so a context created later sees it; same as `setBodyPayload`. */
+  primeBody(value: unknown): void;
+}
+
+export interface RawExecutionState extends RawResponseExecutionState {
+  getContext: () => RequestContext;
 }
 
 export type RouteFilters = Array<{ catch: (error: unknown, context: RequestContext, route: ManifestRoute<unknown>) => Response | void | Promise<Response | void> }>;

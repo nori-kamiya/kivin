@@ -5,6 +5,8 @@ export const TEXT_CONTENT_TYPE = 'text/plain; charset=utf-8';
 const TEXT_HEADERS = Object.freeze({ 'content-type': TEXT_CONTENT_TYPE });
 const NO_CONTENT_RESPONSE = new Response(null, { status: 204 });
 const STATUS_201 = Object.freeze({ status: 201 });
+/** Shared default for optional `init` parameters (never mutated): no `{}` allocation per call. */
+export const EMPTY_RESPONSE_INIT: ResponseInit = Object.freeze({});
 
 // JSON responses go through Bun's native `Response.json()`, which serialises and sets the content type
 // in one step and is markedly faster than `new Response(JSON.stringify(data), { headers })`. It
@@ -66,7 +68,7 @@ function mergeHeadersWithContentType(init: ResponseInit, contentType: string) {
   return { ...init, headers };
 }
 
-export function createJsonResponse(data: unknown, init: ResponseInit = {}) {
+export function createJsonResponse(data: unknown, init: ResponseInit = EMPTY_RESPONSE_INIT) {
   if (data === undefined || isBinaryBody(data)) {
     return createBodyResponse(data, init);
   }
@@ -119,7 +121,7 @@ export function createJsonResponseWithStatusAndHeader(data: unknown, status: num
   return Response.json(data, { status, headers: { [headerName]: headerValue } });
 }
 
-export function createTextResponse(data: string, init: ResponseInit = {}) {
+export function createTextResponse(data: string, init: ResponseInit = EMPTY_RESPONSE_INIT) {
   if (!init.headers && init.status === undefined && init.statusText === undefined) {
     return new Response(data, { headers: TEXT_HEADERS });
   }
@@ -134,7 +136,7 @@ export function createTextResponse(data: string, init: ResponseInit = {}) {
   return new Response(data, mergeHeadersWithContentType(init, TEXT_CONTENT_TYPE));
 }
 
-export function createNoContentResponse(init: ResponseInit = {}) {
+export function createNoContentResponse(init: ResponseInit = EMPTY_RESPONSE_INIT) {
   if (!init.headers && init.status === undefined && init.statusText === undefined) {
     return NO_CONTENT_RESPONSE.clone();
   }

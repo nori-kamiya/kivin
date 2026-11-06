@@ -65,13 +65,16 @@ export function renderAotFactory(route: AstRouteNode, controllerType: string, ru
   const bodyLine = (contextExpression: string) => (readsBody ? `const body = await rt.readBody(request, ${contextExpression});` : '');
   const indent = (text: string, spaces: number) => text.split('\n').filter((line) => line.trim() !== '').map((line) => `${' '.repeat(spaces)}${line}`).join('\n');
 
+  // The middleware's `next` is a plain function (no async frame): the body is read and the handler
+  // called in one promise reaction; `runMiddleware` turns a synchronous throw into a rejection.
+  const middlewareCall = readsBody
+    ? `rt.readBody(request, ctx).then((body) => controller[${method}](${argumentList('ctx')}))`
+    : `controller[${method}](${argumentList('ctx')})`;
   const middlewareBranch = [
     'if (hasMiddleware) {',
     '  const ctx = (context ??= rt.createContext(request, params));',
-    '  return await rt.runMiddleware(ctx, async () => {',
-    `    ${bodyLine('ctx')}`,
-    `    return controller[${method}](${argumentList('ctx')});`,
-    '  });',
+    `  const handled = rt.runMiddleware(ctx, () => ${middlewareCall});`,
+    '  return rt.isThenable(handled) ? await handled : handled;',
     '}',
   ].join('\n');
 

@@ -4,7 +4,7 @@ import { createEventStream, type EventStreamHandler, type EventStreamOptions } f
 import { readNullableQueryParam } from './request-url';
 import { formDataToObject } from './runtime/form-body';
 import { rethrowJsonBodyError } from './runtime/utils';
-import { createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
+import { EMPTY_RESPONSE_INIT, createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
 import type { Token } from './types';
 
 class RequestContextRequestApi {
@@ -77,7 +77,7 @@ export class ResponseState {
     this.queuedResponseStatusText = statusText;
   }
 
-  json(data: unknown, init: ResponseInit = {}): Response {
+  json(data: unknown, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     if (!this.queuedResponseHeaderName && !this.queuedResponseHeaders && this.queuedResponseStatus === undefined && this.queuedResponseStatusText === undefined) {
       if (!init.headers && init.status === undefined && init.statusText === undefined) {
         return createJsonResponse(data);
@@ -90,17 +90,18 @@ export class ResponseState {
       return createJsonResponse(data, init);
     }
 
-    const queuedHeader = this.getSingleQueuedResponseHeader();
+    // A single queued header (the common case: one middleware header) is passed straight through.
+    const headerName = this.queuedResponseHeaders ? undefined : this.queuedResponseHeaderName;
     const status = init.status ?? this.queuedResponseStatus;
     const statusText = init.statusText ?? this.queuedResponseStatusText;
-    if (queuedHeader && !init.headers && status === undefined && statusText === undefined) {
-      const response = createJsonResponseWithHeader(data, queuedHeader[0], queuedHeader[1]);
+    if (headerName && !init.headers && status === undefined && statusText === undefined) {
+      const response = createJsonResponseWithHeader(data, headerName, this.queuedResponseHeaderValue!);
       this.clearQueuedResponseState();
       return response;
     }
 
-    if (queuedHeader && !init.headers && status !== undefined && statusText === undefined) {
-      const response = createJsonResponseWithStatusAndHeader(data, status, queuedHeader[0], queuedHeader[1]);
+    if (headerName && !init.headers && status !== undefined && statusText === undefined) {
+      const response = createJsonResponseWithStatusAndHeader(data, status, headerName, this.queuedResponseHeaderValue!);
       this.clearQueuedResponseState();
       return response;
     }
@@ -116,22 +117,22 @@ export class ResponseState {
     return response;
   }
 
-  text(data: string, init: ResponseInit = {}): Response {
+  text(data: string, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     const response = createTextResponse(data, this.mergeResponseInit(init));
     this.clearQueuedResponseState();
     return response;
   }
 
-  noContent(init: ResponseInit = {}): Response {
+  noContent(init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     if (!this.queuedResponseHeaderName && !this.queuedResponseHeaders && this.queuedResponseStatus === undefined && this.queuedResponseStatusText === undefined) {
       return createNoContentResponse(init);
     }
 
-    const queuedHeader = this.getSingleQueuedResponseHeader();
+    const headerName = this.queuedResponseHeaders ? undefined : this.queuedResponseHeaderName;
     const status = init.status ?? this.queuedResponseStatus;
     const statusText = init.statusText ?? this.queuedResponseStatusText;
-    if (queuedHeader && !init.headers && (status === undefined || status === 204) && statusText === undefined) {
-      const response = createNoContentResponseWithHeader(queuedHeader[0], queuedHeader[1]);
+    if (headerName && !init.headers && (status === undefined || status === 204) && statusText === undefined) {
+      const response = createNoContentResponseWithHeader(headerName, this.queuedResponseHeaderValue!);
       this.clearQueuedResponseState();
       return response;
     }
@@ -141,7 +142,7 @@ export class ResponseState {
     return response;
   }
 
-  respond(data: unknown, init: ResponseInit = {}): Response {
+  respond(data: unknown, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     if (!this.queuedResponseHeaderName && !this.queuedResponseHeaders && this.queuedResponseStatus === undefined && this.queuedResponseStatusText === undefined) {
       const status = init.status;
       if (data === undefined && status === 204) {
@@ -246,14 +247,6 @@ export class ResponseState {
         target.setResponseHeader(name, value);
       }
     }
-  }
-
-  private getSingleQueuedResponseHeader(): [string, string] | undefined {
-    if (this.queuedResponseHeaders || !this.queuedResponseHeaderName) {
-      return undefined;
-    }
-
-    return [this.queuedResponseHeaderName, this.queuedResponseHeaderValue!];
   }
 
   private clearQueuedResponseState() {
@@ -450,19 +443,19 @@ export class RequestContext {
     return this.bodyCache as T;
   }
 
-  json(data: unknown, init: ResponseInit = {}): Response {
+  json(data: unknown, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     return this.responseState.json(data, init);
   }
 
-  text(data: string, init: ResponseInit = {}): Response {
+  text(data: string, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     return this.responseState.text(data, init);
   }
 
-  noContent(init: ResponseInit = {}): Response {
+  noContent(init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     return this.responseState.noContent(init);
   }
 
-  respond(data: unknown, init: ResponseInit = {}): Response {
+  respond(data: unknown, init: ResponseInit = EMPTY_RESPONSE_INIT): Response {
     return this.responseState.respond(data, init);
   }
 
