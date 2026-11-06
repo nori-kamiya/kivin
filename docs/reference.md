@@ -46,7 +46,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `context.formData()` / `context.form()` | method | multipart / urlencoded のボディ（`form()` はフィールドを string / File / 配列にしたオブジェクト） |
 | `context.sse(handler, options?)`, `createEventStream`, `formatEvent` | method / function | Server-Sent Events のレスポンス |
 | `defineWebSocket(route)`, `listen({ websockets })` | function / option | Bun ネイティブの WebSocket ルート（`upgrade` で認証・拒否） |
-| `listen({ maxRequestBodySize, idleTimeout, shutdownSignals })` | option | ボディサイズ上限、アイドルタイムアウト、シグナルでの graceful shutdown |
+| `listen({ maxRequestBodySize, idleTimeout, shutdownSignals, onShutdownStart, shutdownDelayMs })` | option | ボディサイズ上限、アイドルタイムアウト、シグナルでの graceful shutdown（開始フックと、停止前の待機時間） |
 
 ### Dependency Injection
 

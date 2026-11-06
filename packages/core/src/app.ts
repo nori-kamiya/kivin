@@ -242,8 +242,13 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         routes: extraRoutes = {},
         websockets,
         shutdownSignals,
+        onShutdownStart,
+        shutdownDelayMs = 0,
         ...serveOptions
       } = typeof options === 'number' ? ({ port: options } as ListenOptions) : options;
+      if (!shutdownSignals && (onShutdownStart || shutdownDelayMs > 0)) {
+        throw new Error('listen({ onShutdownStart, shutdownDelayMs }) require shutdownSignals');
+      }
       const routes: Record<string, unknown> = {};
       for (const [path, definition] of Object.entries(createBunServeRoutes(compiledRoutes))) {
         routes[path] = withRequestHooks(definition);
@@ -283,7 +288,17 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
           for (const name of signals) {
             process.off(name, onSignal);
           }
-          void app.close({ signal }).finally(() => process.exit(0));
+          void (async () => {
+            try {
+              await onShutdownStart?.(signal);
+            } catch (error) {
+              console.error('[kivin] onShutdownStart failed', error);
+            }
+            if (shutdownDelayMs > 0) {
+              await Bun.sleep(shutdownDelayMs);
+            }
+            await app.close({ signal });
+          })().finally(() => process.exit(0));
         };
         for (const signal of signals) {
           process.once(signal, onSignal);

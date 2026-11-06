@@ -535,13 +535,12 @@ async show({ context }: RouteInput) {
 import { createHealthCheck } from '@kivin/observability';
 
 const health = createHealthCheck({ checks: { db: () => db.query('select 1'), redis: () => redis.ping() }, timeoutMs: 2000 });
-const server = app.listen({ port: 3000, routes: health.routes() });   // GET /livez, GET /readyz
-
-process.once('SIGTERM', async () => {
-  health.setReady(false);   // ロードバランサが外すまで待ってから停止
-  await Bun.sleep(5000);
-  await app.close();
-  process.exit(0);
+app.listen({
+  port: 3000,
+  routes: health.routes(),                         // GET /livez, GET /readyz
+  shutdownSignals: true,
+  onShutdownStart: () => health.setReady(false),   // /readyz を 503 にする
+  shutdownDelayMs: 5000,                           // ロードバランサが外すまで受付を続ける
 });
 ```
 
@@ -689,6 +688,8 @@ app.listen({ port: 3000, shutdownSignals: true }); // SIGINT / SIGTERM で app.c
 1. 新しい接続の受け付けを止める
 2. 処理中のリクエストを最大 `timeoutMs`（既定 10 秒）待つ
 3. 生成済みのシングルトンの `onApplicationShutdown(signal)` を、後に作られたものから順に呼ぶ（依存される側が後で閉じる）
+
+シグナルで停止するときは、`app.close()` の前に `onShutdownStart(signal)` を呼び、`shutdownDelayMs`（既定 0）の間はリクエストを受け付け続けます。`onShutdownStart` が失敗してもログに出して停止を続けます。どちらも `shutdownSignals` が必須です。待機中に同じシグナルをもう一度受けると、kivin は処理せず OS の既定動作で即座に終了します。
 
 `shutdownSignals` は既定で無効です。テストや別のホストに組み込む場合に、プロセスの終了を kivin が勝手に握らないようにするためです。
 

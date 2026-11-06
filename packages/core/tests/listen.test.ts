@@ -62,6 +62,12 @@ describe('app.listen', () => {
     }
   });
 
+  test('shutdown sequencing options without shutdownSignals are rejected instead of being ignored', () => {
+    const app = createApp(definition, manifest);
+    expect(() => app.listen({ port: 0, shutdownDelayMs: 5000 })).toThrow('require shutdownSignals');
+    expect(() => app.listen({ port: 0, onShutdownStart: () => {} })).toThrow('require shutdownSignals');
+  });
+
   test('rejects extra routes that would shadow an app route', () => {
     const app = createApp(definition, manifest);
     expect(() => app.listen({ port: 0, routes: { '/ping': new Response('shadow') } })).toThrow('collides with an application route');

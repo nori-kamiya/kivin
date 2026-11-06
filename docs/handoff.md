@@ -109,7 +109,6 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | セッション・レートリミットはメモリストアのみ同梱。cron は全インスタンスで実行される | [#61](https://github.com/nori-kamiya/kivin/issues/61) |
 | `anyGuard` はコンストラクタ依存を持つガードを合成できない | [#62](https://github.com/nori-kamiya/kivin/issues/62) |
 | メトリクスはルートに一致しなかったリクエストを数えない | [#63](https://github.com/nori-kamiya/kivin/issues/63) |
-| readiness がシャットダウンと連動しない | [#64](https://github.com/nori-kamiya/kivin/issues/64) |
 | CI は Linux のみ | [#69](https://github.com/nori-kamiya/kivin/issues/69) |
 
 ## 7. 残課題（issue）
@@ -123,7 +122,6 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | 高 | [#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60) | OpenTelemetry / GraphQL Yoga の実物との結合確認 |
 | 中 | [#58](https://github.com/nori-kamiya/kivin/issues/58) | `kivin init`（#57 の後） |
 | 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
-| 中 | [#64](https://github.com/nori-kamiya/kivin/issues/64) | readiness とシャットダウンの連動 |
 | 中 | [#69](https://github.com/nori-kamiya/kivin/issues/69) | CI の macOS 対応 |
 | 低 | [#62](https://github.com/nori-kamiya/kivin/issues/62), [#63](https://github.com/nori-kamiya/kivin/issues/63) | `anyGuard` の DI 対応、未マッチリクエストのメトリクス |
 | 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |

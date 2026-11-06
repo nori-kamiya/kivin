@@ -50,8 +50,13 @@ function runCheck(check: HealthCheckFn, timeoutMs: number): Promise<CheckResult>
  *
  * ```ts
  * const health = createHealthCheck({ checks: { db: () => db.ping() } });
- * app.listen({ port, routes: health.routes() });     // GET /livez, GET /readyz
- * process.once('SIGTERM', async () => { health.setReady(false); await Bun.sleep(5000); await app.close(); });
+ * app.listen({
+ *   port,
+ *   routes: health.routes(),                         // GET /livez, GET /readyz
+ *   shutdownSignals: true,
+ *   onShutdownStart: () => health.setReady(false),   // load balancers stop routing here...
+ *   shutdownDelayMs: 5000,                           // ...before app.close() runs
+ * });
  * ```
  */
 export function createHealthCheck(options: HealthCheckOptions = {}) {

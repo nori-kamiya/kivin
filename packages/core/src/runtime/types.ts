@@ -169,4 +169,14 @@ export interface ListenOptions {
    * Off by default so tests and embedding hosts keep control of the process.
    */
   shutdownSignals?: boolean | readonly NodeJS.Signals[];
+  /**
+   * Called first on a shutdown signal, e.g. to fail readiness. Requires `shutdownSignals`. An error is
+   * logged and shutdown continues.
+   */
+  onShutdownStart?: (signal: NodeJS.Signals) => unknown;
+  /**
+   * Milliseconds to keep serving after `onShutdownStart` before `app.close()`, so load balancers can
+   * stop routing here first. Requires `shutdownSignals`. Default 0.
+   */
+  shutdownDelayMs?: number;
 }
