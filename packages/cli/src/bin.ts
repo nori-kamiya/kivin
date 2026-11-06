@@ -45,6 +45,11 @@ function readCliVersion(): string {
   return manifest.version;
 }
 
+// The target is echoed for copy-paste; only the last segment is validated as a package name, so parents may hold anything.
+function shellQuote(value: string): string {
+  return /^[A-Za-z0-9._/-]+$/.test(value) ? value : `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 async function main() {
   const command = process.argv[2];
 
@@ -66,7 +71,7 @@ async function main() {
     }
     const result = initProject({ dir, version: readCliVersion() });
     console.log(`Created ${result.name} in ${result.root}\n`);
-    console.log(`Next steps:\n  cd ${dir}\n  bun install\n  bun run dev`);
+    console.log(`Next steps:\n  cd ${shellQuote(dir)}\n  bun install\n  bun run dev`);
     return;
   }
 

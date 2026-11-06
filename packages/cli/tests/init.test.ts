@@ -263,6 +263,15 @@ describe('kivin init: command line', () => {
     expect(existsSync(join(cwd, 'cli-app/package.json'))).toBe(true);
   });
 
+  test('given a parent path with spaces and quotes, when run, then the cd line is shell-quoted', async () => {
+    const cwd = freshCwd();
+    const { stdout, code } = await run(cwd, 'init', "my projects/it's$(x)/app");
+
+    expect(code).toBe(0);
+    expect(stdout).toContain(`cd 'my projects/it'\\''s$(x)/app'`);
+    expect(existsSync(join(cwd, "my projects/it's$(x)/app/package.json"))).toBe(true);
+  });
+
   test('given a non-empty directory, when run, then it exits non-zero with a clear error and writes nothing', async () => {
     const cwd = freshCwd();
     mkdirSync(join(cwd, 'busy'));

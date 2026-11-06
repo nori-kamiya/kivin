@@ -390,6 +390,17 @@ console.log(\`imported \${count} entry points\`);
   assert(!existsSync(join(scaffoldDir, '.kivin')), 'bun test created .kivin');
   assert(/\b3 pass\b/.test(scaffoldTests), 'scaffold bun test did not report 3 passing tests');
 
+  step('scaffold: bun run dev answers HTTP straight after bun install and bun test, before generate');
+  assert(!existsSync(join(scaffoldDir, '.kivin')), 'scaffold .kivin exists before the dev step');
+  const scaffoldDevPort = freePort();
+  const scaffoldDev = spawnServer(['bun', 'run', 'dev'], scaffoldDir, scaffoldDevPort);
+  await waitFor(`http://127.0.0.1:${scaffoldDevPort}/greetings/Ada`, scaffoldDev, 'scaffold bun run dev');
+  await exercise(`http://127.0.0.1:${scaffoldDevPort}`, 'scaffold bun run dev');
+  killGroup(scaffoldDev, 'SIGTERM');
+  const scaffoldDevStopped = await Promise.race([scaffoldDev.exited, Bun.sleep(10_000).then(() => 'timeout' as const)]);
+  assert(scaffoldDevStopped !== 'timeout', 'scaffold bun run dev did not exit within 10s of SIGTERM');
+  children.delete(scaffoldDev);
+
   step('scaffold: bun run generate, strict tsc --noEmit');
   await mustRun('scaffold bun run generate', ['bun', 'run', 'generate'], scaffoldDir);
   assert(existsSync(join(scaffoldDir, '.kivin/generated/manifest.ts')), 'scaffold generate did not write manifest.ts');
@@ -406,16 +417,6 @@ console.log(\`imported \${count} entry points\`);
   scaffoldServer.kill('SIGTERM');
   await scaffoldServer.exited;
   children.delete(scaffoldServer);
-
-  step('scaffold: bun run dev answers HTTP');
-  const scaffoldDevPort = freePort();
-  const scaffoldDev = spawnServer(['bun', 'run', 'dev'], scaffoldDir, scaffoldDevPort);
-  await waitFor(`http://127.0.0.1:${scaffoldDevPort}/greetings/Ada`, scaffoldDev, 'scaffold bun run dev');
-  await exercise(`http://127.0.0.1:${scaffoldDevPort}`, 'scaffold bun run dev');
-  killGroup(scaffoldDev, 'SIGTERM');
-  const scaffoldDevStopped = await Promise.race([scaffoldDev.exited, Bun.sleep(10_000).then(() => 'timeout' as const)]);
-  assert(scaffoldDevStopped !== 'timeout', 'scaffold bun run dev did not exit within 10s of SIGTERM');
-  children.delete(scaffoldDev);
 
   finished = true;
   cleanup();
