@@ -289,6 +289,20 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 `kivin --help` / `-h` は使い方を標準出力に、`kivin --version` / `-v` は `@kivin/cli` のバージョンを出力して終了コード 0 で終わる。未知のコマンドは使い方を標準エラーに出し、非 0 で終わる。
 
+### `init`
+
+新しいプロジェクトの雛形を生成する。依存のインストールもスクリプトの実行もしない。
+
+```
+init <dir>
+```
+
+- `<dir>` が存在して空でない場合（ファイル、シンボリックリンクを含む）は、何も書かずに非 0 で終わる。既存のファイルを上書きすることはない。空のディレクトリは使える。
+- パッケージ名は `<dir>` の最後の要素から決まり、小文字・数字・`.`・`_`・`-` だけで先頭が英小文字か数字であることを検証する（満たさなければエラー）。`<dir>` は引数として明示された相対・絶対パスをそのまま解決し、テンプレートの値からパスをたどることはない。
+- 生成物: `package.json`（`dev` / `generate` / `build` / `test`）、`tsconfig.json`（TC39 デコレータ、`experimentalDecorators` なし、`types: ["bun"]`、`lib: ["ESNext"]`、strict）、`.gitignore`、`README.md`、`src/app.ts`、`src/main.ts`、`src/greeting.{module,controller,service,schemas}.ts`（valibot による検証つき）、`src/greeting.test.ts`。
+- `@kivin/*` の範囲は実行中の CLI のバージョンから `^<version>` で決まる。`valibot` / `typescript` / `@types/bun` の範囲は `packages/cli/src/init.ts` の `TEMPLATE_RANGES` にあり、`valibot` が `@kivin/valibot` の peer 範囲と一致することをテストが検査する。
+- 生成直後に `bun install` だけで `bun run dev` と `bun test` が動く。テストは `createTestingApp` を使うため `.kivin/generated` を必要としない。
+
 ### `generate`
 
 manifest・contracts・client・OpenAPI を生成する。`client.ts` はサーバーコードを型としてのみ参照する型付き HTTP クライアント（`createClient` / `KivinClientError` / `Operations`）。`contracts.ts` は型チェック専用のモジュールで、tsconfig に含めると handler と schema の不一致を `tsc` が検出する。
