@@ -511,6 +511,7 @@ defineApplication({ ..., globals: { middleware: [Tracing /* 先頭に置く */, 
 
 - リクエストごとに SERVER スパン（名前は `GET /users/:id`）を作り、`http.request.method` / `http.route` / `url.path` / `server.address` / `client.address` / `user_agent.original` / `http.response.status_code` を付けます。
 - `propagation` と `context` を渡すと受信した `traceparent` からトレースを継続します。ハンドラの実行中はスパンがアクティブなので、計装された fetch や DB ドライバのスパンは子になります。
+- 親子関係には `@opentelemetry/context-async-hooks` の `AsyncLocalStorageContextManager` を `context.setGlobalContextManager` で登録してください。継続には `@opentelemetry/core` の `W3CTraceContextPropagator` の登録も必要です。Bun 上で `await` をまたいで親子になることを結合テストで確認しています。
 - スパンは最終レスポンスで終わり、5xx ならエラーにして元の例外を記録します（フィルタが 4xx にしたものはエラーにしません）。
 
 ### Server-Timing

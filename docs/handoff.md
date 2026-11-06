@@ -105,7 +105,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 | 内容 | issue |
 | --- | --- |
-| OpenTelemetry SDK・GraphQL Yoga とは偽物でしかテストしていない（npm に接続できない環境で作ったため） | [#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60) |
+| GraphQL Yoga とは偽物でしかテストしていない（npm に接続できない環境で作ったため） | [#60](https://github.com/nori-kamiya/kivin/issues/60) |
 | セッション・レートリミットはメモリストアのみ同梱。cron は全インスタンスで実行される | [#61](https://github.com/nori-kamiya/kivin/issues/61) |
 | `anyGuard` はコンストラクタ依存を持つガードを合成できない | [#62](https://github.com/nori-kamiya/kivin/issues/62) |
 | メトリクスはルートに一致しなかったリクエストを数えない | [#63](https://github.com/nori-kamiya/kivin/issues/63) |
@@ -120,7 +120,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | --- | --- | --- |
 | 高 | [#67](https://github.com/nori-kamiya/kivin/issues/67) | `main` のブランチ保護と古いブランチの整理（管理者作業） |
 | 高 | [#57](https://github.com/nori-kamiya/kivin/issues/57) | npm 公開の準備（特に `@kivin/core` を peerDependency にすること） |
-| 高 | [#59](https://github.com/nori-kamiya/kivin/issues/59), [#60](https://github.com/nori-kamiya/kivin/issues/60) | OpenTelemetry / GraphQL Yoga の実物との結合確認 |
+| 高 | [#60](https://github.com/nori-kamiya/kivin/issues/60) | GraphQL Yoga の実物との結合確認 |
 | 中 | [#58](https://github.com/nori-kamiya/kivin/issues/58) | `kivin init`（#57 の後） |
 | 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
 | 中 | [#64](https://github.com/nori-kamiya/kivin/issues/64) | readiness とシャットダウンの連動 |

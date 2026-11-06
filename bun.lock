@@ -79,45 +79,6 @@
         "oxc-resolver": "^11.24.2",
       },
     },
-    "packages/core": {
-      "name": "@kivin/core",
-      "version": "0.0.1",
-    },
-    "packages/decorators": {
-      "name": "@kivin/decorators",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kivin/core": "workspace:*",
-      },
-    },
-    "packages/jwt": {
-      "name": "@kivin/jwt",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kivin/core": "workspace:*",
-      },
-    },
-    "packages/http": {
-      "name": "@kivin/http",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kivin/core": "workspace:*",
-      },
-    },
-    "packages/security": {
-      "name": "@kivin/security",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kivin/core": "workspace:*",
-      },
-    },
-    "packages/observability": {
-      "name": "@kivin/observability",
-      "version": "0.0.1",
-      "dependencies": {
-        "@kivin/core": "workspace:*",
-      },
-    },
     "packages/config": {
       "name": "@kivin/config",
       "version": "0.0.1",
@@ -125,12 +86,12 @@
         "@kivin/core": "workspace:*",
       },
     },
-    "packages/schedule": {
-      "name": "@kivin/schedule",
+    "packages/core": {
+      "name": "@kivin/core",
       "version": "0.0.1",
     },
-    "packages/session": {
-      "name": "@kivin/session",
+    "packages/decorators": {
+      "name": "@kivin/decorators",
       "version": "0.0.1",
       "dependencies": {
         "@kivin/core": "workspace:*",
@@ -143,11 +104,18 @@
         "@kivin/core": "workspace:*",
       },
     },
-    "packages/static": {
-      "name": "@kivin/static",
+    "packages/http": {
+      "name": "@kivin/http",
       "version": "0.0.1",
       "dependencies": {
-        "@kivin/http": "workspace:*",
+        "@kivin/core": "workspace:*",
+      },
+    },
+    "packages/jwt": {
+      "name": "@kivin/jwt",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
       },
     },
     "packages/logger": {
@@ -158,8 +126,39 @@
         "@kivin/decorators": "workspace:*",
       },
     },
+    "packages/observability": {
+      "name": "@kivin/observability",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+      "devDependencies": {
+        "@opentelemetry/api": "^1.10.0",
+        "@opentelemetry/context-async-hooks": "^2.12.0",
+        "@opentelemetry/core": "^2.12.0",
+        "@opentelemetry/sdk-trace-base": "^2.12.0",
+      },
+    },
     "packages/openapi": {
       "name": "@kivin/openapi",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
+    "packages/schedule": {
+      "name": "@kivin/schedule",
+      "version": "0.0.1",
+    },
+    "packages/security": {
+      "name": "@kivin/security",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
+    "packages/session": {
+      "name": "@kivin/session",
       "version": "0.0.1",
       "dependencies": {
         "@kivin/core": "workspace:*",
@@ -170,6 +169,13 @@
       "version": "0.0.1",
       "dependencies": {
         "@kivin/core": "workspace:*",
+      },
+    },
+    "packages/static": {
+      "name": "@kivin/static",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/http": "workspace:*",
       },
     },
     "packages/valibot": {
@@ -193,37 +199,51 @@
 
     "@kivin/cli": ["@kivin/cli@workspace:packages/cli"],
 
+    "@kivin/config": ["@kivin/config@workspace:packages/config"],
+
     "@kivin/core": ["@kivin/core@workspace:packages/core"],
 
     "@kivin/decorators": ["@kivin/decorators@workspace:packages/decorators"],
 
-    "@kivin/jwt": ["@kivin/jwt@workspace:packages/jwt"],
+    "@kivin/graphql": ["@kivin/graphql@workspace:packages/graphql"],
 
     "@kivin/http": ["@kivin/http@workspace:packages/http"],
 
+    "@kivin/jwt": ["@kivin/jwt@workspace:packages/jwt"],
+
     "@kivin/logger": ["@kivin/logger@workspace:packages/logger"],
-
-    "@kivin/openapi": ["@kivin/openapi@workspace:packages/openapi"],
-
-    "@kivin/security": ["@kivin/security@workspace:packages/security"],
-
-    "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
 
     "@kivin/observability": ["@kivin/observability@workspace:packages/observability"],
 
-    "@kivin/config": ["@kivin/config@workspace:packages/config"],
+    "@kivin/openapi": ["@kivin/openapi@workspace:packages/openapi"],
 
     "@kivin/schedule": ["@kivin/schedule@workspace:packages/schedule"],
 
+    "@kivin/security": ["@kivin/security@workspace:packages/security"],
+
     "@kivin/session": ["@kivin/session@workspace:packages/session"],
 
-    "@kivin/graphql": ["@kivin/graphql@workspace:packages/graphql"],
+    "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
 
     "@kivin/static": ["@kivin/static@workspace:packages/static"],
 
     "@kivin/valibot": ["@kivin/valibot@workspace:packages/valibot"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.5", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || ^2.0.0-alpha.4", "@emnapi/runtime": "^1.7.1 || ^2.0.0-alpha.4" } }, "sha512-HshSvXzmBxNzqejd3k/KemgQ3hdREUYFRRrgxOZ+gPljDIsO2SDZrVZMd4Z/HsxudQbE62OVyVFE8z9BCurfjA=="],
+
+    "@opentelemetry/api": ["@opentelemetry/api@1.10.0", "", {}, "sha512-lMkyes8iHrG+mk6WH7X70MdCLI2RS0FwNBY1PyQ8UemaijE2m5mv5A0Niy3HtbYTFrgkUEQjFMXmSAk2hQDuPQ=="],
+
+    "@opentelemetry/context-async-hooks": ["@opentelemetry/context-async-hooks@2.12.0", "", { "peerDependencies": { "@opentelemetry/api": ">=1.0.0 <1.10.0" } }, "sha512-iK/1nD7mmZVkuYjVjkdFBiCvzntJdFny1S3CYbUYyOq7V5enL6XX+gJ7eh965L1LnS11VA8mQ7Ej/ck04SB0MQ=="],
+
+    "@opentelemetry/core": ["@opentelemetry/core@2.12.0", "", { "dependencies": { "@opentelemetry/semantic-conventions": "^1.29.0" }, "peerDependencies": { "@opentelemetry/api": ">=1.0.0 <1.10.0" } }, "sha512-1HsSAuvT4/my0QrXWsyXFdWjKaPeCHsismKZgEEIb8NK13LP6DrMRlsUbvD/0F9mDWK3xDom9AMv3IscxgOnOQ=="],
+
+    "@opentelemetry/resources": ["@opentelemetry/resources@2.12.0", "", { "dependencies": { "@opentelemetry/core": "2.12.0", "@opentelemetry/semantic-conventions": "^1.29.0" }, "peerDependencies": { "@opentelemetry/api": ">=1.3.0 <1.10.0" } }, "sha512-+rSRoOdln6NhXTVcBdHSlZxJDNzwxadeweK2ltZO3tVtfp6aklABc06xclDk6ovRR+EiGgIcSbh/6NgjFhnb3A=="],
+
+    "@opentelemetry/sdk-trace": ["@opentelemetry/sdk-trace@2.12.0", "", { "dependencies": { "@opentelemetry/core": "2.12.0", "@opentelemetry/resources": "2.12.0", "@opentelemetry/semantic-conventions": "^1.29.0" }, "peerDependencies": { "@opentelemetry/api": ">=1.3.0 <1.10.0" } }, "sha512-ImVuRQ6faOsTi1Wna88s2avgrrf/iDgXPigIeynkUhjstMuoQUDOJXgkez2j1mlU4btjXcXBGa+q7qKFYR3GsA=="],
+
+    "@opentelemetry/sdk-trace-base": ["@opentelemetry/sdk-trace-base@2.12.0", "", { "dependencies": { "@opentelemetry/core": "2.12.0", "@opentelemetry/resources": "2.12.0", "@opentelemetry/sdk-trace": "2.12.0", "@opentelemetry/semantic-conventions": "^1.29.0" }, "peerDependencies": { "@opentelemetry/api": ">=1.3.0 <1.10.0" } }, "sha512-JOERgZCxRM06FEJ5kEWxlSRChah6MmXDx3KwCruqEv/iEyLkTokCSemf2y1w8oIHtfrr8EVTpzebq/31vn2Cpg=="],
+
+    "@opentelemetry/semantic-conventions": ["@opentelemetry/semantic-conventions@1.44.0", "", {}, "sha512-E3JkOlMBi3N8OGGkbl7tFyqk2MAS6/lySRZBK3Mu7AzjF1fT8oIChH9ChE48SUWzDn9Kdwta+G/p5LJ4xW4CLQ=="],
 
     "@oxc-parser/binding-android-arm-eabi": ["@oxc-parser/binding-android-arm-eabi@0.155.0", "", { "os": "android", "cpu": "arm" }, "sha512-A6xv7hDtnTm+xlZ7utn6rRQpRMJHRhVr3gjRGqlx0RUX84mNk0pAsy6YN/wWhuOTkaZhRrrzaLxf0NfbH77j2w=="],
 
