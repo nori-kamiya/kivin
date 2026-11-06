@@ -13,7 +13,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - [@kivin/static](#kivinstatic)
 - [@kivin/decorators](#kivindecorators)
 - [@kivin/valibot](#kivinvalibot)
-- [@kivin/standard-schema](#kivinstandardschema)
+- [@kivin/standard-schema](#kivinstandard-schema)
 - [@kivin/jwt](#kivinjwt)
 - [@kivin/openapi](#kivinopenapi)
 - [@kivin/logger](#kivinlogger)
