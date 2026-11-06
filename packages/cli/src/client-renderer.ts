@@ -52,7 +52,7 @@ export function renderClient(controllers: AstControllerNode[], outFile: string) 
       if (headerSchema) {
         // Typed (names and values) but optional: required headers are often sent for every request
         // through createClient({ headers }), so a call does not have to repeat them.
-        parts.push(`{ headers?: HeadersInit & Partial<${inferInput}<${headerSchema}>> }`);
+        parts.push(`{ headers?: HeadersInput & Partial<${inferInput}<${headerSchema}>> }`);
       }
       const output = outputType(controller, route, handler, schemaType, inferOutput);
       const inputType = parts.length > 0 ? `ClientRequestOptions & ${parts.join(' & ')}` : 'ClientRequestOptions';
@@ -77,13 +77,15 @@ export function renderClient(controllers: AstControllerNode[], outFile: string) 
 // Only types are imported from the server code, so this file is safe to bundle into a frontend.
 ${renderer.render()}
 /** Result of a handler as seen over HTTP: a raw \`Response\` carries no static type. */
+/** \`HeadersInit\` is a DOM-lib name; this resolves under \`lib: ["ESNext"]\` too. */
+type HeadersInput = NonNullable<ConstructorParameters<typeof Headers>[0]>;
 type HandlerResult<T> = [Exclude<Awaited<T>, Response>] extends [never] ? unknown : Exclude<Awaited<T>, Response>;
 /** \`{ key?: T }\` when every field of T is optional, otherwise \`{ key: T }\`. */
 type Part<K extends string, T> = {} extends T ? { [P in K]?: T } : { [P in K]: T };
 type OptionalIfEmpty<T> = {} extends T ? [input?: T] : [input: T];
 
 export interface ClientRequestOptions {
-  headers?: HeadersInit;
+  headers?: HeadersInput;
   signal?: AbortSignal;
 }
 
@@ -93,7 +95,7 @@ export interface ClientOptions {
   /** Custom transport. Defaults to the global \`fetch\`; pass \`app.fetch\` to call an app in-process. */
   fetch?: (request: Request) => Response | Promise<Response>;
   /** Headers sent with every request; a function is evaluated per request (e.g. for auth tokens). */
-  headers?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>);
+  headers?: HeadersInput | (() => HeadersInput | Promise<HeadersInput>);
 }
 
 /** Thrown for non-2xx responses. \`body\` is the parsed JSON body when there is one, otherwise the text. */
@@ -116,7 +118,7 @@ export function createClient(options: ClientOptions) {
   async function call<TOutput>(
     method: string,
     path: string,
-    input: { params?: Record<string, unknown>; query?: Record<string, unknown>; body?: unknown; headers?: HeadersInit; signal?: AbortSignal } = {},
+    input: { params?: Record<string, unknown>; query?: Record<string, unknown>; body?: unknown; headers?: HeadersInput; signal?: AbortSignal } = {},
     form = false,
   ): Promise<TOutput> {
     const resolvedPath = path.replace(/:([A-Za-z0-9_]+)/g, (_match, name: string) => {
@@ -166,7 +168,7 @@ ${groupEntries.join('\n')}
   };
 }
 
-function toFormBody(value: unknown): BodyInit {
+function toFormBody(value: unknown): NonNullable<RequestInit['body']> {
   if (value instanceof FormData || value instanceof URLSearchParams) {
     return value;
   }

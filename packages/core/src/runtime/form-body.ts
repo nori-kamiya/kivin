@@ -8,7 +8,8 @@ import type { BodyMediaType } from '../metadata';
 import { HttpError } from '../http';
 import type { CompiledRoute } from './types';
 
-export type FormBodyValue = FormDataEntryValue | FormDataEntryValue[];
+/** `FormDataEntryValue` is a DOM-lib name; spelled out so the public declarations resolve without the DOM lib. */
+export type FormBodyValue = File | string | Array<File | string>;
 
 const FORM_MEDIA_TYPES = new Set<BodyMediaType>(['multipart/form-data', 'application/x-www-form-urlencoded']);
 const readRequestFormData = Request.prototype.formData;

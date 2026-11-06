@@ -102,7 +102,7 @@ function withVary(response: Response) {
   }
 }
 
-function encodedResponse(body: BodyInit, original: Response, encoding: CompressionEncoding) {
+function encodedResponse(body: NonNullable<ConstructorParameters<typeof Response>[0]>, original: Response, encoding: CompressionEncoding) {
   const headers = new Headers(original.headers);
   headers.set('content-encoding', encoding);
   headers.delete('content-length');

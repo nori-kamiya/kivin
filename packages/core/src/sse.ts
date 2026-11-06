@@ -1,4 +1,5 @@
 // Server-Sent Events (text/event-stream) responses.
+import type { HeadersInput } from './http';
 
 export interface ServerSentEvent {
   /** JSON-serialized unless it is already a string. */
@@ -25,7 +26,7 @@ export type EventStreamHandler = (stream: EventStream) => void | Promise<void>;
 export interface EventStreamOptions {
   /** Interval of keep-alive comments in ms, so proxies do not drop idle streams. `0` disables. Default 15000. */
   keepAliveMs?: number;
-  headers?: HeadersInit;
+  headers?: HeadersInput;
 }
 
 const encoder = new TextEncoder();

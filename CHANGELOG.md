@@ -60,6 +60,7 @@
 
 ### Fixed
 
+- 全パッケージ: 公開型定義と生成クライアントが DOM ライブラリ限定のグローバル名（`FormDataEntryValue` / `HeadersInit` / `BodyInit` / `JsonWebKey`）を使っていたため、`bun init` が作る `lib: ["ESNext"]` の tsconfig では解決できず、`skipLibCheck: true` の下で黙って `any` になっていた。DOM ライブラリの有無に関わらず解決できる型（`File | string`、`ConstructorParameters<typeof Headers>[0]` など）に置き換えた。`lib: ["ESNext"]` + `skipLibCheck: false` で型検査する `tests/lib-esnext` を追加
 - `@kivin/cli`: `kivin generate` が `createLoggerModule()` などのモジュールファクトリ呼び出しを「@Module class, defineModule(...) call, or object literal」エラーで拒否していた不具合を修正（`imports` でも `modules` でも、`const` に束縛しても可）。コントローラーを宣言するファクトリ呼び出しは静的解析できないため、ルートが黙って消えないよう「`@Module` か `defineModule` で宣言する」エラーにする
 - `@kivin/cli`: `kivin generate` が途中で失敗すると manifest・contracts・client だけが更新され `openapi.json` が古いまま残っていた。生成を一時ディレクトリで行い、すべて成功した時だけ出力先に移すようにした（失敗時は以前の成果物がそのまま残る）
 - `@kivin/cli`: `kivin inspect` が、CLI とアプリで別の `@kivin/core` が解決される環境（bunx・グローバルインストール）で「Module metadata is missing」になる不具合を修正。エントリが解決する `@kivin/core` 経由でメタデータを読む（解決できなければ CLI 自身のものを使う）
