@@ -89,6 +89,29 @@ export const AuthGuard = createJwtGuard({
 - 再取得に失敗した場合は直前の鍵セットを使い続けます。初回取得に失敗した場合、ガードは `503`（`Retry-After`）を返します（`401` ではないため、クライアントがログアウト扱いにしません）
 - 固定の鍵セットを使う場合は `createLocalJwks({ keys: [...] })`。`verifyJwt(token, { key: resolver, ... })` でガード以外からも使えます
 
+## 圧縮と ETag
+
+```ts
+import { createCompressMiddleware, createEtagMiddleware } from '@kivin/core';
+
+defineApplication({
+  // ...
+  // 圧縮を先に（外側に）置くと、ETag は圧縮前のボディで計算・比較されます
+  globals: { middleware: [createCompressMiddleware(), createEtagMiddleware()] },
+});
+```
+
+`createCompressMiddleware(options)`:
+
+- `Accept-Encoding` の q 値に従い `br` → `gzip` の順で選びます（`encodings` で変更）。圧縮した／しうるレスポンスには `Vary: Accept-Encoding` を付けます
+- brotli の品質は既定 4（gzip の約半分のサイズで同程度のコスト。品質 11 は約 100 倍遅い）。`brotliQuality` / `gzipLevel` で変更できます
+- 圧縮しないもの: `threshold`（既定 1024 バイト）未満、画像など非テキスト（`filter` で変更）、`text/event-stream`、HEAD、204 / 206 / 304、`Cache-Control: no-transform`、すでに `Content-Encoding` があるもの
+- `application/x-ndjson` はバッファせずストリームのまま圧縮します。強い ETag は弱い ETag に変えます
+
+`createEtagMiddleware(options)`:
+
+- GET / HEAD の 200 で ETag の無いレスポンスに、ボディのハッシュから弱い ETag を付け、`If-None-Match` が一致すれば `304` を返します
+- SSE / NDJSON、`maxSize`（既定 1 MiB）を超えるボディ、すでに ETag があるもの（`serveStatic` など）はそのまま通します
 ## 静的ファイル
 
 `serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
