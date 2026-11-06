@@ -108,7 +108,8 @@ uploadAvatar(/* ... */) {}
 ## タイムアウトとレートリミット
 
 ```ts
-import { createRateLimitMiddleware, createTimeoutMiddleware } from '@kivin/core';
+import { createTimeoutMiddleware } from '@kivin/http';
+import { createRateLimitMiddleware } from '@kivin/security';
 
 globals: {
   middleware: [
@@ -132,7 +133,7 @@ globals: {
 ## 圧縮と ETag
 
 ```ts
-import { createCompressMiddleware, createEtagMiddleware } from '@kivin/core';
+import { createCompressMiddleware, createEtagMiddleware } from '@kivin/http';
 
 defineApplication({
   // ...
@@ -157,7 +158,7 @@ defineApplication({
 `serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
 
 ```ts
-import { serveStatic } from '@kivin/core';
+import { serveStatic } from '@kivin/static';
 
 app.listen({
   port: 3000,
@@ -179,7 +180,7 @@ app.listen({
 ## Basic / Bearer 認証と CSRF
 
 ```ts
-import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '@kivin/core';
+import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '@kivin/security';
 
 export const AdminGuard = createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! }, realm: 'Admin' });
 export const ApiKeyGuard = createBearerAuthGuard({ tokens: [process.env.API_KEY!] });
@@ -278,7 +279,7 @@ uploadAvatar({ params, body }: RouteInput<{ params: typeof UserIdParams; body: t
 ## リクエスト ID
 
 ```ts
-import { createRequestIdMiddleware, getRequestId } from '@kivin/core';
+import { createRequestIdMiddleware, getRequestId } from '@kivin/http';
 import { RequestLoggerMiddleware } from '@kivin/logger';
 
 // ID を先（外側）に置くと、ロガーの request.* レコードに同じ requestId が入ります

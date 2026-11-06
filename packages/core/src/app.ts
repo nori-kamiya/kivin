@@ -13,7 +13,7 @@ import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
-import { trackServer } from './limits';
+import { trackServer } from './client-address';
 import { compileWebSocketRoutes } from './websocket';
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {

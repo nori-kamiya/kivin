@@ -8,6 +8,7 @@
 // backslashes, or name dotfiles are refused before touching the file system.
 import { stat } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
+import { acceptsEncoding } from '@kivin/http';
 
 export interface ServeStaticOptions {
   /** Directory to serve from (resolved against the current working directory). */
@@ -222,15 +223,4 @@ async function findPrecompressed(request: Request, file: FileInfo) {
     }
   }
   return undefined;
-}
-
-export function acceptsEncoding(header: string, encoding: string) {
-  return header.split(',').some((part) => {
-    const [name, ...params] = part.trim().split(';');
-    if (name?.trim().toLowerCase() !== encoding && name?.trim() !== '*') {
-      return false;
-    }
-    const q = params.map((param) => param.trim()).find((param) => param.startsWith('q='));
-    return q === undefined || Number(q.slice(2)) > 0;
-  });
 }

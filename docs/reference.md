@@ -26,17 +26,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
-| `createTimeoutMiddleware(ms, options)` | function | 時間内に終わらないリクエストに 504 を返すミドルウェア |
-| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのメモリ上レートリミット（429 / Retry-After / RateLimit-* ヘッダ） |
 | `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
-| `createCompressMiddleware(options)` | function | gzip / brotli 圧縮ミドルウェア（Accept-Encoding の交渉、閾値、型フィルタ、NDJSON はストリーム圧縮） |
-| `createEtagMiddleware(options)` | function | ボディのハッシュから弱い ETag を付け、If-None-Match に 304 を返すミドルウェア |
-| `serveStatic(options)` | function | 静的ファイル配信ハンドラ（`listen({ routes })` に渡す）。ETag / 304、Range、事前圧縮、SPA fallback、パストラバーサル対策 |
-| `createBasicAuthGuard(options)` | function | HTTP Basic 認証ガード（定数時間比較、`verify` で独自検証） |
-| `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
-| `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
-| `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
-| `createRequestIdMiddleware(options)` / `getRequestId(request)` | function | リクエスト ID の付与（受信 ID は形式を検証）とレスポンスへの反映、ロガー連携 |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
@@ -87,14 +77,6 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - `undefined`（何も返さない）: 空ボディ。ステータスはルートの既定（GET 200、POST 201、既定が 204 のルートは 204）
 - それ以外: JSON（`Response.json()`）
 
-### Security
-
-| Export | 種別 | 概要 |
-| --- | --- | --- |
-| `createSecureHeadersMiddleware(options)` | function | secure-headers ミドルウェアを生成する |
-| `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
-| `SecureHeadersOptions` | type | secure-headers 設定 |
-
 ### Compile-time contracts (types)
 
 | Export | 種別 | 概要 |
@@ -111,6 +93,39 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 `ProviderScope`, `ParameterMetadata` ほか）。
 
 ---
+
+## @kivin/security
+
+認証ガード・CSRF・セキュリティヘッダ・レートリミット。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createSecureHeadersMiddleware(options)` | function | secure-headers ミドルウェアを生成する |
+| `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
+| `SecureHeadersOptions` | type | secure-headers 設定 |
+| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのメモリ上レートリミット（429 / Retry-After / RateLimit-* ヘッダ） |
+| `createBasicAuthGuard(options)` | function | HTTP Basic 認証ガード（定数時間比較、`verify` で独自検証） |
+| `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
+| `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
+| `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
+
+## @kivin/http
+
+HTTP レベルのミドルウェアとヘルパー。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createTimeoutMiddleware(ms, options)` | function | 時間内に終わらないリクエストに 504 を返すミドルウェア |
+| `createCompressMiddleware(options)` | function | gzip / brotli 圧縮ミドルウェア（Accept-Encoding の交渉、閾値、型フィルタ、NDJSON はストリーム圧縮） |
+| `createEtagMiddleware(options)` | function | ボディのハッシュから弱い ETag を付け、If-None-Match に 304 を返すミドルウェア |
+| `createRequestIdMiddleware(options)` / `getRequestId(request)` | function | リクエスト ID の付与（受信 ID は形式を検証）とレスポンスへの反映、ロガー連携 |
+| `acceptsEncoding(header, encoding)` | function | `Accept-Encoding` がエンコーディングを（q > 0 で）許すか |
+
+## @kivin/static
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `serveStatic(options)` | function | 静的ファイル配信ハンドラ（`listen({ routes })` に渡す）。ETag / 304、Range、事前圧縮、SPA fallback、パストラバーサル対策 |
 
 ## @kivin/decorators
 

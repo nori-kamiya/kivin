@@ -1,4 +1,4 @@
-import type { NestLikeMiddleware } from './runtime-types';
+import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
 
 const DEFAULT_SECURITY_HEADERS = Object.freeze({
   'referrer-policy': 'no-referrer',
@@ -41,7 +41,7 @@ function applySecurityHeaders(response: Response, headers: Record<string, string
 export class SecureHeadersMiddleware implements NestLikeMiddleware {
   protected readonly headers = normalizeSecureHeaders();
 
-  async handle(_context: import('./context').RequestContext, next: () => Promise<Response>) {
+  async handle(_context: RequestContext, next: () => Promise<Response>) {
     const response = await next();
 
     applySecurityHeaders(response, this.headers);
@@ -53,7 +53,7 @@ export function createSecureHeadersMiddleware(options: SecureHeadersOptions = {}
   const headers = normalizeSecureHeaders(options);
 
   return class ConfiguredSecureHeadersMiddleware implements NestLikeMiddleware {
-    async handle(_context: import('./context').RequestContext, next: () => Promise<Response>) {
+    async handle(_context: RequestContext, next: () => Promise<Response>) {
       const response = await next();
       applySecurityHeaders(response, headers);
       return response;
