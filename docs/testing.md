@@ -26,6 +26,9 @@ bun test
 bun run example:smoke
 bun run perf:check
 bun run release:check
+bun run release:pack      # .release/ に 16 パッケージの tarball と manifest.json を作る
+bun run release:verify    # tarball の中身を検査する（タグ付きなら --tag vX.Y.Z）
+bun run pack:smoke        # tarball だけを使って一時プロジェクトで install → generate → tsc → compile → dev
 BENCH_ITERATIONS=10 bun run bench:stack
 BENCH_ITERATIONS=10 bun run bench:stack:delete
 BENCH_ITERATIONS=10 bun run bench:kivin:create
@@ -57,6 +60,8 @@ production に近づけるため、最低でも次を毎回通す前提にしま
 - `bun run example:smoke`
 
 日常運用ではこれらを個別に叩くより、`bun run release:check` を canonical な release gate として使う想定です。
+
+公開前の追加ゲートとして `bun run release:pack`、`bun run release:verify`、`bun run pack:smoke` があります。これらは `release:check` には含めません（毎回 16 パッケージを pack して別プロジェクトに install するため重く、モノレポの外から見た問題を調べる目的が別だからです）。CI の `Pack smoke` ジョブと `release.yml` が実行します。手順は [release.md](release.md) を見てください。
 
 性能退行は `bun run perf:regression`（base ref との同一マシン比較、CI でブロッキング）で見ます。Hono / Elysia との位置関係は `bun run perf:check`（ペア計測の参考値）で確認します。
 
