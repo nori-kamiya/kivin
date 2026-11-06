@@ -19,6 +19,7 @@
     { "path": "./packages/cli" },
     { "path": "./tests/types" },
     { "path": "./packages/observability/tests" },
+    { "path": "./packages/graphql/tests" },
     { "path": "./examples/basic" },
     { "path": "./examples/benchmark-kivin" },
     { "path": "./examples/benchmark-hono" },

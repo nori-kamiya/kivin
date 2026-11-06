@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "rootDir": "../../..",
+    "outDir": "../../../.cache/graphql-tests",
+    "noEmit": false,
+    "emitDeclarationOnly": true
+  },
+  "references": [
+    { "path": "../../core" },
+    { "path": "../../valibot" },
+    { "path": ".." }
+  ],
+  "include": ["yoga.integration.test.ts"]
+}

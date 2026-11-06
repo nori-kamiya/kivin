@@ -105,7 +105,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 | 内容 | issue |
 | --- | --- |
-| GraphQL Yoga とは偽物でしかテストしていない（npm に接続できない環境で作ったため） | [#60](https://github.com/nori-kamiya/kivin/issues/60) |
+| `graphql-ws`（WebSocket）のサブスクリプションは未確認 | [#60](https://github.com/nori-kamiya/kivin/issues/60) |
 | セッション・レートリミットはメモリストアのみ同梱。cron は全インスタンスで実行される | [#61](https://github.com/nori-kamiya/kivin/issues/61) |
 | `anyGuard` はコンストラクタ依存を持つガードを合成できない | [#62](https://github.com/nori-kamiya/kivin/issues/62) |
 | メトリクスはルートに一致しなかったリクエストを数えない | [#63](https://github.com/nori-kamiya/kivin/issues/63) |
