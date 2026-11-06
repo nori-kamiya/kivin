@@ -12,5 +12,5 @@
     { "path": "../../valibot" },
     { "path": ".." }
   ],
-  "include": ["yoga.integration.test.ts"]
+  "include": ["yoga.integration.test.ts", "graphql-ws.integration.test.ts"]
 }
