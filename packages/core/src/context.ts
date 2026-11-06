@@ -1,4 +1,4 @@
-import { parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptions } from './cookies';
+import { parseCookies, serializeCookie, serializeDeletedCookie, serializeSignedCookie, verifyCookieValue, type CookieOptions, type CookieSecrets } from './cookies';
 import type { ContainerLike } from './metadata';
 import { createEventStream, type EventStreamHandler, type EventStreamOptions } from './sse';
 import { readNullableQueryParam } from './request-url';
@@ -382,6 +382,20 @@ export class RequestContext {
   /** Queues a `Set-Cookie` header on the response; can be called several times. */
   setCookie(name: string, value: string, options?: CookieOptions) {
     this.responseState.appendResponseHeader('set-cookie', serializeCookie(name, value, options));
+  }
+
+  /**
+   * Reads a cookie set with `setSignedCookie` and verifies its HMAC signature: the value, `undefined`
+   * when absent, or `false` when the signature does not verify (tampered or another secret).
+   */
+  async signedCookie(name: string, secret: CookieSecrets): Promise<string | undefined | false> {
+    const signed = this.cookies()[name];
+    return signed === undefined ? undefined : verifyCookieValue(name, signed, secret);
+  }
+
+  /** Queues a `Set-Cookie` header with an HMAC-SHA256 signed value (see `signCookieValue`). */
+  async setSignedCookie(name: string, value: string, secret: CookieSecrets, options?: CookieOptions): Promise<void> {
+    this.responseState.appendResponseHeader('set-cookie', await serializeSignedCookie(name, value, secret, options));
   }
 
   deleteCookie(name: string, options?: Pick<CookieOptions, 'domain' | 'path' | 'secure' | 'sameSite' | 'partitioned'>) {

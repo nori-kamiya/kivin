@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/core`: 署名付き Cookie を追加。`context.setSignedCookie` / `context.signedCookie` と、単体の `signCookieValue` / `verifyCookieValue` / `getSignedCookie` / `serializeSignedCookie`。HMAC-SHA256（Web Crypto、定数時間の検証）で、署名は Cookie 名と値の両方にかかる。鍵の配列を渡すとローテーションできる
 - `@kivin/core`: `createRequestIdMiddleware` と `getRequestId` を追加（受信した ID は形式を検証し、不正なら UUID を発行。`@kivin/logger` の requestId にも反映）
 - `@kivin/core` / `@kivin/decorators`: ルート単位のボディサイズ制限 `@BodyLimit(bytes)` とアプリ全体の既定 `defineApplication({ bodyLimit })` を追加（413。Content-Length が超えていれば読まずに返し、チャンク転送は読みながら打ち切る）
 

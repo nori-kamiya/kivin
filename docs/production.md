@@ -40,6 +40,29 @@ logout({ context }: RouteInput) {
 
 `parseCookies` / `serializeCookie` / `getCookie` は単体の関数としても使えます。`Path` の既定値は `/` で、`SameSite=None` や `partitioned` を指定すると `Secure` を自動で付けます。
 
+### 署名付き Cookie
+
+改ざんを検出したい値（ユーザー ID・設定など）は HMAC-SHA256 で署名して保存できます。暗号化はしないので、クライアントに見られて困る値は入れないでください。
+
+```ts
+const COOKIE_SECRETS = [process.env.COOKIE_SECRET!, process.env.COOKIE_SECRET_OLD!].filter(Boolean);
+
+async login({ context }: RouteInput) {
+  await context.setSignedCookie('uid', user.id, COOKIE_SECRETS, { httpOnly: true, sameSite: 'Lax' });
+  return { ok: true };
+}
+
+async me({ context }: RouteInput) {
+  const uid = await context.signedCookie('uid', COOKIE_SECRETS);
+  if (!uid) throw unauthorized();   // undefined = 無い、false = 署名が合わない（改ざん / 別の鍵）
+  return { uid };
+}
+```
+
+- 値は `<value>.<署名>`（署名は base64url 43 文字）。署名対象は `<name>=<value>` なので、ある Cookie 用に署名された値を別名の Cookie に移しても検証に失敗します。
+- 鍵は文字列・鍵のバイト列・HMAC の `CryptoKey` のいずれか。配列を渡すと先頭の鍵で署名し、どれかの鍵で検証できれば受け入れるので、新しい鍵を先頭に足すだけでローテーションできます。検証は `crypto.subtle.verify`（定数時間）です。
+- ミドルウェアなど `RequestContext` の外では `getSignedCookie(request, name, secrets)` / `serializeSignedCookie(name, value, secrets, options)` / `signCookieValue` / `verifyCookieValue` を使います。
+
 ## JWT（`@kivin/jwt`）
 
 Web Crypto ベースで依存はありません。HS* / RS* / PS* / ES* / EdDSA に対応しています。

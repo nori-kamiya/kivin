@@ -1,6 +1,6 @@
 export { buildManifest, createApp, type AppManifest, type BunRouteDefinition, type BunRouteHandler, type ListenOptions, type ManifestRoute } from './app';
 export { Container } from './container';
-export { getCookie, parseCookies, serializeCookie, serializeDeletedCookie, type CookieOptions } from './cookies';
+export { getCookie, getSignedCookie, parseCookies, serializeCookie, serializeDeletedCookie, serializeSignedCookie, signCookieValue, verifyCookieValue, type CookieOptions, type CookieSecret, type CookieSecrets } from './cookies';
 export { createCorsHandler, createCorsMiddleware, type CorsHandler, type CorsOptions } from './cors';
 export type { AotExecutorFactory, AotRouteRuntime } from './runtime/aot';
 export { createToken, type InferSchemaInput, type InferSchemaOutput, type InjectionToken, type RouteContract, type RouteInput, type RouteInputSpec, type TokenValue, type TokenValues } from './contracts';
