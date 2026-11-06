@@ -19,19 +19,44 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "dependencies": {
-    "@kivin/core": "workspace:*",
-    "@kivin/openapi": "workspace:*",
-    "oxc-parser": "^0.155.0",
-    "oxc-resolver": "^11.24.2"
+    "@kivin/openapi": "workspace:^",
+    "oxc-parser": "0.155.0",
+    "oxc-resolver": "11.24.2"
+  },
+  "peerDependencies": {
+    "@kivin/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@kivin/core": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "cli",
+    "codegen",
+    "openapi"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

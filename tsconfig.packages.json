@@ -1,0 +1,53 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/core"
+    },
+    {
+      "path": "./packages/decorators"
+    },
+    {
+      "path": "./packages/logger"
+    },
+    {
+      "path": "./packages/openapi"
+    },
+    {
+      "path": "./packages/valibot"
+    },
+    {
+      "path": "./packages/standard-schema"
+    },
+    {
+      "path": "./packages/jwt"
+    },
+    {
+      "path": "./packages/security"
+    },
+    {
+      "path": "./packages/http"
+    },
+    {
+      "path": "./packages/static"
+    },
+    {
+      "path": "./packages/graphql"
+    },
+    {
+      "path": "./packages/session"
+    },
+    {
+      "path": "./packages/schedule"
+    },
+    {
+      "path": "./packages/config"
+    },
+    {
+      "path": "./packages/observability"
+    },
+    {
+      "path": "./packages/cli"
+    }
+  ]
+}

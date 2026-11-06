@@ -16,7 +16,7 @@
     "examples/*"
   ],
   "scripts": {
-    "build": "tsc -b tsconfig.build.json",
+    "build": "tsc -b tsconfig.packages.json",
     "bench": "bun run bench:build && bun run scripts/benchmark.ts",
     "bench:extended": "BENCH_MODE=extended bun run bench",
     "bench:health": "bun run bench:build && bun run scripts/benchmark-health.ts",
