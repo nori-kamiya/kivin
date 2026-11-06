@@ -60,6 +60,9 @@
 
 ### Fixed
 
+- `@kivin/cli`: 公開パッケージから `kivin dev` を起動できなかった不具合を修正（`dist` に無い `bin.ts` を探していた）。生成に失敗した時、まだサーバーが起動していないのに「直前のサーバーを維持する」と表示していたのも直した
+- `@kivin/cli`: `kivin --help` / `-h` と `--version` / `-v` を追加。未知のコマンドは使い方を標準エラーに出して非 0 で終了する
+- `@kivin/decorators`: 標準デコレータでない呼び出しのエラーメッセージに、最小対応の Bun バージョン（1.4.0）を追記
 - `@kivin/core` / `@kivin/observability`: プロセス起動直後のリクエストで `afterResponse` のコールバックが呼ばれないことがあった不具合を修正。ガードの後ろに置いた `createMetrics` では `http_requests_in_flight` が増えたまま戻らず、件数・トレースのスパン・`Server-Timing` も失われていた。`createMetrics` / `createTracingMiddleware` / `createServerTimingMiddleware` は生成時に有効化する。自作ミドルウェアがガードなどの `await` の後ろで `afterResponse` を使う場合のために、起動時に呼ぶ `enableAfterResponse()` を追加
 - `@kivin/graphql`: `createGraphqlRoutes(yoga, { context })` が実物の Yoga で型エラーになっていたのを修正（Yoga の `fetch` のオーバーロードからサーバーコンテキストの型を誤って推論していた）
 - `@kivin/core`: 引数を取らない同期の GET ハンドラを起動時に 1 回だけ呼び、その結果を返し続けていたのを修正。`list() { return this.store.all(); }` や `now() { return { now: Date.now() }; }` が起動時の値を返し続けていた。事前計算するのは、定数リテラルを返すだけのハンドラ（`kivin generate` が判定し manifest に `staticResponse: true` を出力）と、新しい `@StaticResponse()` を付けたハンドラだけにした

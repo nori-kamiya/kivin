@@ -285,7 +285,9 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ## @kivin/cli
 
-`kivin` CLI（`bun run packages/cli/src/bin.ts <command>`）。
+`kivin` CLI（`bun run packages/cli/src/bin.ts <command>`、インストール後は `kivin <command>`）。
+
+`kivin --help` / `-h` は使い方を標準出力に、`kivin --version` / `-v` は `@kivin/cli` のバージョンを出力して終了コード 0 で終わる。未知のコマンドは使い方を標準エラーに出し、非 0 で終わる。
 
 ### `generate`
 
@@ -297,7 +299,7 @@ generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot
 
 ### `dev`
 
-ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する。
+ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する（まだ一度も起動していなければ、そう表示して次の保存を待つ）。
 
 ```
 dev --entry <app.ts> --outDir <dir> --main <main.ts> [--watch <dir>]...

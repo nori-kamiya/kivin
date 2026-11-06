@@ -38,7 +38,7 @@ type ClassOrMethodDecorator = (value: Function, context: ClassDecoratorContext |
  */
 function assertStandard(context: unknown, decorator: string): asserts context is DecoratorContext {
   if (typeof context !== 'object' || context === null || !('kind' in context)) {
-    throw new TypeError(`@${decorator}: kivin uses TC39 standard decorators; remove "experimentalDecorators" from your tsconfig`);
+    throw new TypeError(`@${decorator}: kivin uses TC39 standard decorators; remove "experimentalDecorators" from your tsconfig, and check that Bun is at least 1.4.0 (the minimum supported version)`);
   }
 }
 
