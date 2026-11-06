@@ -1,0 +1,77 @@
+# @kivin/standard-schema
+
+*English | [日本語](#日本語)*
+
+Standard Schema adapter for kivin: use Zod, ArkType, Valibot or any Standard Schema validator.
+
+**Requires Bun 1.4.0 or later** (Bun only; it does not run on Node). Part of [kivin](https://github.com/nori-kamiya/kivin/blob/main/README.md), which is early-stage and may change before a stable release.
+
+## Install
+
+```bash
+bun add @kivin/core @kivin/standard-schema zod
+```
+
+`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+
+Install the validator you use (Zod is shown above).
+
+## Usage
+
+```ts
+import { defineApplication, defineModule } from '@kivin/core';
+import { createStandardSchemaAdapter } from '@kivin/standard-schema';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
+
+// Works with Zod, ArkType, Valibot, or any other Standard Schema validator
+export default defineApplication({
+  modules: [AppModule],
+  schemaAdapter: createStandardSchemaAdapter(),
+});
+```
+
+## Documentation
+
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstandard-schema) (Japanese)
+- [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
+- [Schema adapter guide](https://github.com/nori-kamiya/kivin/blob/main/docs/schema-adapter.md) (Japanese)
+
+---
+
+## 日本語
+
+kivin 用の Standard Schema adapter です。Zod、ArkType、Valibot など Standard Schema 対応の validator を使えます。
+
+**Bun 1.4.0 以上が必要です**（Bun 専用で、Node では動きません）。[kivin](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md) の一部で、early-stage のため安定版までに変わる可能性があります。
+
+### インストール
+
+```bash
+bun add @kivin/core @kivin/standard-schema zod
+```
+
+`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+
+使う validator も入れてください（上の例は Zod）。
+
+### 使い方
+
+```ts
+import { defineApplication, defineModule } from '@kivin/core';
+import { createStandardSchemaAdapter } from '@kivin/standard-schema';
+
+const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
+
+// Works with Zod, ArkType, Valibot, or any other Standard Schema validator
+export default defineApplication({
+  modules: [AppModule],
+  schemaAdapter: createStandardSchemaAdapter(),
+});
+```
+
+### ドキュメント
+
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstandard-schema)
+- [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)
+- [schema adapter のガイド](https://github.com/nori-kamiya/kivin/blob/main/docs/schema-adapter.md)

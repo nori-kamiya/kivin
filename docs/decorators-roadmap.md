@@ -1,4 +1,4 @@
-# Decorators: TC39 standard
+# Decorators: TC39 standard（移行の記録）
 
 kivin は TC39 標準デコレータ（TypeScript 5+ の既定、Bun の既定）で動きます。`experimentalDecorators` は不要で、有効にしないでください。
 

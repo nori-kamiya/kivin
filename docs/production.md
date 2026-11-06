@@ -295,7 +295,7 @@ Bun ネイティブの WebSocket サーバーをそのまま使います（pub/s
 
 - `upgrade` が例外を投げると `500 { message: 'Internal Server Error' }` を返します（スタックトレースは返しません）
 - `open` / `message` / `close` / `drain` の例外（async の reject を含む）は、ルートの `error(socket, error, phase)` フックに渡されます。フックが無ければ `console.error` に出力します。接続は維持されますが、`open` が失敗した場合だけ 1011 で閉じます
-- kivin の外で起きたエラー（`listen({ routes })` に渡した native route など）も、Bun の既定エラーページではなく汎用の 500 になります（`listen({ error })` で上書きできます）
+- kivin の外で起きたエラー（`listen({ routes })` に渡した native route など）も、Bun の既定エラーページではなく汎用の 500 になります（`ListenOptions` に `error` の型はないため、この応答を TypeScript から差し替えることはできません。kivin のルートのエラーは例外フィルタで整形してください）
 
 ## Server-Sent Events
 
@@ -562,11 +562,15 @@ const Env = v.object({
   LOG_LEVEL: v.optional(v.picklist(['debug', 'info', 'warn', 'error']), 'info'),
 });
 
-export const env = loadEnv(Env);                  // { PORT: number; DATABASE_URL: string; LOG_LEVEL: … }
-// DI で使うなら
-export const ENV = createToken<typeof env>('app.env');
+// DI で使う（推奨）。検証は最初に解決されたときに行われる（起動時に `app.get(ENV)` などで解決すれば、環境変数の不備で即座に失敗する）
+export const ENV = createToken<v.InferOutput<typeof Env>>('app.env');
 defineModule({ providers: [envProvider(ENV, Env)], ... });
+
+// DI を使わずに直接読むなら、モジュールの先頭ではなく起動処理の中で呼ぶ
+// const env = loadEnv(Env);                      // { PORT: number; DATABASE_URL: string; LOG_LEVEL: … }
 ```
+
+> **`kivin generate` はエントリ（`app.ts`）とその import 先をすべて実行します。** モジュールの先頭で `export const env = loadEnv(Env)` のように書くと、ビルドや CI（シークレットが無い環境）で `generate` が `Invalid environment variables:` で失敗します。環境変数の検証は `envProvider`（DI）か、`main.ts` など `generate` が読み込まない場所で行ってください。`app.ts` から辿れるファイルのトップレベルでは、環境変数・ネットワーク・ファイルに依存する副作用を避けます。
 
 Standard Schema に対応したライブラリ（Valibot / Zod / ArkType）ならそのまま渡せます。それ以外は `{ adapter }` を指定します。`prefix: 'APP_'` を付けると `APP_PORT` を `PORT` として読み、無関係な変数は schema に渡しません。
 

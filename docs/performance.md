@@ -161,6 +161,8 @@ BENCH_ITERATIONS=10 bun run bench:stack > .bench/stack-full-$(date +%Y%m%d%H).tx
 BENCH_ITERATIONS=10 bun run bench:stack:delete > .bench/stack-delete-$(date +%Y%m%d%H).txt
 ```
 
+> このファイルが `.txt` として挙げる計測結果（`.bench/` 以下）はローカル成果物で、リポジトリには含まれません（gitignore 対象）。再現するには本文の `bun run bench:*` を実行してください。
+
 ## Latest paired comparison (CI, 2026-11-06, after #45–#53)
 
 `bun run perf:check` の CI 結果（GitHub Actions ランナー、compiled binary 3 つを同時起動し Latin square でペア計測、中央値と bootstrap 95% CI）。#45（promise の段数とリクエスト毎の割り当ての削減）以降、#52（定数でないハンドラの結果を固定しない修正）と #53 までを含む 2 回分:
@@ -226,7 +228,7 @@ PR #38 時点（#18 以降のホットパス改善: 静的ルート + グロー�
 
 ## Previous 10-iteration baseline (2026-03)
 
-2026-03-12 の `10` iteration full stack baseline は [stack-full-20260312k.txt](../.bench/stack-full-20260312k.txt) です。mean / median の両方で傾向はほぼ同じでした。
+2026-03-12 の `10` iteration full stack baseline は `stack-full-20260312k.txt` です。mean / median の両方で傾向はほぼ同じでした。
 
 ### Full stack summary
 
@@ -256,7 +258,7 @@ source mean:
 
 ### Delete-focused summary
 
-2026-03-12 の `10` iteration delete-focused baseline は [stack-delete-20260312e.txt](../.bench/stack-delete-20260312e.txt) です。
+2026-03-12 の `10` iteration delete-focused baseline は `stack-delete-20260312e.txt` です。
 
 compiled mean:
 
@@ -273,7 +275,7 @@ compiled mean:
 
 ### Focused create / patch / delete summary
 
-2026-03-12 の canonical `10` iteration focused CRUD baseline は [stack-spot-create-patch-delete-20260312e.txt](../.bench/stack-spot-create-patch-delete-20260312e.txt) です。
+2026-03-12 の canonical `10` iteration focused CRUD baseline は `stack-spot-create-patch-delete-20260312e.txt` です。
 
 compiled mean:
 
@@ -294,9 +296,9 @@ source mean:
 - `create` は `source` では strongest tier を維持するが、`compiled` はまだ `Hono` / `Elysia` が上
 - したがって、`@kivin/core` の current position は「最強クラス」であって、「全 workload で絶対首位」とまではまだ言わない方が正確
 
-2026-03-12 の post-optimization rerun として [stack-spot-create-patch-delete-20260312f.txt](../.bench/stack-spot-create-patch-delete-20260312f.txt) と [stack-spot-create-patch-delete-20260312g.txt](../.bench/stack-spot-create-patch-delete-20260312g.txt) もあります。これらは `201 + no response schema` finalizer の route-specific specialization 後の確認用 artifact ですが、3 framework すべてで振れが大きく、特に `Elysia` の `source` / `compiled delete` が大きく崩れているため canonical baseline には昇格させていません。
+2026-03-12 の post-optimization rerun として `stack-spot-create-patch-delete-20260312f.txt` と `stack-spot-create-patch-delete-20260312g.txt` もあります。これらは `201 + no response schema` finalizer の route-specific specialization 後の確認用 artifact ですが、3 framework すべてで振れが大きく、特に `Elysia` の `source` / `compiled delete` が大きく崩れているため canonical baseline には昇格させていません。
 
-2026-03-13 の [stack-spot-create-patch-delete-20260313a.txt](../.bench/stack-spot-create-patch-delete-20260313a.txt) は、`@kivin/logger` の lazy fields 対応で disabled `info` log の field object allocation を避けた後の確認用 rerun です。logger 側の disabled-path 無駄は減らせましたが、focused CRUD の順位は変わらず、`compiled create` は `kivin 38.2k < hono 41.5k < elysia 43.5k` に留まりました。そのため canonical baseline は引き続き `20260312e` を維持します。
+2026-03-13 の `stack-spot-create-patch-delete-20260313a.txt` は、`@kivin/logger` の lazy fields 対応で disabled `info` log の field object allocation を避けた後の確認用 rerun です。logger 側の disabled-path 無駄は減らせましたが、focused CRUD の順位は変わらず、`compiled create` は `kivin 38.2k < hono 41.5k < elysia 43.5k` に留まりました。そのため canonical baseline は引き続き `20260312e` を維持します。
 
 この 2 本から safely 言えることは次です。
 
@@ -306,7 +308,7 @@ source mean:
 
 ### kivin create breakdown
 
-2026-03-13 の kivin-only create breakdown artifact は [kivin-create-breakdown-20260313a.txt](../.bench/kivin-create-breakdown-20260313a.txt) です。これは `compiled` / `source` を kivin だけで比較しつつ、`create` を `create-no-request-id` / `create-no-guard` / `create-no-validation` / `create-bare` に分解した targeted benchmark です。
+2026-03-13 の kivin-only create breakdown artifact は `kivin-create-breakdown-20260313a.txt` です。これは `compiled` / `source` を kivin だけで比較しつつ、`create` を `create-no-request-id` / `create-no-guard` / `create-no-validation` / `create-bare` に分解した targeted benchmark です。
 
 median の読み取りは次です。
 
@@ -326,7 +328,7 @@ median の読み取りは次です。
 - `ApiKeyGuard` と body validation を外すと `compiled create` は `42k` から `44k` 台まで上がり、remaining gap の中心が create pipeline 前段に寄っていることが見える
 - `source` は full create でも `40k` 台に乗る一方、`compiled` は full create だけ大きく落ちるため、Bun compiled path で create-route の guard/validation 前段をさらに疑うべき
 
-2026-03-13 の [kivin-create-breakdown-20260313b.txt](../.bench/kivin-create-breakdown-20260313b.txt) では、同じ command に in-process profile も追加しました。network benchmark 自体はなお run-to-run variance を含みますが、`app.fetch` profile は比較的素直です。
+2026-03-13 の `kivin-create-breakdown-20260313b.txt` では、同じ command に in-process profile も追加しました。network benchmark 自体はなお run-to-run variance を含みますが、`app.fetch` profile は比較的素直です。
 
 profile request ops/s:
 
@@ -338,7 +340,7 @@ profile request ops/s:
 
 この profile からは、create path の request-time cost が `request-id` だけでなく guard と validation の双方で段階的に落ちていることがより明確に見えます。特に full create から bare までで約 `1.66x` の差があるため、次の core optimization は response finalization より `canActivateRaw` と body parse/validate の境界を優先して詰める方が妥当です。
 
-2026-03-13 の [kivin-create-breakdown-20260313c.txt](../.bench/kivin-create-breakdown-20260313c.txt) では、`@kivin/core` 側に sync raw guard / raw middleware の promise-check 回避を入れた後の rerun を残しています。cross-run variance はまだありますが、in-process profile の full create は `242.8k -> 260.9k` に上がり、compiled median create もこの rerun では `41.3k` まで戻りました。一方で `no-validation` / `bare` 側は同じ幅では伸びていないため、残差の中心は依然として body parse/validate と request-id 周辺にあります。
+2026-03-13 の `kivin-create-breakdown-20260313c.txt` では、`@kivin/core` 側に sync raw guard / raw middleware の promise-check 回避を入れた後の rerun を残しています。cross-run variance はまだありますが、in-process profile の full create は `242.8k -> 260.9k` に上がり、compiled median create もこの rerun では `41.3k` まで戻りました。一方で `no-validation` / `bare` 側は同じ幅では伸びていないため、残差の中心は依然として body parse/validate と request-id 周辺にあります。
 
 同 artifact には direct profile も追加してあります。
 
@@ -348,7 +350,7 @@ profile request ops/s:
 
 この 3 本から、create body route では raw guard 自体より `request.json()` の方が遅く、validation はそれ単体では parse より軽いことが分かります。したがって次の有力手は、guard そのものより body parse と validation の結合境界をさらに薄くすることです。
 
-2026-03-27 の `10` iteration rerun は [kivin-create-breakdown-20260327d.txt](../.bench/kivin-create-breakdown-20260327d.txt) です。今回の median は次でした。
+2026-03-27 の `10` iteration rerun は `kivin-create-breakdown-20260327d.txt` です。今回の median は次でした。
 
 - `compiled create`: `31.4k`
 - `compiled create-no-request-id`: `38.7k`
@@ -386,7 +388,7 @@ profile request ops/s:
 
 raw guard 単体は parse よりかなり軽く、schema validate 単体も parse より軽いままです。したがって、次に詰めるべき場所は guard implementation そのものより、`request.json()` と schema adaptation をまたぐ create 前段の結合コストです。
 
-2026-03-27 の post-response-helper rerun は [kivin-create-breakdown-20260327e.txt](../.bench/kivin-create-breakdown-20260327e.txt) です。`createJsonResponse*` を `Response.json(...)` から direct `JSON.stringify(...) + new Response(...)` fast path に切り替えた後、median は次まで上がりました。
+2026-03-27 の post-response-helper rerun は `kivin-create-breakdown-20260327e.txt` です。`createJsonResponse*` を `Response.json(...)` から direct `JSON.stringify(...) + new Response(...)` fast path に切り替えた後、median は次まで上がりました。
 
 - `compiled create`: `31.4k -> 37.6k`
 - `compiled create-no-request-id`: `38.7k -> 53.0k`
@@ -396,7 +398,7 @@ raw guard 単体は parse よりかなり軽く、schema validate 単体も pars
 
 特に `request-id` 付きの `201 Created` JSON response で改善幅が大きく、queued header + status を通る response finalization が create path の残差に効いていたことが確認できました。とはいえ `compiled create` と `compiled create-bare` の差はまだ約 `1.39x` 残っているため、next bottleneck が create 前段の body parse / schema adaptation 境界にある、という読み自体は変わりません。
 
-2026-03-27 の Elysia-inspired body handoff rerun は [kivin-create-breakdown-20260327k.txt](../.bench/kivin-create-breakdown-20260327k.txt) です。`compileRouteExecutor` は body route でも `request.json()` と schema validate を handler 実行直前まで遅延させるだけでなく、schema adapter が返した validated body をそのまま context cache に handoff するように変わりました。これにより、body parameter と `context.jsonBody()` が同じ transformed object を共有することを core test で固定しています。方向性としては Elysia の `compose.ts` / `dynamic-handle.ts` が parse 後に validator の output を `c.body` へそのまま引き継ぐ設計を参考にしたものです。
+2026-03-27 の Elysia-inspired body handoff rerun は `kivin-create-breakdown-20260327k.txt` です。`compileRouteExecutor` は body route でも `request.json()` と schema validate を handler 実行直前まで遅延させるだけでなく、schema adapter が返した validated body をそのまま context cache に handoff するように変わりました。これにより、body parameter と `context.jsonBody()` が同じ transformed object を共有することを core test で固定しています。方向性としては Elysia の `compose.ts` / `dynamic-handle.ts` が parse 後に validator の output を `c.body` へそのまま引き継ぐ設計を参考にしたものです。
 
 この rerun の median は次でした。
 
@@ -484,9 +486,9 @@ Elysia を benchmark target に追加した直後の `BENCH_ITERATIONS=1` sample
 
 2026-03-27 の short rerun artifact は次です。
 
-- minimal baseline: [minimal-3way-20260327.txt](../.bench/minimal-3way-20260327.txt)
-- stack main routes: [stack-main-20260327.txt](../.bench/stack-main-20260327.txt)
-- minimal extended: [minimal-extended-20260327.txt](../.bench/minimal-extended-20260327.txt)
+- minimal baseline: `minimal-3way-20260327.txt`
+- stack main routes: `stack-main-20260327.txt`
+- minimal extended: `minimal-extended-20260327.txt`
 
 これは `3` iteration の確認用 sample であり、canonical baseline の置き換えではありません。ただし、現時点の 3-way relative position を把握するには十分使えます。
 
@@ -527,7 +529,7 @@ app-like path の compiled median は次でした。
 
 ### Focused patch / delete rerun
 
-上の崩れが再現するかを確認するため、2026-03-27 に `patch,delete` だけを `10` iteration で再測定した artifact を追加しました: [stack-patch-delete-20260327b.txt](../.bench/stack-patch-delete-20260327b.txt)
+上の崩れが再現するかを確認するため、2026-03-27 に `patch,delete` だけを `10` iteration で再測定した artifact を追加しました: `stack-patch-delete-20260327b.txt`
 
 compiled median:
 
@@ -556,7 +558,7 @@ source median:
 
 ### Focused 3-way create rerun
 
-create だけを `10` iteration で再測定した artifact を追加しました: [stack-create-20260327d.txt](../.bench/stack-create-20260327d.txt)
+create だけを `10` iteration で再測定した artifact を追加しました: `stack-create-20260327d.txt`
 
 compiled median:
 

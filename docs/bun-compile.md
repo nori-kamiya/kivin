@@ -12,10 +12,13 @@ Bun single binary で安定させるため、次を避けます。
 ## Supported flow
 
 ```bash
-bun run generate
-bun build examples/basic/src/main.ts --compile --outfile examples/basic/bin/basic-app
-PORT=3100 ./examples/basic/bin/basic-app
+bun add -d @kivin/cli                              # 初回のみ
+bunx --package @kivin/cli kivin generate --entry app.ts --outDir .kivin/generated
+bun build main.ts --compile --outfile server       # app.ts と同名にしない
+./server
 ```
+
+`main.ts` は生成した `manifest.ts` を静的に import して `createApp(...).listen(...)` するファイルです（[README](../README.md#quick-start)）。`--outfile` を `app` にすると、`./app` が `app.ts` より先に解決されて import が壊れるので避けます。リポジトリ内の完全な例は `examples/basic` です（`bun run example:build`）。
 
 ## Why it works
 
@@ -31,7 +34,3 @@ build 成功だけでは不十分です。compiled binary を実際に起動し�
 ```bash
 bun run example:smoke
 ```
-
-## Next step
-
-tsconfig path alias 解決や import alias 衝突回避を強化すると、より大きい実アプリに適用しやすくなります。

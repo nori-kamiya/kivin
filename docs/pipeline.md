@@ -4,12 +4,14 @@
 
 1. Router が route を解決
 2. `RequestContext` を作成
-3. path / query / body を schema validate
+3. path / query / header を schema validate（失敗は 400）
 4. global guards + route guards を順に評価
-5. global middleware + route middleware をチェイン実行
+5. global middleware + route middleware をチェイン実行。body の読み取りと validate はガードの後、ハンドラを呼ぶ直前（middleware の `next()` の中）で行う
 6. controller method を呼ぶ
 7. success response schema があれば validate
 8. route filters と global filters で例外を処理
+
+ガードより前に検証されるのは path / query / header だけです。body が不正な（または壊れた JSON の）リクエストでも、ガードが拒否すれば 400 ではなく 403 などガードの応答が返ります。認可の判断に body の検証結果を前提にしないでください。
 
 ## Context
 

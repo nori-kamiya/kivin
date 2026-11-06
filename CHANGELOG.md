@@ -9,6 +9,7 @@
 ### Added
 
 - `@kivin/cli`: `kivin init <dir>` を追加。`dev` / `generate` / `build` / `test` スクリプト、TC39 デコレータの `tsconfig.json`、valibot で検証するモジュール・コントローラー・サービス、`createTestingApp` を使うテストを備えた新規プロジェクトを生成する（依存のインストールやスクリプトの実行はしない。空でないディレクトリは拒否し、既存ファイルは上書きしない）。`@kivin/*` の依存範囲は実行中の CLI のバージョンから決まる。`pack:smoke` が tarball から `kivin init` を実行し、`bun install` 直後の `bun test` / `bun run dev`、`generate`、`tsc`、`build` まで確認する
+- 全パッケージに `README.md`（英語 + 日本語）を追加し、ルートの `README.md` を英語に、日本語版を `README.ja.md` にした。npm からの導入手順（`bun add`、必要な `tsconfig`、`@types/bun`）を載せた。Bun は 1.4.0 以上が必須（`engines.bun`）で、Node では動かない
 - リリース基盤: `bun run release:pack`（`bun pm pack` で 16 パッケージを依存順に `.release/` へ）、`bun run release:verify`（tarball の中身・タグ・`origin/main` の祖先を検査）、`bun run pack:smoke`（16 個すべての tarball を一時プロジェクトに入れ、各パッケージの公開エントリを import できることと `kivin generate` / `tsc` / `bun build --compile` / `kivin dev` を確認）、タグで動く `release.yml`（build と publish を分離、provenance 付き）。手順は `docs/release.md`
 - `@kivin/core`: `listen({ onShutdownStart, shutdownDelayMs })` を追加。シグナル受信後、`onShutdownStart` → 待機 → `app.close()` の順に実行し、`createHealthCheck()` の readiness を先に落としてからロードバランサが外すまで受け付けを続けられる
 - `@kivin/core` / `@kivin/cli`: 全ルートに共通のパス接頭辞 `defineApplication({ basePath: '/api' })` を追加（Hono の `basePath`、Elysia の `prefix`、NestJS の `setGlobalPrefix` 相当）。`kivin generate` が manifest・OpenAPI・生成クライアントに反映し、CLI を使わない `buildManifest` でも適用される
@@ -62,6 +63,7 @@
 
 ### Fixed
 
+- `@kivin/decorators`: パッケージの説明文から、廃止済みの引数デコレータの記述を削除した
 - 全パッケージ: 公開型定義と生成クライアントが DOM ライブラリ限定のグローバル名（`FormDataEntryValue` / `HeadersInit` / `BodyInit` / `JsonWebKey`）を使っていたため、`bun init` が作る `lib: ["ESNext"]` の tsconfig では解決できず、`skipLibCheck: true` の下で黙って `any` になっていた。DOM ライブラリの有無に関わらず解決できる型（`File | string`、`ConstructorParameters<typeof Headers>[0]` など）に置き換えた。`lib: ["ESNext"]` + `skipLibCheck: false` で型検査する `tests/lib-esnext` を追加
 - `@kivin/cli`: `kivin generate` が `createLoggerModule()` などのモジュールファクトリ呼び出しを「@Module class, defineModule(...) call, or object literal」エラーで拒否していた不具合を修正（`imports` でも `modules` でも、`const` に束縛しても可）。コントローラーを宣言するファクトリ呼び出しは静的解析できないため、ルートが黙って消えないよう「`@Module` か `defineModule` で宣言する」エラーにする（静的に読めたコントローラーと同名の別クラスでも検出する）
 - `@kivin/cli`: `kivin generate` が途中で失敗すると manifest・contracts・client だけが更新され `openapi.json` が古いまま残っていた。生成を一時ディレクトリで行い、すべて成功した時だけ出力先に移すようにした（生成中に失敗した場合は以前の成果物がそのまま残る。出力先への置き換え自体が失敗した場合は一部だけ新しくなりうる）。`kivin dev` は、`--outDir` が `.kivin` の外にあっても生成の一時ファイルで再起動を繰り返さない
