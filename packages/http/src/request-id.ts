@@ -1,6 +1,5 @@
 // Request IDs for correlating logs across services (equivalent of Hono's `requestId`).
-import type { RequestContext, ResponseState } from './context';
-import type { NestLikeMiddleware } from './runtime-types';
+import type { NestLikeMiddleware, RequestContext, ResponseState } from '@kivin/core';
 
 const requestIds = new WeakMap<Request, string>();
 

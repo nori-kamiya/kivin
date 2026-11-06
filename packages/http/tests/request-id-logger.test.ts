@@ -1,7 +1,8 @@
-import { createApp, createRequestIdMiddleware, defineApplication, defineModule, type AppManifest } from '@kivin/core';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
 import { createValibotAdapter } from '@kivin/valibot';
 import { expect, test } from 'bun:test';
-import { createLoggerModule, RequestLoggerMiddleware } from '../src/index';
+import { createLoggerModule, RequestLoggerMiddleware } from '@kivin/logger';
+import { createRequestIdMiddleware } from '../src/index';
 
 class Routes {
   raw() {

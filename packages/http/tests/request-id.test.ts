@@ -1,4 +1,5 @@
-import { createApp, createRequestIdMiddleware, defineApplication, defineModule, getRequestId, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
+import { createRequestIdMiddleware, getRequestId } from '../src/index';
 import { createValibotAdapter } from '@kivin/valibot';
 import { describe, expect, test } from 'bun:test';
 

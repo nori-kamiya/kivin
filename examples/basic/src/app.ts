@@ -1,4 +1,5 @@
-import { createSecureHeadersMiddleware, defineApplication, defineModule } from '@kivin/core';
+import { defineApplication, defineModule } from '@kivin/core';
+import { createSecureHeadersMiddleware } from '@kivin/security';
 import { createLogger, LOGGER, LOGGER_OPTIONS, RequestLoggerMiddleware } from '@kivin/logger';
 import { createValibotAdapter } from '@kivin/valibot';
 import { RequestIdMiddleware } from './request-id.middleware';

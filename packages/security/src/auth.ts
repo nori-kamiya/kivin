@@ -1,8 +1,6 @@
 // HTTP Basic / Bearer authentication guards and cross-origin request (CSRF) protection.
 import { timingSafeEqual } from 'node:crypto';
-import type { RequestContext } from './context';
-import { forbidden, unauthorized } from './http';
-import type { CanActivate, NestLikeMiddleware } from './runtime-types';
+import { forbidden, unauthorized, type CanActivate, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
 
 export interface BasicCredentials {
   username: string;

@@ -71,6 +71,8 @@
 
 ### Changed
 
+- core とプラグインを分離した（破壊的変更）。`@kivin/core` には実行時の中核（ルーティング・DI・ライフサイクル・入力検証・Cookie / SSE / WebSocket・CORS・クライアントアドレス）だけを残し、独立したミドルウェアを領域ごとのパッケージに移した: `@kivin/security`（`createBasicAuthGuard` / `createBearerAuthGuard` / `createCsrfMiddleware` / `createSecureHeadersMiddleware` / `SecureHeadersMiddleware` / `createRateLimitMiddleware` など）、`@kivin/http`（`createCompressMiddleware` / `createEtagMiddleware` / `createTimeoutMiddleware` / `createRequestIdMiddleware` / `getRequestId` / `acceptsEncoding`）、`@kivin/static`（`serveStatic`）。import 元を変更してください。`@kivin/logger` はリクエスト ID をコンテキストの `requestId` から読む
+
 - `@kivin/core`: 検証エラー（400）の `issues` を `{ path, message }` の配列に正規化した。valibot の生 issue は各要素に `input` と親オブジェクト全体を含むため、パスワードなどリクエストボディ全体がエラーレスポンスに複製されていた。形式も schema adapter によらず同じになる。`toValidationIssues` を export
 
 - `@kivin/core`: クエリで同じキーが繰り返された場合（`?tag=a&tag=b`）に最後の値だけを残していたのを、配列にするようにした（Express / Fastify と同じ）。生成クライアントは配列のクエリを繰り返しキーで送るため、これまでは `v.array()` の schema が通らず、schema なしでは最後の値しか届かなかった。schema なしの `query` の型は `Record<string, string | string[] | undefined>` になる

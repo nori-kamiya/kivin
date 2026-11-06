@@ -10,6 +10,7 @@
     { "path": "../../packages/decorators" },
     { "path": "../../packages/logger" },
     { "path": "../../packages/openapi" },
+    { "path": "../../packages/security" },
     { "path": "../../packages/valibot" }
   ],
   "include": ["src/**/*.ts", ".kivin/generated/**/*.ts", ".kivin/generated/**/*.json"]

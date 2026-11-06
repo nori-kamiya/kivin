@@ -30,7 +30,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - `operationId`, route description, and security scheme support
 - standardized `HttpError` helpers and `204 No Content` responses
 - default secure-headers middleware for production-facing APIs
-- configurable secure-headers middleware via `createSecureHeadersMiddleware(...)`
+- configurable secure-headers middleware via `createSecureHeadersMiddleware(...)` (`@kivin/security`)
 - mutation route support for `PUT`, `PATCH`, and `DELETE`
 - global / route guards
 - global / route middleware
@@ -39,7 +39,10 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 
 ## Packages
 
-- `@kivin/core`: ルータ、DI、アプリ実行時コア
+- `@kivin/core`: ルータ、DI、モジュール、ライフサイクル、入力検証、Cookie / SSE / WebSocket などアプリ実行時の中核
+- `@kivin/security`: Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット
+- `@kivin/http`: 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション
+- `@kivin/static`: 静的ファイル配信（`serveStatic`）
 - `@kivin/decorators`: Module / Controller / Route / Parameter decorators
 - `@kivin/logger`: JSON line の構造化ロガーと request logger middleware
 - `@kivin/openapi`: OpenAPI ドキュメント生成

@@ -1,4 +1,5 @@
-import { createApp, defineApplication, defineModule, serveStatic } from '@kivin/core';
+import { createApp, defineApplication, defineModule } from '@kivin/core';
+import { serveStatic } from '../src/index';
 import { createValibotAdapter } from '@kivin/valibot';
 import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';

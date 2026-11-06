@@ -1,4 +1,5 @@
-import { createApp, createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, defineApplication, defineModule, readBasicCredentials, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
+import { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials } from '../src/index';
 import { createValibotAdapter } from '@kivin/valibot';
 import { describe, expect, test } from 'bun:test';
 

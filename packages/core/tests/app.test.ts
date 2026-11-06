@@ -1,13 +1,11 @@
 import {
     conflict,
     createApp,
-    createSecureHeadersMiddleware,
     defineApplication,
     defineModule,
     notModified,
     preconditionFailed,
     RequestContext,
-    SecureHeadersMiddleware,
     serviceUnavailable,
     setInjectableMetadata,
     tooManyRequests,
@@ -2290,90 +2288,6 @@ describe('createApp pipeline', () => {
     expect(await response.json()).toEqual({
       order: ['route-inner:pass', 'route-outer:pass', 'global-inner:pass', 'global-outer:handle'],
     });
-  });
-
-  test('secure headers middleware adds defaults without overriding explicit headers', async () => {
-    const securedApp = createApp(defineApplication({
-      modules: [defineModule({
-        providers: [SecureHeadersMiddleware],
-        controllers: [TestController],
-        imports: [],
-      })],
-      schemaAdapter: createValibotAdapter(),
-      globals: {
-        guards: [],
-        middleware: [SecureHeadersMiddleware],
-        filters: [],
-      },
-    }), {
-      routes: [{
-        method: 'GET',
-        fullPath: '/test/security-headers',
-        controller: TestController,
-        methodName: 'customSecurityHeaders',
-        parameters: [{ index: 0, source: 'context' }],
-        guards: [],
-        middleware: [],
-        filters: [],
-        docs: {
-          tags: ['test'],
-          security: [],
-          responses: [],
-        },
-      }],
-    });
-
-    const response = await securedApp.fetch(new Request('http://localhost/test/security-headers'));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
-    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
-    expect(response.headers.get('referrer-policy')).toBe('strict-origin-when-cross-origin');
-    expect(await response.text()).toBe('secured');
-  });
-
-  test('configured secure headers middleware can add CSP and override default policies', async () => {
-    const AppSecureHeadersMiddleware = createSecureHeadersMiddleware({
-      contentSecurityPolicy: "default-src 'self'",
-      frameOptions: 'SAMEORIGIN',
-      referrerPolicy: null,
-    });
-
-    const securedApp = createApp(defineApplication({
-      modules: [defineModule({
-        providers: [AppSecureHeadersMiddleware],
-        controllers: [TestController],
-        imports: [],
-      })],
-      schemaAdapter: createValibotAdapter(),
-      globals: {
-        guards: [],
-        middleware: [AppSecureHeadersMiddleware],
-        filters: [],
-      },
-    }), {
-      routes: [{
-        method: 'GET',
-        fullPath: '/test/security-headers-configured',
-        controller: TestController,
-        methodName: 'contextHealth',
-        parameters: [{ index: 0, source: 'context' }],
-        guards: [],
-        middleware: [],
-        filters: [],
-        docs: {
-          tags: ['test'],
-          security: [],
-          responses: [],
-        },
-      }],
-    });
-
-    const response = await securedApp.fetch(new Request('http://localhost/test/security-headers-configured'));
-    expect(response.status).toBe(200);
-    expect(response.headers.get('content-security-policy')).toBe("default-src 'self'");
-    expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN');
-    expect(response.headers.get('referrer-policy')).toBeNull();
-    expect(response.headers.get('x-content-type-options')).toBe('nosniff');
   });
 
   test('body validation rejects invalid payloads', async () => {

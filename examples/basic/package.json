@@ -7,6 +7,7 @@
     "@kivin/decorators": "workspace:*",
     "@kivin/logger": "workspace:*",
     "@kivin/openapi": "workspace:*",
+    "@kivin/security": "workspace:*",
     "@kivin/valibot": "workspace:*",
     "valibot": "^1.5.0"
   }
