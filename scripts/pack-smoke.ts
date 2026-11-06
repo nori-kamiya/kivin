@@ -25,14 +25,20 @@ const runDir = join(work, 'run-without-node_modules');
 const children = new Set<Bun.Subprocess>();
 let finished = false;
 
-function cleanup(): void {
-  for (const child of children) {
+// Children are spawned detached, so each leads its own process group. `kivin dev` forks the app server, and a
+// SIGKILL aimed at the supervisor alone would orphan that grandchild with its port still bound.
+function killGroup(child: Bun.Subprocess, signal: NodeJS.Signals): void {
+  for (const target of [-child.pid, child.pid]) {
     try {
-      child.kill('SIGKILL');
+      process.kill(target, signal);
     } catch {
       // already gone
     }
   }
+}
+
+function cleanup(): void {
+  for (const child of children) killGroup(child, 'SIGKILL');
   children.clear();
   if (process.env.KEEP_PACK_SMOKE) {
     console.log(`pack-smoke: kept ${work}`);
@@ -68,9 +74,10 @@ async function exec(command: string[], options: { cwd: string; env?: Record<stri
     env: { ...process.env, ...options.env },
     stdout: 'pipe',
     stderr: 'pipe',
+    detached: true,
   });
   children.add(child);
-  const timer = setTimeout(() => child.kill('SIGKILL'), options.timeoutMs ?? 180_000);
+  const timer = setTimeout(() => killGroup(child, 'SIGKILL'), options.timeoutMs ?? 180_000);
   const [stdout, stderr, exitCode] = await Promise.all([new Response(child.stdout).text(), new Response(child.stderr).text(), child.exited]);
   clearTimeout(timer);
   children.delete(child);
@@ -106,7 +113,7 @@ async function waitFor(url: string, child: Bun.Subprocess, label: string): Promi
 }
 
 function spawnServer(command: string[], cwd: string, port: number): Bun.Subprocess {
-  const child = Bun.spawn(command, { cwd, env: { ...process.env, PORT: String(port) }, stdout: 'ignore', stderr: 'ignore' });
+  const child = Bun.spawn(command, { cwd, env: { ...process.env, PORT: String(port) }, stdout: 'ignore', stderr: 'ignore', detached: true });
   children.add(child);
   return child;
 }
@@ -236,7 +243,7 @@ try {
     name: 'kivin-pack-smoke-app',
     private: true,
     type: 'module',
-    dependencies: Object.fromEntries(['@kivin/core', '@kivin/decorators', '@kivin/logger', '@kivin/valibot'].map((name) => [name, tarballs[name]])),
+    dependencies: Object.fromEntries(Object.entries(tarballs).filter(([name]) => name !== '@kivin/cli')),
     devDependencies: { '@kivin/cli': tarballs['@kivin/cli'] },
     overrides: tarballs,
   };
@@ -252,6 +259,33 @@ try {
   step('exactly one copy of @kivin/core is installed');
   const cores = [...new Bun.Glob('**/@kivin/core/package.json').scanSync({ cwd: join(appDir, 'node_modules'), dot: true, followSymlinks: false })];
   assert(cores.length === 1, `expected exactly one @kivin/core, found ${cores.length}: ${cores.join(', ')}`);
+
+  step('every installed package imports from the installed artifact');
+  const importAll = `import { readdirSync, readFileSync } from 'node:fs';
+const failures = [];
+let count = 0;
+for (const dir of readdirSync('node_modules/@kivin')) {
+  const manifest = JSON.parse(readFileSync(\`node_modules/@kivin/\${dir}/package.json\`, 'utf8'));
+  for (const key of Object.keys(manifest.exports ?? {})) {
+    if (key === './package.json' || key.includes('*')) continue;
+    const specifier = \`@kivin/\${dir}\${key.slice(1)}\`;
+    try {
+      await import(specifier);
+      count += 1;
+    } catch (error) {
+      failures.push(\`\${specifier}: \${error instanceof Error ? error.message : String(error)}\`);
+    }
+  }
+}
+if (failures.length > 0) {
+  console.error(failures.join('\\n'));
+  process.exit(1);
+}
+console.log(\`imported \${count} entry points\`);
+`;
+  writeFileSync(join(appDir, 'import-all.mjs'), importAll);
+  const imported = await mustRun('import every package', ['bun', 'import-all.mjs']);
+  assert(imported.includes(`imported ${release.packages.length} entry points`), `expected one entry point per package (${release.packages.length}), got: ${imported.trim()}`);
 
   const kivin = join(appDir, 'node_modules/.bin/kivin');
   step('kivin --version prints the package version');

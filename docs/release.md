@@ -45,6 +45,7 @@ npm 上に `kivin` という名前のユーザーまたは組織が存在しま�
 
 - Required reviewers: 自分を追加する。承認前に build ジョブの `release:verify` の結果と artifact の中身を確認する
 - Deployment branches and tags: 「Selected branches and tags」にして、タグ `v*` だけを許可する
+- **この設定とタグ ruleset（手順 4）が、任意のコミットへのタグを止める本当の関門です。** `release:verify --tag` の祖先チェックは、タグが指すコミット自身の `scripts/` と `release.yml` から実行されるため、`main` に入っていないコミットのタグでは書き換えられてしまいます。最初のリリースの前に、この 2 つを必ず有効にしてください
 - Environment secrets は次の手順 5 で登録する（初回だけ）
 
 ### 4. タグの ruleset を作る
@@ -54,6 +55,7 @@ Settings → Rules → Rulesets → New ruleset → New tag ruleset。
 - Target tags: `v*`
 - Restrict creations（作成できる人を限る）、Restrict updates、Restrict deletions を有効にする
 - Bypass list はリポジトリのオーナーだけにする
+- 手順 3 の environment とあわせて、これが `main` 以外のコミットから公開されるのを防ぐ唯一の仕組みです（`release:verify --tag` の祖先チェックはタグ側のコードで動くため、保証になりません）
 
 あわせて、`main` のブランチ保護に必須ステータスチェックが残っていることを確認します。必須なのは `Typecheck, test, smoke` と `Performance regression vs base` で、`ci.yml` でもこの名前を変えていません。
 
@@ -74,7 +76,7 @@ Settings → Rules → Rulesets → New ruleset → New tag ruleset。
 2. `CHANGELOG.md` に `## [X.Y.Z] - 日付` の見出しがある
 3. 各パッケージに `README.md` がある。`files` に `README.md` を含めているので、無いと `release:verify` が失敗する
 4. ローカルで通す: `bun install --frozen-lockfile && bun run release:check && bun run release:pack && bun run release:verify && bun run pack:smoke`
-5. 公開したいコミットが `origin/main` に入っている（タグのコミットが `origin/main` の祖先でないと `release:verify --tag` が失敗する）
+5. 公開したいコミットが `origin/main` に入っている（タグのコミットが `origin/main` の祖先でないと `release:verify --tag` が失敗する。ただしこの検査はタグ側のコードで動く確認用のもので、強制は手順 3・4 の設定が担う）
 
 ### 7. タグを打って公開する
 
@@ -84,7 +86,7 @@ git push origin vX.Y.Z
 ```
 
 1. Actions の Release ワークフローで build ジョブが成功するのを待つ
-2. publish ジョブが承認待ちになる。build のログの `release verification passed` と、artifact の `manifest.json` を確認して承認する
+2. publish ジョブが承認待ちになる。承認する前に、タグが指すコミットが `main` の履歴にあることを自分で確認する（`git merge-base --is-ancestor <タグのコミット> origin/main`）。そのうえで build のログの `release verification passed` と artifact の `manifest.json` を確認して承認する。ログの文言だけでは、タグ側のコードが出力したものか区別できない
 3. 完了後、`npm view @kivin/core@X.Y.Z dist.integrity` が `.release/manifest.json` の値と一致し、npm のページに provenance が表示されることを確認する（`bun pm pack` の出力は 2 回の実行で同一だったため、ローカルで作った値とも比べられる）
 
 ### 8. trusted publishing に切り替え、トークンを消す
