@@ -281,16 +281,16 @@ const _routeLabel = (route: ManifestRoute<unknown>) => route.fullPath;
 void _routeLabel;
 
 describe('the first request of a process behind an async guard', () => {
-  test('metrics, tracing and Server-Timing all finish on the native route', () => {
+  const nothing = { serverTiming: false, spansEnded: 0, counted: false, inFlight: null };
+
+  test.each([
+    ['metrics', { ...nothing, counted: true, inFlight: 'http_requests_in_flight 0' }],
+    ['tracing', { ...nothing, spansEnded: 1 }],
+    ['server-timing', { ...nothing, serverTiming: true }],
+  ])('%s finishes on the native route', (factory, expected) => {
     const fixture = new URL('./fixtures/first-request-after-async-guard.ts', import.meta.url).pathname;
-    const result = Bun.spawnSync(['bun', 'run', fixture], { cwd: import.meta.dir });
+    const result = Bun.spawnSync(['bun', 'run', fixture, factory], { cwd: import.meta.dir });
     expect(result.stderr.toString()).toBe('');
-    expect(JSON.parse(result.stdout.toString())).toEqual({
-      status: 200,
-      serverTiming: true,
-      spansEnded: 1,
-      counted: true,
-      inFlight: 'http_requests_in_flight 0',
-    });
+    expect(JSON.parse(result.stdout.toString())).toEqual(expected);
   });
 });

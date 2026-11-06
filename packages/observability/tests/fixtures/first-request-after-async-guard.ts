@@ -31,7 +31,12 @@ const tracer = {
   },
 };
 
-const metrics = createMetrics({ processMetrics: false });
+// One factory per process: any of them turning the flag on would hide another one forgetting to.
+const factory = process.argv[2];
+const metrics = factory === 'metrics' ? createMetrics({ processMetrics: false }) : undefined;
+const middleware = metrics?.middleware
+  ?? (factory === 'tracing' ? createTracingMiddleware({ tracer }) : createServerTimingMiddleware());
+
 const manifest: AppManifest = {
   routes: [{
     method: 'GET', fullPath: '/ok', controller: Routes, methodName: 'ok', parameters: [], guards: [], middleware: [], filters: [],
@@ -42,21 +47,17 @@ const manifest: AppManifest = {
 const app = createApp(defineApplication({
   modules: [defineModule({ providers: [], controllers: [Routes], imports: [] })],
   schemaAdapter: createValibotAdapter(),
-  globals: {
-    guards: [AsyncGuard],
-    middleware: [metrics.middleware, createTracingMiddleware({ tracer }), createServerTimingMiddleware()],
-  },
+  globals: { guards: [AsyncGuard], middleware: [middleware] },
 }), manifest);
 
 const server = app.listen({ port: 0, hostname: '127.0.0.1' });
 const response = await fetch(new URL('/ok', server.url));
 await response.text();
-const rendered = await metrics.handler().text();
+const rendered = metrics ? await metrics.handler().text() : '';
 console.log(JSON.stringify({
-  status: response.status,
   serverTiming: response.headers.get('server-timing') !== null,
   spansEnded,
   counted: rendered.includes('http_requests_total{method="GET",route="/ok",status="200"} 1'),
-  inFlight: rendered.split('\n').find((line) => line.startsWith('http_requests_in_flight ')),
+  inFlight: rendered.split('\n').find((line) => line.startsWith('http_requests_in_flight ')) ?? null,
 }));
 server.stop(true);
