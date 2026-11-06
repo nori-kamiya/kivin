@@ -108,7 +108,8 @@ export type ModuleLike = ModuleDefinition | Constructor;
 export interface AppDefinition<TSchema = unknown> {
   modules: ModuleLike[];
   schemaAdapter: import('./types').SchemaAdapter<TSchema>;
-  globals?: AppEnhancerMetadata;
+  /** App-wide guards / middleware / filters (each list optional). Classes need not be listed as providers. */
+  globals?: Partial<AppEnhancerMetadata>;
   openApi?: AppOpenApiConfig;
   /** Enables CORS headers on app routes and automatic preflight responses. */
   cors?: import('./cors').CorsOptions;
