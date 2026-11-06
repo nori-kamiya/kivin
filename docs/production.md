@@ -89,6 +89,30 @@ export const AuthGuard = createJwtGuard({
 - 再取得に失敗した場合は直前の鍵セットを使い続けます。初回取得に失敗した場合、ガードは `503`（`Retry-After`）を返します（`401` ではないため、クライアントがログアウト扱いにしません）
 - 固定の鍵セットを使う場合は `createLocalJwks({ keys: [...] })`。`verifyJwt(token, { key: resolver, ... })` でガード以外からも使えます
 
+## タイムアウトとレートリミット
+
+```ts
+import { createRateLimitMiddleware, createTimeoutMiddleware } from '@kivin/core';
+
+globals: {
+  middleware: [
+    createRateLimitMiddleware({ limit: 100, windowMs: 60_000 }),
+    createTimeoutMiddleware(10_000),
+  ],
+},
+```
+
+`createTimeoutMiddleware(ms, { status?, message? })`:
+
+- 後続（ガード・ハンドラなど）が `ms` 以内に終わらなければ `504 { message: 'Request timed out' }` を返します（Hono と同じ。`status` で変更可）
+- JavaScript ではハンドラを中断できないため、処理自体は裏で続きます。長い処理はクライアント切断を `request.signal` で検知できます
+
+`createRateLimitMiddleware({ limit, windowMs, key?, headers? })`:
+
+- キーごとの固定ウィンドウでメモリ上に数えます。上限を超えると `429 { message: 'Too Many Requests' }` と `Retry-After`
+- レスポンスに `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset`（秒）を付けます（`headers: false` で無効）
+- キーの既定はクライアントのアドレス（`getClientAddress(request)`、Bun の `server.requestIP`）。リバースプロキシの後ろではプロキシのアドレスになるので、信頼できる転送ヘッダから `key` を自分で作ってください。`key` が `undefined` を返したリクエストは制限しません
+- プロセスごとのメモリに持つので、複数インスタンスで共有したい場合はプロキシや共有ストアを使ってください
 ## 圧縮と ETag
 
 ```ts

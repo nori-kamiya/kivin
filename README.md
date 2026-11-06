@@ -20,6 +20,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - `kivin dev` watch mode (regenerate + restart)
 - ahead-of-time route executors generated into the manifest (`--no-aot` / `KIVIN_AOT=0` to opt out)
 - CORS, cookies, JWT auth guard with JWKS (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
+- request timeout and in-memory rate limiting middleware
 - response compression (brotli / gzip) and ETag / 304 middleware
 - static file serving (`serveStatic`: ETag / 304, Range, precompressed, SPA fallback)
 - graceful shutdown with `onApplicationShutdown` hooks, `createTestingApp` with provider overrides

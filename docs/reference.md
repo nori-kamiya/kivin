@@ -26,6 +26,9 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `AppManifest`, `ManifestRoute` | type | 生成 manifest の型 |
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
+| `createTimeoutMiddleware(ms, options)` | function | 時間内に終わらないリクエストに 504 を返すミドルウェア |
+| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのメモリ上レートリミット（429 / Retry-After / RateLimit-* ヘッダ） |
+| `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
 | `createCompressMiddleware(options)` | function | gzip / brotli 圧縮ミドルウェア（Accept-Encoding の交渉、閾値、型フィルタ、NDJSON はストリーム圧縮） |
 | `createEtagMiddleware(options)` | function | ボディのハッシュから弱い ETag を付け、If-None-Match に 304 を返すミドルウェア |
 | `serveStatic(options)` | function | 静的ファイル配信ハンドラ（`listen({ routes })` に渡す）。ETag / 304、Range、事前圧縮、SPA fallback、パストラバーサル対策 |

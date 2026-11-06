@@ -13,6 +13,7 @@ import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
+import { trackServer } from './limits';
 import { compileWebSocketRoutes } from './websocket';
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
@@ -213,6 +214,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         ...(compiledSockets ? { websocket: compiledSockets.websocket } : {}),
       } as Parameters<typeof Bun.serve>[0]) as Server<unknown>;
       activeServer = server;
+      trackServer(server, true);
 
       if (shutdownSignals) {
         const signals = shutdownSignals === true ? (['SIGINT', 'SIGTERM'] as const) : shutdownSignals;
@@ -246,6 +248,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
           if (!drained) {
             await server.stop(true);
           }
+          trackServer(server, false);
         }
 
         const errors: unknown[] = [];
