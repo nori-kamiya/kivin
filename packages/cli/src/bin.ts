@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { readFileSync } from 'node:fs';
+import { assertSupportedBun } from './bun-version';
 import { startDev } from './dev';
 import { initProject } from './init';
 import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
@@ -51,6 +52,7 @@ function shellQuote(value: string): string {
 }
 
 async function main() {
+  assertSupportedBun();
   const command = process.argv[2];
 
   // Only argv[2] counts: `generate --version <v>` is the OpenAPI document version, not a request for ours.

@@ -2,6 +2,7 @@ export { buildManifest } from './runtime/manifest';
 export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, ManifestRoute } from './runtime/types';
 
 import type { Server } from 'bun';
+import { assertSupportedBun } from './bun-version';
 import { Container } from './container';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
 import type { AppDefinition, RequestHook } from './metadata';
@@ -23,6 +24,7 @@ import { compileWebSocketRoutes } from './websocket';
 const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
+  assertSupportedBun();
   const container = new Container();
   const router = new Router<CompiledRoute<TSchema>>();
   const compiledRoutes: CompiledRoute<TSchema>[] = [];
