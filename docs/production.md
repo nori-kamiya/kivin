@@ -113,6 +113,53 @@ globals: {
 - レスポンスに `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset`（秒）を付けます（`headers: false` で無効）
 - キーの既定はクライアントのアドレス（`getClientAddress(request)`、Bun の `server.requestIP`）。リバースプロキシの後ろではプロキシのアドレスになるので、信頼できる転送ヘッダから `key` を自分で作ってください。`key` が `undefined` を返したリクエストは制限しません
 - プロセスごとのメモリに持つので、複数インスタンスで共有したい場合はプロキシや共有ストアを使ってください
+## 圧縮と ETag
+
+```ts
+import { createCompressMiddleware, createEtagMiddleware } from '@kivin/core';
+
+defineApplication({
+  // ...
+  // 圧縮を先に（外側に）置くと、ETag は圧縮前のボディで計算・比較されます
+  globals: { middleware: [createCompressMiddleware(), createEtagMiddleware()] },
+});
+```
+
+`createCompressMiddleware(options)`:
+
+- `Accept-Encoding` の q 値に従い `br` → `gzip` の順で選びます（`encodings` で変更）。圧縮した／しうるレスポンスには `Vary: Accept-Encoding` を付けます
+- brotli の品質は既定 4（gzip の約半分のサイズで同程度のコスト。品質 11 は約 100 倍遅い）。`brotliQuality` / `gzipLevel` で変更できます
+- 圧縮しないもの: `threshold`（既定 1024 バイト）未満、画像など非テキスト（`filter` で変更）、`text/event-stream`、HEAD、204 / 206 / 304、`Cache-Control: no-transform`、すでに `Content-Encoding` があるもの
+- `application/x-ndjson` はバッファせずストリームのまま圧縮します。強い ETag は弱い ETag に変えます
+
+`createEtagMiddleware(options)`:
+
+- GET / HEAD の 200 で ETag の無いレスポンスに、ボディのハッシュから弱い ETag を付け、`If-None-Match` が一致すれば `304` を返します
+- SSE / NDJSON、`maxSize`（既定 1 MiB）を超えるボディ、すでに ETag があるもの（`serveStatic` など）はそのまま通します
+## 静的ファイル
+
+`serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
+
+```ts
+import { serveStatic } from '@kivin/core';
+
+app.listen({
+  port: 3000,
+  routes: {
+    // ハッシュ付きアセットは長期キャッシュ
+    '/assets/*': serveStatic({ root: './public/assets', prefix: '/assets', cacheControl: 'public, max-age=31536000, immutable', precompressed: true }),
+    // SPA: 存在しないパスへの HTML ナビゲーションは index.html
+    '/app/*': serveStatic({ root: './web/dist', prefix: '/app', fallback: 'index.html' }),
+  },
+});
+```
+
+- Content-Type は拡張子から、`ETag`（弱い検証子）と `Last-Modified` を付け、`If-None-Match` / `If-Modified-Since` に `304` を返します
+- `Range: bytes=…`（単一範囲）に `206`、範囲外は `416`。`If-Range` が古ければ全体を返します
+- `root` の外に出るパス（`..`、`%2e%2e`、`%2f` / `\` を含むもの、NUL）は `404`。ドットファイル（`.env` など）も既定で `404`（`dotfiles: 'allow'` で許可）
+- ディレクトリには `index.html`（`index` で変更、`false` で無効）
+- `precompressed: true` で、`Accept-Encoding` に応じて隣の `.br` / `.gz` を返します（`Content-Encoding` と `Vary` 付き）
+- GET / HEAD 以外は `405`
 
 ## WebSocket
 
