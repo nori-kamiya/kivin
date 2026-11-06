@@ -48,6 +48,7 @@ export {
     type ParameterSource,
     type ProviderDefinition,
     type ProviderScope,
+    type RequestHook,
     type RouteDocsMetadata,
     type RouteEnhancerMetadata,
     type RouteMetadata,

@@ -22,6 +22,7 @@ export function defineApplication<TSchema>(input: {
   openApi?: AppDefinition<TSchema>['openApi'];
   cors?: AppDefinition<TSchema>['cors'];
   bodyLimit?: AppDefinition<TSchema>['bodyLimit'];
+  onRequest?: AppDefinition<TSchema>['onRequest'];
 }): AppDefinition<TSchema> {
   return {
     modules: input.modules,
@@ -30,6 +31,7 @@ export function defineApplication<TSchema>(input: {
     ...(input.openApi ? { openApi: input.openApi } : {}),
     ...(input.cors ? { cors: input.cors } : {}),
     ...(input.bodyLimit !== undefined ? { bodyLimit: input.bodyLimit } : {}),
+    ...(input.onRequest ? { onRequest: input.onRequest } : {}),
   };
 }
 

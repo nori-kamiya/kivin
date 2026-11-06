@@ -271,6 +271,72 @@ events({ context }: RouteInput) {
 
 ハンドラが終わるか、クライアントが切断する（`stream.signal` が abort される）とストリームを閉じます。プロキシに切られないよう、15 秒ごとに keep-alive コメントを送ります（`keepAliveMs` で変更可）。
 
+## ストリーミング（`@kivin/http`）
+
+SSE 以外のストリーミングには `stream` / `streamText` / `streamNdjson` を使います。返した `Response` には通常どおりキューされたヘッダや Cookie が付きます。
+
+```ts
+import { streamNdjson, streamText } from '@kivin/http';
+
+@Get('/export')
+export({ context }: RouteInput) {
+  // DB カーソルなどの async iterable を 1 行 1 JSON で流す。切断されたら反復をやめる
+  return streamNdjson(this.users.cursor(), { signal: context.request.signal });
+}
+
+@Get('/progress')
+progress({ context }: RouteInput) {
+  return streamText(async (out) => {
+    for (let step = 1; step <= 10 && !out.aborted; step += 1) {
+      await out.writeln(`step ${step}/10`);
+      await out.sleep(500);              // 切断されると即座に起きる
+    }
+  }, { signal: context.request.signal });
+}
+```
+
+- `write` はクライアントが受け取るまで待つ（バックプレッシャー）。切断後の `write` は何もしません。
+- ハンドラが投げた例外は、レスポンス開始後なのでステータスは変えられません。既定ではログに出してストリームを閉じます。`onError(error, writer)` で最後のチャンクを書けます。
+- `signal: context.request.signal` を渡すと、書き込んでいない間の切断も `onAbort` / `aborted` に反映されます。
+
+## コンテンツネゴシエーション（`@kivin/http`）
+
+```ts
+import { acceptsLanguage, acceptsType } from '@kivin/http';
+
+show({ context }: RouteInput) {
+  const lang = acceptsLanguage(context.request, ['ja', 'en'], 'en');      // ja-JP → ja、en-US → en
+  const type = acceptsType(context.request, ['application/json', 'text/html']);
+  if (!type) throw httpError(406, 'Not Acceptable');
+  ...
+}
+```
+
+q 値の高いものを選び、同じ q なら具体的な一致（`text/html` > `text/*` > `*/*`）、次にクライアントの順序を優先します。`text/html;q=0, */*` のように明示的に `q=0` を付けた値は `*` があっても選ばれません。エンコーディングは同じ q ならサーバー側の順序（`createCompressMiddleware` の既定は brotli → gzip）です。
+
+## ルーティング前のフック（`onRequest`）
+
+`defineApplication({ onRequest })` に渡したフックは、ルーティングの前に全リクエストで順に実行されます（Bun のネイティブルートに載ったルートも含む）。`Response` を返すと即座に応答し、`Request` を返すとそのリクエストとしてルーティングし直します。フックを設定しなければオーバーヘッドはありません。
+
+```ts
+import { createMethodOverride, createPrettyJsonMiddleware, createTrailingSlash } from '@kivin/http';
+
+defineApplication({
+  modules: [AppModule],
+  schemaAdapter: createValibotAdapter(),
+  onRequest: [
+    createTrailingSlash(),                         // /users/ → 301 /users（クエリは維持）
+    createMethodOverride(),                        // <form method="post"> + _method=DELETE → DELETE ルート
+    (request) => (isMaintenance() ? new Response('maintenance', { status: 503 }) : undefined),
+  ],
+  globals: { middleware: [createPrettyJsonMiddleware()] },   // ?pretty で JSON をインデント
+});
+```
+
+- `createMethodOverride` は POST だけを対象にし、既定では PUT / PATCH / DELETE のみ許可します。フォームはクローンから読むので、ルート側でも同じボディを読めます。`{ from: { header: 'X-HTTP-Method-Override' } }` や `{ from: { query: '_method' } }` も指定できます。
+- `createTrailingSlash` は `//evil.example/` のようなパスでも `Location` が `//` で始まらないようにしています（オープンリダイレクト対策）。kivin はもともと末尾スラッシュの有無を同じルートとして扱うので、これは URL を 1 つにそろえるためのものです。
+- フックが書き換えたリクエストでも `getClientAddress` は元の接続元を返します。
+
 ## multipart / form
 
 `@Consumes('multipart/form-data')`（または `'application/x-www-form-urlencoded'`）を付けると、ボディをフォームとして読み、`@UseBodySchema` で検証したうえで入力オブジェクトの `body` に渡します。

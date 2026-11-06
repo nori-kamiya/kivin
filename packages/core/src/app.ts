@@ -4,7 +4,7 @@ export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, M
 import type { Server } from 'bun';
 import { Container } from './container';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
-import type { AppDefinition } from './metadata';
+import type { AppDefinition, RequestHook } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
 import { Router } from './router';
@@ -13,8 +13,13 @@ import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
-import { trackServer } from './client-address';
+import { linkDerivedRequest, trackServer } from './client-address';
+import { HttpError } from './http';
+import { createUnhandledErrorResponse } from './runtime/results';
+import { isPromiseLike } from './runtime/utils';
 import { compileWebSocketRoutes } from './websocket';
+
+const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
   const container = new Container();
@@ -91,7 +96,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
   const exactRoutes = createExactRouteLookup(compiledRoutes);
   const staticAllowedMethods = createStaticAllowedMethodsLookup(compiledRoutes);
 
-  const fetch = async (request: Request): Promise<Response> => {
+  const routeFetch = async (request: Request): Promise<Response> => {
     const isHeadRequest = request.method === 'HEAD';
     const path = normalizeRoutePath(readPathname(request.url));
     const exactMethodMatch = exactRoutes.get(request.method as HttpMethod)?.get(path);
@@ -152,6 +157,56 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     return isHeadRequest ? toHeadResponse(response) : response;
   };
 
+  // Pre-routing hooks (`onRequest`). Without hooks requests go straight to the router / Bun's
+  // native routes; with hooks every request runs them first (see `withRequestHooks` in listen).
+  const requestHooks: readonly RequestHook[] = definition.onRequest === undefined
+    ? []
+    : typeof definition.onRequest === 'function' ? [definition.onRequest] : definition.onRequest;
+
+  /** Runs the hooks; a rewritten request is routed by kivin's router, the original by `proceed`. */
+  const runRequestHooks = async (request: Request, proceed: (request: Request) => Response | Promise<Response>): Promise<Response> => {
+    let current = request;
+    try {
+      for (const hook of requestHooks) {
+        const pending = hook(current);
+        const result = isPromiseLike<Request | Response | undefined | void>(pending) ? await pending : pending;
+        if (result instanceof Response) {
+          return result;
+        }
+        if (result instanceof Request) {
+          current = linkDerivedRequest(result, current);
+        }
+      }
+    } catch (error) {
+      if (error instanceof Response) {
+        return error;
+      }
+      return error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error);
+    }
+    return current === request ? proceed(request) : routeFetch(current);
+  };
+
+  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request) => runRequestHooks(request, routeFetch);
+
+  /** Puts the hooks in front of a native route value (handler, static Response or method map). */
+  const withRequestHooks = (definition: unknown): unknown => {
+    if (requestHooks.length === 0) {
+      return definition;
+    }
+    if (definition instanceof Response) {
+      return (request: Request) => runRequestHooks(request, () => definition.clone());
+    }
+    if (typeof definition === 'function') {
+      const handler = definition as (request: Request, server: unknown) => Response | Promise<Response>;
+      return (request: Request, server: unknown) => runRequestHooks(request, (current) => handler(current, server));
+    }
+    if (definition && typeof definition === 'object' && Object.keys(definition).every((key) => HTTP_METHOD_KEYS.has(key))) {
+      return Object.fromEntries(Object.entries(definition).map(([method, value]) => [method, withRequestHooks(value)]));
+    }
+    // Anything else (e.g. an HTML bundle) is served by Bun as-is.
+    return definition;
+  };
+
   let activeServer: Server<unknown> | undefined;
   let closing: Promise<void> | undefined;
   let initializing: Promise<void> | undefined;
@@ -186,7 +241,10 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         shutdownSignals,
         ...serveOptions
       } = typeof options === 'number' ? ({ port: options } as ListenOptions) : options;
-      const routes: Record<string, unknown> = createBunServeRoutes(compiledRoutes);
+      const routes: Record<string, unknown> = {};
+      for (const [path, definition] of Object.entries(createBunServeRoutes(compiledRoutes))) {
+        routes[path] = withRequestHooks(definition);
+      }
       const addRoute = (path: string, definition: unknown, source: string) => {
         if (path in routes) {
           throw new Error(`listen({ ${source} }) path ${path} collides with an application route`);
@@ -194,7 +252,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         routes[path] = definition;
       };
       for (const [path, definition] of Object.entries(extraRoutes)) {
-        addRoute(path, definition, 'routes');
+        addRoute(path, withRequestHooks(definition), 'routes');
       }
       const compiledSockets = websockets ? compileWebSocketRoutes(websockets) : undefined;
       for (const [path, handler] of Object.entries(compiledSockets?.handlers ?? {})) {

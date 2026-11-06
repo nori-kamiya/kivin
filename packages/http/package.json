@@ -1,7 +1,7 @@
 {
   "name": "@kivin/http",
   "version": "0.0.1",
-  "description": "HTTP middleware and helpers for kivin: compression, ETag, timeout, request IDs, content negotiation",
+  "description": "HTTP middleware and helpers for kivin: compression, ETag, timeout, request IDs, content negotiation, streaming, pretty JSON, method override, trailing slashes",
   "license": "MIT",
   "author": "nori-kamiya",
   "repository": {
