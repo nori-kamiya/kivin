@@ -30,6 +30,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
 | `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
 | `afterResponse(request, callback)` | function | そのリクエストの最終レスポンス（例外フィルタ・CORS の後、クライアントが受け取るもの）でコールバックを呼ぶ。`Response` を返すと差し替え。メトリクスやトレースのミドルウェアが正しいステータスを記録するのに使う |
+| `enableAfterResponse()` | function | `afterResponse` を最初のリクエストから有効にする。非同期ガードの後ろで走るミドルウェアが `afterResponse` を使うなら起動時に 1 回呼ぶ（`@kivin/observability` のミドルウェアは生成時に呼ぶ） |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
