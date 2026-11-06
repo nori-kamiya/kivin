@@ -24,6 +24,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - request timeout and in-memory rate limiting middleware
 - response compression (brotli / gzip) and ETag / 304 middleware
 - static file serving (`serveStatic`: ETag / 304, Range, precompressed, SPA fallback)
+- Basic / Bearer auth guards and CSRF protection (Sec-Fetch-Site / Origin)
 - graceful shutdown with `onApplicationShutdown` hooks, `createTestingApp` with provider overrides
 - OpenAPI 3.1 generation
 - `operationId`, route description, and security scheme support

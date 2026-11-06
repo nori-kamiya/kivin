@@ -15,6 +15,8 @@
 - `@kivin/core`: `createCompressMiddleware`（brotli / gzip。Accept-Encoding の q 値で選択、閾値・型フィルタ・`no-transform`・SSE 除外、NDJSON はストリーム圧縮、brotli 品質は既定 4）と `createEtagMiddleware`（ボディのハッシュから弱い ETag、If-None-Match に 304）を追加
 
 - `@kivin/core`: `serveStatic` を追加。Bun のネイティブルートで静的ファイルを配信する（ETag / Last-Modified と 304、Range、HEAD、index.html、SPA fallback、`.br` / `.gz` の事前圧縮、Cache-Control）。パストラバーサル（エンコード含む）・NUL・ドットファイルは 404
+- `@kivin/core`: `createBasicAuthGuard` / `createBearerAuthGuard`（定数時間比較、`WWW-Authenticate` 付き 401）と `createCsrfMiddleware`（Go 1.25 の CrossOriginProtection と同じ Sec-Fetch-Site / Origin 判定で 403）を追加
+
 - `@kivin/core`: `globals` やルートで指定したガード / ミドルウェア / フィルタのクラスは、モジュールの `providers` に書かなくても自動で登録されるようにした（依存はモジュールから解決）。`globals` の `guards` / `middleware` / `filters` は個別に省略できる
 
 - `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、ハンドラの入力型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
@@ -41,6 +43,8 @@
 - `@kivin/cli`: `generate` が manifest の各ルートに AOT executor（`aot` ファクトリ）を出力するようにした。実行時コンパイラが汎用パスを選ぶルートを、引数に特化した直線的な関数で置き換える（context-json +25%、delete +19%、request-scoped +19%、他は変化なし）。`--no-aot` / `KIVIN_AOT=0` で無効化できる
 
 ### Fixed
+
+- `@kivin/core`（セキュリティ）: ガードが 1 つだけのルートで、そのガードの `canActivateRaw` が `async` 宣言ではない通常のメソッドで Promise を返す場合（`canActivateRaw(req) { return this.auth.check(req); }`）、Promise が真値として扱われて**全リクエストが許可されていた**問題を修正（#38）
 
 - `@kivin/core`: フィルタで処理されなかった例外は 500 になるだけでどこにも記録されず、`@kivin/logger` を入れていないアプリでは原因が失われていた。`console.error('[kivin] Unhandled error', error)` に 1 回出すようにした（`HttpError` とフィルタで処理された例外は出さない。`@kivin/logger` の `RequestLoggerMiddleware` が記録した例外は二重に出さない）。他のロガーからは `markErrorReported(error)` で同様に抑止できる
 - `@kivin/core`: WebSocket の `upgrade` の例外が Bun の既定エラーページ（development ではスタックトレースを表示）まで漏れていた問題と、`open` / `message` / `close` / `drain` の例外が未処理 reject になっていた（プロセスの終了コードが 1 になる）問題を修正。`upgrade` は 500 を返し、ハンドラの例外は新しい `error` フックか `console.error` に渡す。`open` の失敗時は 1011 で閉じる。`listen()` に Bun.serve の `error` ハンドラを既定で設定した
