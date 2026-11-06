@@ -5,6 +5,7 @@ import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
+import { GENERATE_STAGING_PREFIX, INSPECT_STAGING_PREFIX } from './staging';
 
 export interface RouteInspection {
   method: string;
@@ -73,7 +74,7 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   const outDir = resolve(input.outDir);
   // A sibling of outDir keeps the generated relative imports identical, and the final step is renames within one filesystem.
   await mkdir(dirname(outDir), { recursive: true });
-  const stagingDir = await mkdtemp(resolve(dirname(outDir), '.kivin-gen-'));
+  const stagingDir = await mkdtemp(resolve(dirname(outDir), GENERATE_STAGING_PREFIX));
   const staged = (name: string) => resolve(stagingDir, name);
 
   try {
@@ -217,7 +218,7 @@ async function loadManifest(manifestPath: string): Promise<AppManifest<unknown>>
 
 async function buildManifestFromEntry(entry: string, appDefinition: AppDefinition<unknown>, core: CoreRuntime) {
   const absoluteEntry = resolve(entry);
-  const outDir = await mkdtemp(resolve(dirname(absoluteEntry), '.kivin-inspect-'));
+  const outDir = await mkdtemp(resolve(dirname(absoluteEntry), INSPECT_STAGING_PREFIX));
   const manifestPath = resolve(outDir, 'manifest.ts');
 
   try {

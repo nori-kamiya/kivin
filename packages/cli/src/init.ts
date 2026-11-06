@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 
 /**
  * Ranges for everything that is not a @kivin/* package. valibot must stay inside the peer range of
- * @kivin/valibot; init.test.ts enforces that.
+ * @kivin/valibot.
  */
 export const TEMPLATE_RANGES = {
   valibot: '^1.5.0',

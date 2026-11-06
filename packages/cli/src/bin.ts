@@ -39,7 +39,7 @@ Options:
   -h, --help     Show this help
   -v, --version  Show the CLI version`;
 
-// package.json sits one level above both src/ and dist/, so the same URL works installed and in the monorepo.
+// package.json sits one level above both src/ and dist/, so the same URL works compiled and from source.
 function readCliVersion(): string {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
   return manifest.version;
