@@ -1,6 +1,6 @@
 {
   "name": "@kivin/session",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Server-side sessions for kivin: signed session-ID cookie, pluggable stores",
   "license": "MIT",
   "author": "nori-kamiya",

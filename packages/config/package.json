@@ -1,6 +1,6 @@
 {
   "name": "@kivin/config",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Typed, validated environment variables for kivin (any Standard Schema or schema adapter)",
   "license": "MIT",
   "author": "nori-kamiya",

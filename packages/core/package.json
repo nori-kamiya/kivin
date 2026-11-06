@@ -1,6 +1,6 @@
 {
   "name": "@kivin/core",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Router, DI, and runtime core for the kivin framework",
   "license": "MIT",
   "author": "nori-kamiya",

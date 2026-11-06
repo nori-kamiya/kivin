@@ -1,6 +1,6 @@
 {
   "name": "@kivin/static",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Static file serving for kivin on Bun native routes",
   "license": "MIT",
   "author": "nori-kamiya",

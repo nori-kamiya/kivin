@@ -1,6 +1,6 @@
 {
   "name": "@kivin/valibot",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Valibot schema adapter for kivin",
   "license": "MIT",
   "author": "nori-kamiya",

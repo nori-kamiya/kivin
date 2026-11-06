@@ -2,7 +2,7 @@
 
 *[English README](README.md)*
 
-Bun の single-binary デプロイを前提にした、軽量な Fetch API ベースの Web フレームワークです。現在は early-stage (`v0.0.1`) で、安定版までに API が変わる可能性があります。
+Bun の single-binary デプロイを前提にした、軽量な Fetch API ベースの Web フレームワークです。現在は early-stage (`v0.1.0`) で、安定版までに API が変わる可能性があります。
 
 狙い:
 

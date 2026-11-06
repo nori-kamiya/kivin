@@ -2,7 +2,7 @@
 
 *[日本語版 README](README.ja.md)*
 
-A lightweight, Fetch API based web framework built for Bun single-binary deployment. It is early-stage (`v0.0.1`), so the API may still change before a stable release.
+A lightweight, Fetch API based web framework built for Bun single-binary deployment. It is early-stage (`v0.1.0`), so the API may still change before a stable release.
 
 Goals:
 

@@ -1,6 +1,6 @@
 {
   "name": "@kivin/jwt",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "JWT verification / signing (Web Crypto) and an auth guard for kivin",
   "license": "MIT",
   "author": "nori-kamiya",
