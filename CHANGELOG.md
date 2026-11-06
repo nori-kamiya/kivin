@@ -8,6 +8,8 @@
 
 ### Added
 
+- `@kivin/observability` を追加: Prometheus メトリクス（`createMetrics`、依存なしのレジストリ、ルートテンプレート単位の件数・レイテンシ・処理中件数・プロセスメトリクス）、OpenTelemetry の SERVER スパン（`createTracingMiddleware`、`@opentelemetry/api` を構造的に受け取る）、`Server-Timing`（`createServerTimingMiddleware` / `serverTiming`）、`/livez` / `/readyz`（`createHealthCheck`）
+- `@kivin/core`: `afterResponse(request, callback)` を追加。例外フィルタや CORS を経た最終レスポンスでコールバックを呼ぶ（ミドルウェアからは、ハンドラが投げた例外がフィルタで何になったかが見えないため）。使われるまでは各ルートで真偽値の確認 1 回だけ
 - `@kivin/security`: IP 制限 `createIpRestrictionGuard` / `createIpRestriction` / `createIpMatcher` / `parseIpAddress` を追加（IPv4 / IPv6 のアドレス・CIDR・`*`・判定関数。拒否リスト優先、IPv4-mapped IPv6 は IPv4 扱い、不明なアドレスは既定で拒否）
 - `@kivin/core`: ルーティング前のフック `defineApplication({ onRequest })` を追加。`Response` を返すと即応答、`Request` を返すとそのリクエストとしてルーティングし直す。Bun のネイティブルートに載ったルートでも動き、未設定ならコストはない。書き換えたリクエストでも `getClientAddress` は元の接続元を返す（ボディ制限で作り直したリクエストも同様）
 - `@kivin/http`: コンテンツネゴシエーション `accepts` / `acceptsType` / `acceptsLanguage` / `negotiate` / `parseAcceptHeader`、ストリーミング `stream` / `streamText` / `streamNdjson`（バックプレッシャー、切断検知）、`?pretty` で JSON をインデントする `createPrettyJsonMiddleware`、`onRequest` フックとして使う `createMethodOverride`（フォームの `_method` / ヘッダ / クエリ）と `createTrailingSlash`（301 / 308 で正規 URL へ。オープンリダイレクト対策済み）を追加

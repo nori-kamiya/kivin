@@ -14,6 +14,7 @@
       "@kivin/security": ["./packages/security/src/index.ts"],
       "@kivin/http": ["./packages/http/src/index.ts"],
       "@kivin/static": ["./packages/static/src/index.ts"],
+      "@kivin/observability": ["./packages/observability/src/index.ts"],
       "@kivin/cli": ["./packages/cli/src/index.ts"]
     },
     "lib": ["ES2022", "ESNext.Decorators", "DOM", "DOM.Iterable"],

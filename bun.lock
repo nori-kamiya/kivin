@@ -111,6 +111,13 @@
         "@kivin/core": "workspace:*",
       },
     },
+    "packages/observability": {
+      "name": "@kivin/observability",
+      "version": "0.0.1",
+      "dependencies": {
+        "@kivin/core": "workspace:*",
+      },
+    },
     "packages/static": {
       "name": "@kivin/static",
       "version": "0.0.1",
@@ -176,6 +183,8 @@
     "@kivin/security": ["@kivin/security@workspace:packages/security"],
 
     "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
+
+    "@kivin/observability": ["@kivin/observability@workspace:packages/observability"],
 
     "@kivin/static": ["@kivin/static@workspace:packages/static"],
 

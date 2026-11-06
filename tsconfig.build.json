@@ -11,6 +11,7 @@
     { "path": "./packages/security" },
     { "path": "./packages/http" },
     { "path": "./packages/static" },
+    { "path": "./packages/observability" },
     { "path": "./packages/cli" },
     { "path": "./tests/types" },
     { "path": "./examples/basic" },

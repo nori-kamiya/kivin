@@ -28,6 +28,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
 | `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
+| `afterResponse(request, callback)` | function | そのリクエストの最終レスポンス（例外フィルタ・CORS の後、クライアントが受け取るもの）でコールバックを呼ぶ。`Response` を返すと差し替え。メトリクスやトレースのミドルウェアが正しいステータスを記録するのに使う |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
@@ -133,6 +134,16 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createPrettyJsonMiddleware(options?)` | function | `?pretty` のときだけ JSON レスポンスをインデントする（Hono の `prettyJSON`） |
 | `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
 | `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
+
+## @kivin/observability
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createMetrics(options?)` | function | Prometheus メトリクス。`middleware`（`globals.middleware` 用）、`handler`（`/metrics` のネイティブルート用）、`registry` を返す。`http_requests_total` / `http_request_duration_seconds`（`method` / `route` テンプレート / `status`）、`http_requests_in_flight`、プロセスメトリクス |
+| `MetricsRegistry`, `Counter`, `Gauge`, `Histogram` | class | 依存なしのメトリクスレジストリ（ラベル付き、テキスト形式 0.0.4 で出力） |
+| `createTracingMiddleware(options)` | function | OpenTelemetry の SERVER スパン（`@opentelemetry/api` の `tracer` / `propagation` / `context` を渡す。依存なし）。HTTP セマンティック規約の属性、`traceparent` からの継続、5xx は ERROR + 例外記録 |
+| `createServerTimingMiddleware(options?)`, `serverTiming(request)` | function | `Server-Timing` ヘッダ（total とハンドラが記録した計測）。`enabled` で送る条件を絞れる |
+| `createHealthCheck(options?)` | function | `/livez`（常に 200）と `/readyz`（チェックを並列実行、失敗・タイムアウトで 503）。`routes()` で `listen({ routes })` に渡す。`setReady(false)` でドレイン |
 
 ## @kivin/static
 

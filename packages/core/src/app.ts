@@ -13,6 +13,7 @@ import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
+import { withAfterResponse } from './after-response';
 import { linkDerivedRequest, trackServer } from './client-address';
 import { HttpError } from './http';
 import { createUnhandledErrorResponse } from './runtime/results';
@@ -88,7 +89,9 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       route,
     });
 
-    const servedRoute = cors ? withCorsOnEveryResponse(compiledRoute, cors) : compiledRoute;
+    const corsRoute = cors ? withCorsOnEveryResponse(compiledRoute, cors) : compiledRoute;
+    // Outermost: `afterResponse` callbacks see exactly what the client receives.
+    const servedRoute = { ...corsRoute, execute: withAfterResponse(corsRoute.execute) };
     compiledRoutes.push(servedRoute);
     router.register(route.method, route.fullPath, servedRoute);
   }

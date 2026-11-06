@@ -26,6 +26,11 @@ export function linkDerivedRequest(derived: Request, original: Request) {
   return derived;
 }
 
+/** @internal The request the server received for `request` (itself unless kivin derived it). */
+export function originalRequest(request: Request): Request {
+  return derivedFrom.get(request) ?? request;
+}
+
 /**
  * The peer address of a request received by `app.listen()` (Bun's `server.requestIP`), or
  * `undefined` (e.g. for `app.fetch` in tests). Behind a reverse proxy this is the proxy: read a
