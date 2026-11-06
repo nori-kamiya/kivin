@@ -10,7 +10,10 @@ JWT verification and signing (Web Crypto), JWKS key resolvers (remote and local)
 
 ```bash
 bun add @kivin/core @kivin/jwt @kivin/decorators
+bun add -d @types/bun typescript
 ```
+
+kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
 
@@ -57,7 +60,10 @@ kivin 用の JWT の検証・署名（Web Crypto）、JWKS の鍵リゾルバ（
 
 ```bash
 bun add @kivin/core @kivin/jwt @kivin/decorators
+bun add -d @types/bun typescript
 ```
+
+kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
 

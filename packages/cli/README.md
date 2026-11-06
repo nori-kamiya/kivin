@@ -9,10 +9,14 @@ The kivin code generation CLI: `generate` (manifest, contracts, typed client, Op
 ## Install
 
 ```bash
-bun add -d @kivin/cli @kivin/core
+bun add @kivin/core
+bun add -d @kivin/cli
+bun add -d @types/bun typescript
 ```
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
+
+`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it, as a regular dependency).
 
 Install it as a dev dependency of your project and call it from `package.json` scripts, for example `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`. To scaffold a new project: `bunx --package @kivin/cli kivin init my-app` (always with `--package @kivin/cli`; the unscoped npm name `kivin` is not this project). `kivin generate` imports your entry file and everything it imports, so top-level side effects in those modules run during the build.
 
@@ -31,7 +35,6 @@ Install it as a dev dependency of your project and call it from `package.json` s
 
 - [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
-- [CLI reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli) (Japanese)
 
 ---
 
@@ -44,10 +47,14 @@ kivin のコード生成 CLI です。`generate`（manifest・contracts・型付
 ### インストール
 
 ```bash
-bun add -d @kivin/cli @kivin/core
+bun add @kivin/core
+bun add -d @kivin/cli
+bun add -d @types/bun typescript
 ```
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
+
+`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに通常の依存として含めています）。
 
 プロジェクトの開発依存として入れ、`package.json` の scripts から呼びます（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）。新しいプロジェクトの雛形は `bunx --package @kivin/cli kivin init my-app` で作れます（必ず `--package @kivin/cli` を付けてください。スコープなしの npm 名 `kivin` は本プロジェクトのものではありません）。`kivin generate` はエントリファイルとその import 先を実際に import するため、それらのモジュールのトップレベルの副作用はビルド時に実行されます。
 
@@ -66,4 +73,3 @@ bun add -d @kivin/cli @kivin/core
 
 - [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)
-- [CLI リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli)
