@@ -10,7 +10,7 @@ Bun の single-binary デプロイを前提にした、軽量な Fetch API ベ�
 - NestJS のような module / controller / service の構造化
 - Valibot（または Standard Schema 対応の validator）と OpenAPI をビルド時生成でつなぐ
 
-> **必要環境:** [Bun](https://bun.sh) **1.4.0 以上**（`engines.bun` に宣言。それより古い Bun では動きません）。kivin は Bun 専用で、Node では動きません。
+> **必要環境:** [Bun](https://bun.sh) **1.4.0 以上**（`engines.bun` に宣言。`bun install` 自体は `engines` を強制しませんが、それより古い Bun では `createApp` と `kivin` CLI が起動時に分かりやすいエラーで失敗します）。kivin は Bun 専用で、Node では動きません。
 
 ## インストール
 
@@ -47,6 +47,8 @@ bunx --package @kivin/cli kivin init my-app
   "include": ["*.ts", ".kivin/generated/**/*.ts", ".kivin/generated/**/*.json"]
 }
 ```
+
+`moduleResolution` は `"bundler"` が必須です。公開している型定義は拡張子なしの相対 import を使うため、`NodeNext` はサポートしていません。
 
 kivin は TC39 標準デコレータ（TypeScript 5+ の既定）を使います。`experimentalDecorators` は有効に**しないでください**。
 
@@ -133,7 +135,7 @@ single binary にするには、生成 manifest を静的 import したまま `b
 ### `generate` がすること・しないこと
 
 - `kivin generate` はデコレータをソースの AST から解析しますが、**エントリファイルとその import 先も実際に import します**。つまり、`app.ts` から辿れるモジュールのトップレベルの副作用はビルド時に実行されます。必須の環境変数の読み込みや接続の確立などをそこに書くと、シークレットの無い CI / Docker ビルドで失敗します。環境変数の検証は DI（`@kivin/config` の `envProvider`）か `main.ts` で行ってください（[docs/production.md](docs/production.md)）。
-- decorator に渡す schema・guard・middleware は **`export` する**か、その場で式として書く必要があります。`export` していない `const IdSchema = ...` を渡すと生成に失敗します。
+- decorator に渡す guard・middleware は **`export` する**か、その場で式として書く必要があります。schema も **`export` してください**。契約チェックと型付きクライアントは `export` された schema を読みます。その場で書いた schema（`@UseQuerySchema(v.object({ ... }))`）は実行時には検証されますが、`kivin generate` は警告を出して契約チェックを省き、型付きクライアントの入力型はゆるい型になります。`export` していない `const IdSchema = ...` を渡すと生成に失敗します。
 - 生成に失敗した場合、`--outDir` の以前の成果物は変更されません。
 
 ## Dev mode
@@ -156,13 +158,13 @@ const api = createClient({
   headers: () => ({ authorization: `Bearer ${token}` }),
 });
 
-const users = await api.users.list({ query: { search: 'ada' } });
-const user = await api.users.findById({ params: { id: '1' } });
-await api.users.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // body の型を検査
+// 後述の Handlers の UserController のルート（@OperationId なし: コントローラ名 + メソッド名）
+const user = await api.user.findById({ params: { id: '1' } });
+await api.user.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // body の型を検査
 ```
 
 - メソッドは `@OperationId('users.list')` から `client.users.list` になります（無い場合はコントローラ名とメソッド名）。
-- 入力の型は query / param / body の schema 入力、出力の型は 2xx レスポンス schema の出力から取ります。schema が無いルートはハンドラの引数・戻り値の型を使います（`Response` を直接返すルートは `unknown`）。
+- 入力の型は `export` された query / param / body の schema 入力、出力の型は 2xx レスポンス schema の出力から取ります。schema が無いルートはハンドラの引数・戻り値の型を使います（`Response` を直接返すルートは `unknown`）。
 - 2xx 以外は `KivinClientError`（`status` とパース済みの `body` を持つ）を投げます。
 - `fetch` オプションに `app.fetch` を渡すと、サーバーを立てずにテストからそのまま呼べます。
 
@@ -194,7 +196,7 @@ export class UserController {
 }
 ```
 
-フィールドは `params` / `query` / `body` / `headers` / `context` の 5 つです。schema を宣言していない場合、`params` は文字列のレコード、`query` は `string | string[] | undefined` のレコード（同じキーが繰り返されると配列）、`body` は `unknown` になります。
+フィールドは `params` / `query` / `body` / `headers` / `context` の 5 つです。schema を宣言していない場合、`headers` は `string | undefined` のレコード（全リクエストヘッダ。名前は小文字、同じヘッダが複数あればカンマ連結）、`params` は文字列のレコード、`query` は `string | string[] | undefined` のレコード（同じキーが繰り返されると配列）、`body` は `unknown` になります。
 
 ## Compile-time contracts
 
