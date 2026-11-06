@@ -111,6 +111,8 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
 | `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
 | `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
+| `createIpRestrictionGuard(options)` | function | IP の許可 / 拒否リストのガード（拒否優先、許可リスト外は 403、不明なアドレスは既定で拒否）。アドレス・CIDR（IPv4 / IPv6）・`*`・判定関数 |
+| `createIpRestriction(options)`, `createIpMatcher(rules)`, `parseIpAddress(text)` | function | IP 制限の判定関数（`onRequest` フック用）、ルール照合、アドレスのパース（IPv4-mapped は IPv4 扱い） |
 
 ## @kivin/http
 
