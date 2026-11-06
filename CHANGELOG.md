@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/core`: `listen({ onShutdownStart, shutdownDelayMs })` を追加。シグナル受信後、`onShutdownStart` → 待機 → `app.close()` の順に実行し、`createHealthCheck()` の readiness を先に落としてからロードバランサが外すまで受け付けを続けられる
 - `@kivin/core` / `@kivin/cli`: 全ルートに共通のパス接頭辞 `defineApplication({ basePath: '/api' })` を追加（Hono の `basePath`、Elysia の `prefix`、NestJS の `setGlobalPrefix` 相当）。`kivin generate` が manifest・OpenAPI・生成クライアントに反映し、CLI を使わない `buildManifest` でも適用される
 - `@kivin/http`: リバースプロキシ `proxy`、自動エスケープの HTML テンプレート `html` / `raw` / `htmlResponse`、AsyncLocalStorage による `createRequestStorageMiddleware` / `getCurrentRequest` / `getRequestValue` / `setRequestValue` を追加
 - `@kivin/security`: いずれかのガードが通れば許可する `anyGuard` を追加。`createRateLimitMiddleware` の `store` で共有ストア（Redis など）を使えるようにした（`RateLimitStore` / `MemoryRateLimitStore`）
