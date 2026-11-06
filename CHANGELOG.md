@@ -58,6 +58,13 @@ npm への最初の公開です。v0.0.1 はソースのみのタグで、npm �
 - 実物の GraphQL Yoga で `createGraphqlRoutes(yoga, { context })` が型エラーになっていた問題を修正
 - OpenAPI のパス（`/users/{id}`）、パス変数の宣言、空の `responses` を修正
 - ハンドラが返す `Blob` / `ReadableStream` / `ArrayBuffer` などの扱い、`undefined` を返すハンドラの 500、不正なパーセントエンコーディングの 500、CORS 有効時のエラー応答のヘッダ、重複ルートの検出、DI の循環依存エラーを修正
+- Bun 1.4.0 未満で起動すると、`createApp` と CLI が `kivin requires Bun 1.4.0 or later (running X)` で止まるようにした。以前は警告なしに動き、チャンク転送のボディ、WebSocket のエラー処理、ヘルスチェックが誤動作した
+- インライン schema（`@UseQuerySchema(v.object(...))` など）を持つハンドラが、`contracts.ts` で型エラーになっていた問題を修正。そのルートは契約チェックの対象外にし、`kivin generate` が stderr に警告（ルート名と schema を export する案内）を出す
+- `kivin openapi --output X` が X の隣の `manifest.ts` を上書きして残していた問題を修正。X だけを書く
+- `kivin init` のひな形に `typecheck`（`tsc`）スクリプトを追加
+- 生成物を実行時に import するエントリで、クリーンチェックアウトの `kivin generate` が `Cannot find module` で止まるとき、エントリは生成物を実行時に import してはならず `main.ts` で import するという案内を出す
+- `listen({ shutdownSignals })` で `onApplicationShutdown` が例外を投げたとき、ログも出さず終了コード 0 になっていた問題を修正。`[kivin] app.close failed` を出力して終了コード 1 にする
+- `kivin dev`: 存在しない `--watch` ディレクトリは何も起動する前にエラーにする。シグナルで終了したサーバーを「実行中」と報告しない。`kivin inspect routes` の一時ファイルでサーバーが再起動しない
 
 ## [0.0.1] - 2026-06-29
 
