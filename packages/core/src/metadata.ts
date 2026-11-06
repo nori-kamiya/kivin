@@ -117,7 +117,19 @@ export interface AppDefinition<TSchema = unknown> {
   openApi?: AppOpenApiConfig;
   /** Enables CORS headers on app routes and automatic preflight responses. */
   cors?: import('./cors').CorsOptions;
+  /**
+   * Hooks run on every request before routing, in order (e.g. method override, trailing-slash
+   * redirects). See `RequestHook`. Without hooks requests go straight to Bun's native routes.
+   */
+  onRequest?: RequestHook | readonly RequestHook[];
 }
+
+/**
+ * A pre-routing hook. Return nothing to continue, a `Response` to answer immediately (no route runs),
+ * or a `Request` to route that request instead (another method or URL); later hooks see it. Errors
+ * become responses like route errors (`HttpError` → its status, anything else → 500).
+ */
+export type RequestHook = (request: Request) => Request | Response | undefined | void | PromiseLike<Request | Response | undefined | void>;
 
 export interface AppOpenApiConfig {
   tags?: Array<{ name: string; description?: string }>;

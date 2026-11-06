@@ -6,6 +6,7 @@
 // are handed on in a new Request, so every body reader downstream works unchanged. Only routes with
 // a limit and a body-carrying method are wrapped.
 import type { CompiledRoute, ManifestRoute } from './types';
+import { linkDerivedRequest } from '../client-address';
 
 const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -59,7 +60,7 @@ export function withBodyLimit<TSchema>(compiled: CompiledRoute<TSchema>, limit: 
         body.set(chunk, offset);
         offset += chunk.byteLength;
       }
-      return execute(new Request(request, { body }), params);
+      return execute(linkDerivedRequest(new Request(request, { body }), request), params);
     },
   };
 }
