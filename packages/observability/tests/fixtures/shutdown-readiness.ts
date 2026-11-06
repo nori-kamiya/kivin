@@ -5,6 +5,9 @@ import { createValibotAdapter } from '@kivin/valibot';
 
 class Lifecycle {
   onApplicationShutdown(signal?: string) {
+    if (process.env.FAIL_SHUTDOWN === '1') {
+      throw new Error('db pool close failed');
+    }
     console.log(`shutdown ${signal}`);
   }
 }

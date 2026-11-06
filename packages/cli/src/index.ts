@@ -1,10 +1,11 @@
 import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivin/core';
 import type * as KivinCore from '@kivin/core';
 import { buildOpenApiDocument } from '@kivin/openapi';
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
+import { GENERATE_STAGING_PREFIX, INSPECT_STAGING_PREFIX } from './staging';
 
 export interface RouteInspection {
   method: string;
@@ -73,8 +74,9 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   const outDir = resolve(input.outDir);
   // A sibling of outDir keeps the generated relative imports identical, and the final step is renames within one filesystem.
   await mkdir(dirname(outDir), { recursive: true });
-  const stagingDir = await mkdtemp(resolve(dirname(outDir), '.kivin-gen-'));
+  const stagingDir = await mkdtemp(resolve(dirname(outDir), GENERATE_STAGING_PREFIX));
   const staged = (name: string) => resolve(stagingDir, name);
+  let warnings: string[] = [];
 
   try {
     const generated = await buildManifestSourceFromAst({
@@ -84,11 +86,14 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
       clientOutFile: staged('client.ts'),
       ...(input.aot === false ? { aot: false } : {}),
     });
+    warnings = generated.warnings;
     await writeFile(staged('manifest.ts'), generated.source, 'utf8');
     await writeFile(staged('contracts.ts'), generated.contractsSource ?? 'export {};\n', 'utf8');
     await writeFile(staged('client.ts'), generated.clientSource ?? 'export {};\n', 'utf8');
 
-    const { appDefinition, core } = await loadApp(input.entry);
+    const { appDefinition, core } = await loadApp(input.entry).catch((error: unknown) => {
+      throw explainGeneratedImport(error, outDir) ?? error;
+    });
     assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
     const manifest = await loadManifest(staged('manifest.ts'));
     const openApi = buildOpenApiDocument({
@@ -115,33 +120,57 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     contractsPath: resolve(outDir, 'contracts.ts'),
     clientPath: resolve(outDir, 'client.ts'),
     openApiPath: resolve(outDir, 'openapi.json'),
+    warnings,
   };
+}
+
+/**
+ * Generation is staged, so a file under outDir that does not exist yet cannot be imported while the entry loads.
+ * Returns a targeted error for that case, or undefined when the failure is something else.
+ */
+function explainGeneratedImport(error: unknown, outDir: string): Error | undefined {
+  const match = error instanceof Error ? /Cannot find module '([^']+)' imported from (.+)$/.exec(error.message) : null;
+  if (!match?.[1] || !match[2] || !match[1].startsWith('.')) {
+    return undefined;
+  }
+  const missing = resolve(dirname(match[2]), match[1]);
+  if (!missing.startsWith(outDir + sep)) {
+    return undefined;
+  }
+  return new Error(`${match[2]} imports ${match[1]} at runtime, but that generated file does not exist yet. The entry must not import generated files at runtime (kivin generate has to load it before it can write them); import them from main.ts instead.`);
 }
 
 export async function generateOpenApi(input: { entry: string; output: string; title?: string; version?: string }) {
   const { appDefinition, core } = await loadApp(input.entry);
-  const manifestPath = resolve(dirname(resolve(input.output)), 'manifest.ts');
-  const generated = await buildManifestSourceFromAst({
-    entry: input.entry,
-    outFile: manifestPath,
-  });
-  assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
-  await mkdir(dirname(manifestPath), { recursive: true });
-  await writeFile(manifestPath, generated.source, 'utf8');
-  const manifest = await loadManifest(manifestPath);
-  const openApi = buildOpenApiDocument({
-    manifest,
-    schemaAdapter: appDefinition.schemaAdapter,
-    info: {
-      title: input.title ?? 'kivin app',
-      version: input.version ?? '0.1.0',
-    },
-    ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
-  });
+  const output = resolve(input.output);
+  // The manifest is only an intermediate; staging it beside the output keeps its relative imports valid without leaving it behind.
+  await mkdir(dirname(output), { recursive: true });
+  // realpath: Bun resolves the manifest's imports from the real location, so a symlinked parent (/tmp on macOS) would break them.
+  const stagingDir = await mkdtemp(resolve(await realpath(dirname(output)), GENERATE_STAGING_PREFIX));
+  const manifestPath = resolve(stagingDir, 'manifest.ts');
 
-  await mkdir(dirname(resolve(input.output)), { recursive: true });
-  await writeFile(resolve(input.output), JSON.stringify(openApi, null, 2), 'utf8');
-  return resolve(input.output);
+  try {
+    const generated = await buildManifestSourceFromAst({
+      entry: input.entry,
+      outFile: manifestPath,
+    });
+    assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
+    await writeFile(manifestPath, generated.source, 'utf8');
+    const manifest = await loadManifest(manifestPath);
+    const openApi = buildOpenApiDocument({
+      manifest,
+      schemaAdapter: appDefinition.schemaAdapter,
+      info: {
+        title: input.title ?? 'kivin app',
+        version: input.version ?? '0.1.0',
+      },
+      ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
+    });
+    await writeFile(output, JSON.stringify(openApi, null, 2), 'utf8');
+  } finally {
+    await rm(stagingDir, { recursive: true, force: true });
+  }
+  return output;
 }
 
 export async function inspectRoutes(input: { entry: string }) {
@@ -217,7 +246,7 @@ async function loadManifest(manifestPath: string): Promise<AppManifest<unknown>>
 
 async function buildManifestFromEntry(entry: string, appDefinition: AppDefinition<unknown>, core: CoreRuntime) {
   const absoluteEntry = resolve(entry);
-  const outDir = await mkdtemp(resolve(dirname(absoluteEntry), '.kivin-inspect-'));
+  const outDir = await mkdtemp(resolve(dirname(absoluteEntry), INSPECT_STAGING_PREFIX));
   const manifestPath = resolve(outDir, 'manifest.ts');
 
   try {

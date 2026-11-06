@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { readFileSync } from 'node:fs';
+import { assertSupportedBun } from './bun-version';
 import { startDev } from './dev';
 import { initProject } from './init';
 import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
@@ -39,7 +40,7 @@ Options:
   -h, --help     Show this help
   -v, --version  Show the CLI version`;
 
-// package.json sits one level above both src/ and dist/, so the same URL works installed and in the monorepo.
+// package.json sits one level above both src/ and dist/, so the same URL works compiled and from source.
 function readCliVersion(): string {
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
   return manifest.version;
@@ -51,6 +52,7 @@ function shellQuote(value: string): string {
 }
 
 async function main() {
+  assertSupportedBun();
   const command = process.argv[2];
 
   // Only argv[2] counts: `generate --version <v>` is the OpenAPI document version, not a request for ours.
@@ -92,6 +94,9 @@ async function main() {
       ...(process.argv.includes('--no-aot') ? { aot: false } : {}),
     });
 
+    for (const warning of result.warnings) {
+      console.error(`warning: ${warning}`);
+    }
     console.log(`manifest: ${result.manifestPath}`);
     console.log(`contracts: ${result.contractsPath}`);
     console.log(`client: ${result.clientPath}`);

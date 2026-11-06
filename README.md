@@ -10,7 +10,7 @@ Goals:
 - NestJS-style module / controller / service structure
 - Valibot (or any Standard Schema validator) and OpenAPI connected by build-time generation
 
-> **Requirements:** [Bun](https://bun.sh) **1.4.0 or later** (declared in `engines.bun`; older Bun fails). kivin is Bun-only and does not run on Node.
+> **Requirements:** [Bun](https://bun.sh) **1.4.0 or later** (declared in `engines.bun`; `bun install` itself does not enforce `engines`, but older Bun fails at startup with a clear error, from `createApp` and from the `kivin` CLI). kivin is Bun-only and does not run on Node.
 
 ## Install
 
@@ -47,6 +47,8 @@ bunx --package @kivin/cli kivin init my-app
   "include": ["*.ts", ".kivin/generated/**/*.ts", ".kivin/generated/**/*.json"]
 }
 ```
+
+`moduleResolution` must be `"bundler"`: the published type declarations use extensionless relative imports, so `NodeNext` is not supported.
 
 kivin uses TC39 standard decorators (the TypeScript 5+ default). Do **not** enable `experimentalDecorators`.
 
@@ -133,7 +135,7 @@ For a single binary, keep the generated manifest as a static import and run `bun
 ### What `generate` does and does not do
 
 - `kivin generate` analyses the source (AST) for decorators, **and it imports your entry file and everything it imports**. Top-level side effects therefore run at build time: reading required environment variables, opening connections and similar code in modules reachable from `app.ts` will fail a CI/Docker build that has no secrets. Validate the environment through DI (`envProvider` from `@kivin/config`) or in `main.ts` ([docs/production.md](docs/production.md), Japanese).
-- Schemas, guards and middleware passed to decorators must be **exported** or written inline. A `const IdSchema = ...` that is not exported fails generation.
+- Guards and middleware passed to decorators must be **exported** or written inline. **Export your schemas** too: an exported schema is what the compile-time contracts and the typed client read. An inline schema (`@UseQuerySchema(v.object({ ... }))`) still validates at runtime, but `kivin generate` warns and skips the contract check, and the typed client falls back to loose input types. A `const IdSchema = ...` that is not exported fails generation.
 - If generation fails, the previous contents of `--outDir` are left untouched.
 
 ## Dev mode
@@ -156,13 +158,13 @@ const api = createClient({
   headers: () => ({ authorization: `Bearer ${token}` }),
 });
 
-const users = await api.users.list({ query: { search: 'ada' } });
-const user = await api.users.findById({ params: { id: '1' } });
-await api.users.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // body is type-checked
+// Routes of the UserController from the Handlers section below (no @OperationId: controller + method names)
+const user = await api.user.findById({ params: { id: '1' } });
+await api.user.create({ body: { name: 'Ada', email: 'ada@example.com' } }); // body is type-checked
 ```
 
 - A method named after `@OperationId('users.list')` becomes `client.users.list` (otherwise controller and method names are used).
-- Input types come from the query / param / body schemas; output types from the 2xx response schema. Routes without schemas use the handler's parameter and return types (`unknown` when the handler returns a `Response`).
+- Input types come from the **exported** query / param / body schemas; output types from the 2xx response schema. Routes without schemas use the handler's parameter and return types (`unknown` when the handler returns a `Response`).
 - Non-2xx responses throw `KivinClientError` (with `status` and the parsed `body`).
 - Pass `app.fetch` as the `fetch` option to call the app from tests without starting a server.
 
@@ -194,7 +196,7 @@ export class UserController {
 }
 ```
 
-The fields are `params`, `query`, `body`, `headers` and `context` (five). Without a schema, `params` is a string record, `query` is a record of `string | string[] | undefined` (repeated keys become arrays), and `body` is `unknown`.
+The fields are `params`, `query`, `body`, `headers` and `context` (five). Without a schema, `headers` is a record of `string | undefined` (all request headers, lower-case names, repeated headers comma-joined), `params` is a string record, `query` is a record of `string | string[] | undefined` (repeated keys become arrays), and `body` is `unknown`.
 
 ## Compile-time contracts
 

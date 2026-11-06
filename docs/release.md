@@ -9,13 +9,14 @@
   └─ build ジョブ（権限は contents: read のみ）
        release:check → release:pack → release:verify --tag → .release を artifact に保存
   └─ publish ジョブ（environment: npm、必須レビュアーの承認待ち、id-token: write）
-       artifact の sha512 を manifest.json と照合 → 依存順に npm publish --provenance
+       publish.ts をタグのコミットから取得（sparse checkout）、artifact の sha512 を manifest.json と照合
+       → 依存順に npm publish --provenance
 ```
 
 - パックは `bun pm pack`、公開は `npm publish <tgz> --provenance --access public`。`npm pack` は `workspace:` を書き換えないのでインストールできない tarball になり、`bun publish` は provenance を付けられないためです
 - tarball の公開ではライフサイクルスクリプトが走らないので、`release:pack` が先に `bun run build` を実行します
-- publish ジョブは checkout も `bun install` もしません。実行するのは artifact に入れた自己完結の `publish.mts`（Node 組み込みだけを import）だけで、OIDC トークンを持つジョブにリポジトリ由来の依存コードを持ち込まないためです
-- 公開先は最初から `latest` です。`next` から昇格する手順は置いていません。パッケージ同士の依存は peer の範囲指定なので、途中まで公開された状態でも壊れにくく、再実行すれば残りが公開されます
+- publish ジョブは `bun install` をしません。実行するのは、タグのコミット（`github.sha`）から `scripts/release/publish.ts` だけを sparse checkout（`persist-credentials: false`）して `publish.mts` にコピーした自己完結のスクリプト（Node 組み込みだけを import）だけです。スクリプトを build ジョブの artifact から取ると、リポジトリのコードを実行するジョブが作ったものを、検証なしで OIDC トークンを持つジョブが実行することになるので、コミットから取ります。artifact に入るのは tarball と `manifest.json` だけで、tarball は sha512 で照合します
+- 公開先は最初から `latest` です。`next` から昇格する手順は置いていません。パッケージ同士の依存は、兄弟が core に向ける peer の範囲指定が基本です。例外として logger→decorators、cli→openapi、static→http の 3 つは通常の `dependencies` で、`publish.ts` が依存先を先に公開します（公開順は `manifest.json` の並び）。このため途中まで公開された状態でもインストールできる形が保たれ、再実行すれば残りが公開されます
 
 ## 手順
 
@@ -30,7 +31,7 @@ npm 上に `kivin` という名前のユーザーまたは組織が存在しま�
    - 別のスコープに変える。候補: `@kivin-js`、`@kivinjs`、自分のユーザースコープ `@nori-kamiya`（これは必ず取れる）。候補ごとに同じ確認をする
    - スコープなしの名前にはしない。16 個のパッケージを同じ接頭辞でまとめて管理する前提が崩れる
 
-スコープを変える場合は、このリリース作業の前に別 PR で全パッケージの `name`、`@kivin/*` を参照している import と依存、`tsconfig.base.json` の `paths`、`scripts/release/lib.ts` の `SCOPE`、docs を一括で置き換え、`bun run release:check` と `bun run pack:smoke` が通ることを確認します。決めるまで先に進みません。
+スコープを変える場合は、このリリース作業の前に別 PR で全パッケージの `name`、`@kivin/*` を参照している import と依存、`tsconfig.base.json` の `paths`、`scripts/release/lib.ts` の `SCOPE`、docs を一括で置き換えます。あわせて `bun install` で `bun.lock` を作り直し（`--frozen-lockfile` が失敗するため）、`tests/release` にある `@kivin\/` のようにスラッシュをエスケープした正規表現も直します（検索では `@kivin/` に一致しません）。そのうえで `bun run release:check` と `bun run pack:smoke` が通ることを確認します。決めるまで先に進みません。
 
 `npm view @kivin/core` が 404 になることも確認します（すでに誰かが同名を公開していないこと）。
 
@@ -87,7 +88,7 @@ git push origin vX.Y.Z
 
 1. Actions の Release ワークフローで build ジョブが成功するのを待つ
 2. publish ジョブが承認待ちになる。承認する前に、タグが指すコミットが `main` の履歴にあることを自分で確認する（`git merge-base --is-ancestor <タグのコミット> origin/main`）。そのうえで build のログの `release verification passed` と artifact の `manifest.json` を確認して承認する。ログの文言だけでは、タグ側のコードが出力したものか区別できない
-3. 完了後、`npm view @kivin/core@X.Y.Z dist.integrity` が `.release/manifest.json` の値と一致し、npm のページに provenance が表示されることを確認する（`bun pm pack` の出力は 2 回の実行で同一だったため、ローカルで作った値とも比べられる）
+3. 完了後、`npm view @kivin/core@X.Y.Z dist.integrity` が `.release/manifest.json` の値と一致し、npm のページに provenance が表示されることを確認する（`bun pm pack` の出力は 2 回の実行で同一だったため、ローカルで作った値とも比べられる。ただし tarball にはファイルのモードが入るので、比べられるのは、パッケージ内のファイルが 0644（umask 022、グループ書き込みなし）の環境で作った場合だけ。`chmod g+w` などで 0664 にするとハッシュが変わる）
 
 ### 8. trusted publishing に切り替え、トークンを消す
 
@@ -122,7 +123,7 @@ done
    - 不一致: **失敗して止まる**。同じバージョンに別の内容がすでにあるということなので、自動では上書きも続行もしない
 5. 不一致で止まった、または公開済みの内容に誤りが見つかった場合は、そのバージョンを `npm deprecate` で非推奨にし、パッチバージョンを上げて、全 16 パッケージを新しいバージョンで公開し直す（バージョンは全パッケージで揃える）
 
-再実行できるのは、`release:pack` の出力が決定的だからです（同じコミットから 2 回 pack して manifest.json が一致することを確認済み）。ただし再実行は build からやり直すので、途中で `main` やロックファイルが変わっていても、タグが指すコミットから作り直されます。
+再実行できるのは、`release:pack` の出力が決定的だからです（同じコミットから 2 回 pack して manifest.json が一致することを確認済み）。ただしこの決定性は、tarball に入るファイルのモードが同じことが前提です（CI の checkout は umask 022 の 0644）。ローカルで作った値と比べる場合は、同じ umask で checkout し直してください。再実行は build からやり直すので、途中で `main` やロックファイルが変わっていても、タグが指すコミットから作り直されます。
 
 ## ローカルでの確認
 

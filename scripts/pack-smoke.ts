@@ -361,7 +361,7 @@ console.log(\`imported \${count} entry points\`);
     devDependencies: Record<string, string>;
   };
   assert(scaffoldManifest.name === scaffoldName, `scaffold package name is ${scaffoldManifest.name}`);
-  assert(['dev', 'generate', 'build', 'test'].every((script) => scaffoldManifest.scripts[script]), 'scaffold is missing one of dev, generate, build, test');
+  assert(['dev', 'generate', 'build', 'typecheck', 'test'].every((script) => scaffoldManifest.scripts[script]), 'scaffold is missing one of dev, generate, build, typecheck, test');
   for (const name of ['@kivin/core', '@kivin/decorators', '@kivin/valibot']) {
     assert(scaffoldManifest.dependencies[name] === `^${expectedVersion}`, `scaffold ${name} is ${scaffoldManifest.dependencies[name]}, expected ^${expectedVersion}`);
   }
@@ -404,7 +404,8 @@ console.log(\`imported \${count} entry points\`);
   step('scaffold: bun run generate, strict tsc --noEmit');
   await mustRun('scaffold bun run generate', ['bun', 'run', 'generate'], scaffoldDir);
   assert(existsSync(join(scaffoldDir, '.kivin/generated/manifest.ts')), 'scaffold generate did not write manifest.ts');
-  await mustRun('scaffold tsc', [join(scaffoldDir, 'node_modules/.bin/tsc'), '--noEmit', '-p', 'tsconfig.json', '--pretty', 'false'], scaffoldDir);
+  assert(scaffoldManifest.scripts.typecheck === 'tsc', `scaffold typecheck script is ${scaffoldManifest.scripts.typecheck}, expected tsc`);
+  await mustRun('scaffold bun run typecheck', ['bun', 'run', 'typecheck'], scaffoldDir);
 
   step('scaffold: bun run build, then run the built binary');
   await mustRun('scaffold bun run build', ['bun', 'run', 'build'], scaffoldDir);

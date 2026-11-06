@@ -48,17 +48,18 @@ describe('kivin init: generated files', () => {
     expect([...result.files].sort()).toEqual(listFiles(join(cwd, 'my-app')).sort());
   });
 
-  test('given the generated package.json, then it has the four scripts and the expected dependency split', () => {
+  test('given the generated package.json, then it has the five scripts and the expected dependency split', () => {
     const cwd = freshCwd();
     initProject({ dir: 'my-app', cwd, version: '1.2.3' });
     const manifest = JSON.parse(readFileSync(join(cwd, 'my-app/package.json'), 'utf8'));
 
     expect(manifest.name).toBe('my-app');
     expect(manifest.private).toBe(true);
-    expect(Object.keys(manifest.scripts).sort()).toEqual(['build', 'dev', 'generate', 'test']);
+    expect(Object.keys(manifest.scripts).sort()).toEqual(['build', 'dev', 'generate', 'test', 'typecheck']);
     expect(Object.keys(manifest.dependencies).sort()).toEqual(['@kivin/core', '@kivin/decorators', '@kivin/valibot', 'valibot']);
     expect(Object.keys(manifest.devDependencies).sort()).toEqual(['@kivin/cli', '@types/bun', 'typescript']);
     expect(manifest.scripts.test).toBe('bun test');
+    expect(manifest.scripts.typecheck).toBe('tsc');
   });
 
   test('given the generated tsconfig, then it uses TC39 decorators with strict, bun types and ESNext lib', () => {
@@ -288,5 +289,12 @@ describe('kivin init: command line', () => {
 
     expect(code).not.toBe(0);
     expect(stderr).toContain('init requires');
+  });
+
+  test('given the generated README, then it documents the typecheck script', () => {
+    const cwd = freshCwd();
+    initProject({ dir: 'my-app', cwd, version: '1.2.3' });
+
+    expect(readFileSync(join(cwd, 'my-app/README.md'), 'utf8')).toContain('bun run typecheck');
   });
 });

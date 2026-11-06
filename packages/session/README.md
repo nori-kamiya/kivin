@@ -10,7 +10,10 @@ Server-side sessions for kivin: signed session-ID cookie and pluggable stores (a
 
 ```bash
 bun add @kivin/core @kivin/session @kivin/decorators
+bun add -d @types/bun typescript
 ```
+
+kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
 `@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
 
@@ -25,7 +28,7 @@ import { createSessionMiddleware, getSession } from '@kivin/session';
 
 // Register in defineApplication({ globals: { middleware: [Sessions] } })
 export const Sessions = createSessionMiddleware({
-  secret: process.env.SESSION_SECRET ?? '',
+  secret: process.env.SESSION_SECRET!,
   cookie: { secure: true },
 });
 
@@ -40,6 +43,8 @@ export class AuthController {
   }
 }
 ```
+
+`SESSION_SECRET` must be set in every environment that loads this module, including the `kivin generate` build. Do not fall back to an empty string: a missing secret is a deployment error, and `?? ''` only moves the failure to the first login.
 
 ## Documentation
 
@@ -58,7 +63,10 @@ kivin 用のサーバー側セッションです。署名付きのセッショ�
 
 ```bash
 bun add @kivin/core @kivin/session @kivin/decorators
+bun add -d @types/bun typescript
 ```
+
+kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
 `@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
 
@@ -73,7 +81,7 @@ import { createSessionMiddleware, getSession } from '@kivin/session';
 
 // Register in defineApplication({ globals: { middleware: [Sessions] } })
 export const Sessions = createSessionMiddleware({
-  secret: process.env.SESSION_SECRET ?? '',
+  secret: process.env.SESSION_SECRET!,
   cookie: { secure: true },
 });
 
@@ -88,6 +96,8 @@ export class AuthController {
   }
 }
 ```
+
+`SESSION_SECRET` は、このモジュールを読み込むすべての環境（`kivin generate` を実行するビルドを含む）で設定してください。空文字列にフォールバックしないでください。secret の欠落はデプロイの誤りであり、`?? ''` は失敗を最初のログインまで先送りするだけです。
 
 ### ドキュメント
 

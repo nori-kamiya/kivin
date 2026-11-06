@@ -2,6 +2,7 @@ import { watch, type FSWatcher } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { Subprocess } from 'bun';
+import { STAGING_PREFIXES } from './staging';
 
 export interface DevOptions {
   /** App definition entry, as for `generate`. */
@@ -30,11 +31,9 @@ export interface DevHandle {
   stop: () => Promise<void>;
 }
 
-// generateArtifacts stages next to outDir, not inside it (relative imports must not change), so the outDir ignore does not cover it.
-const GENERATE_STAGING_PREFIX = '.kivin-gen-';
 const IGNORED_SEGMENTS = new Set(['node_modules', '.git', '.kivin', 'dist', 'bin']);
 
-/** The published package ships only compiled `bin.js`; the monorepo runs `bin.ts` from src. */
+/** Compiled output ships only `bin.js`; running from TypeScript source finds `bin.ts` instead. */
 export function resolveCliBin(directory: string): string {
   const source = join(directory, 'bin.ts');
   return existsSync(source) ? source : join(directory, 'bin.js');
@@ -55,6 +54,11 @@ export function startDev(options: DevOptions): DevHandle {
   const emit = options.onEvent ?? logEvent;
   const watchRoots = [...new Set([dirname(entry), dirname(main), ...(options.watch ?? []).map((directory) => resolve(directory))])];
 
+  const missing = watchRoots.find((root) => !existsSync(root));
+  if (missing !== undefined) {
+    throw new Error(`kivin dev: watch directory does not exist: ${missing}`);
+  }
+
   let child: Subprocess | undefined;
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -70,7 +74,7 @@ export function startDev(options: DevOptions): DevHandle {
     });
     const [code, stderr] = await Promise.all([processHandle.exited, new Response(processHandle.stderr).text()]);
     if (code !== 0) {
-      emit({ type: 'generate-failed', error: stderr.trim() || `generate exited with code ${code}`, serverRunning: child !== undefined && child.exitCode === null });
+      emit({ type: 'generate-failed', error: stderr.trim() || `generate exited with code ${code}`, serverRunning: child !== undefined && child.exitCode === null && child.signalCode === null });
       return false;
     }
     emit({ type: 'generated', durationMs: Math.round(performance.now() - startedAt) });
@@ -120,7 +124,7 @@ export function startDev(options: DevOptions): DevHandle {
       return;
     }
     const absolute = resolve(root, fileName);
-    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment) || segment.startsWith(GENERATE_STAGING_PREFIX))) {
+    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment) || STAGING_PREFIXES.some((prefix) => segment.startsWith(prefix)))) {
       return;
     }
     if (!/\.(ts|tsx|mts|cts|js|mjs|json)$/.test(absolute)) {

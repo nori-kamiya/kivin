@@ -2,6 +2,7 @@ export { buildManifest } from './runtime/manifest';
 export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, ManifestRoute } from './runtime/types';
 
 import type { Server } from 'bun';
+import { assertSupportedBun } from './bun-version';
 import { Container } from './container';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
 import type { AppDefinition, RequestHook } from './metadata';
@@ -23,6 +24,7 @@ import { compileWebSocketRoutes } from './websocket';
 const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
+  assertSupportedBun();
   const container = new Container();
   const router = new Router<CompiledRoute<TSchema>>();
   const compiledRoutes: CompiledRoute<TSchema>[] = [];
@@ -293,6 +295,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
           for (const name of signals) {
             process.off(name, onSignal);
           }
+          let exitCode = 0;
           void (async () => {
             try {
               await onShutdownStart?.(signal);
@@ -302,8 +305,13 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
             if (shutdownDelayMs > 0) {
               await Bun.sleep(shutdownDelayMs);
             }
-            await app.close({ signal });
-          })().finally(() => process.exit(0));
+            try {
+              await app.close({ signal });
+            } catch (error) {
+              console.error('[kivin] app.close failed', error);
+              exitCode = 1;
+            }
+          })().finally(() => process.exit(exitCode));
         };
         for (const signal of signals) {
           process.once(signal, onSignal);

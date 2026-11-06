@@ -10,7 +10,10 @@ Cron jobs for kivin that follow the application lifecycle: time zones, no overla
 
 ```bash
 bun add @kivin/core @kivin/decorators @kivin/schedule
+bun add -d @types/bun typescript
 ```
+
+kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
 This package has no dependencies of its own; it is used inside a kivin application, so install `@kivin/core` as well (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
 
@@ -49,7 +52,10 @@ export class Jobs extends Scheduler {
 
 ```bash
 bun add @kivin/core @kivin/decorators @kivin/schedule
+bun add -d @types/bun typescript
 ```
+
+kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
 このパッケージ自体に依存はなく、kivin アプリケーションの中で使うため `@kivin/core` も入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
 

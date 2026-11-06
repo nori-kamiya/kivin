@@ -3,7 +3,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 
 /**
  * Ranges for everything that is not a @kivin/* package. valibot must stay inside the peer range of
- * @kivin/valibot; init.test.ts enforces that.
+ * @kivin/valibot.
  */
 export const TEMPLATE_RANGES = {
   valibot: '^1.5.0',
@@ -50,6 +50,7 @@ function templateFiles(name: string, version: string): Record<string, string> {
       dev: 'kivin dev --entry src/app.ts --outDir .kivin/generated --main src/main.ts --watch src',
       generate: 'kivin generate --entry src/app.ts --outDir .kivin/generated',
       build: `kivin generate --entry src/app.ts --outDir .kivin/generated && bun build src/main.ts --compile --outfile bin/${name}`,
+      typecheck: 'tsc',
       test: 'bun test',
     },
     dependencies: {
@@ -198,6 +199,7 @@ A [kivin](https://github.com/nori-kamiya/kivin) application.
 bun install
 bun run dev        # generate, then serve on http://localhost:3000 and reload on change
 bun test           # in-process tests, no generated files needed
+bun run typecheck  # tsc; run after generate, it also checks handlers against their schemas
 bun run generate   # write .kivin/generated (manifest, client, OpenAPI)
 bun run build      # compile a single binary to bin/${name}
 \`\`\`

@@ -144,11 +144,13 @@ globals: {
 
 `createTimeoutMiddleware(ms, { status?, message? })`:
 
-- 後続（ガード・ハンドラなど）が `ms` 以内に終わらなければ `504 { message: 'Request timed out' }` を返します（Hono と同じ。`status` で変更可）
+- 後続（ハンドラなど）が `ms` 以内に終わらなければ `504 { message: 'Request timed out' }` を返します（Hono と同じ。`status` で変更可）
+- **ガードは対象外です。** ガードはミドルウェアより前に実行されるため（[pipeline.md](pipeline.md)）、ガードの中で止まった処理にはこのタイムアウトが効きません。外部への認証確認など遅くなりうる処理は、ガード自身の中で `AbortSignal.timeout(ms)` などのタイムアウトを持たせてください
 - JavaScript ではハンドラを中断できないため、処理自体は裏で続きます。長い処理はクライアント切断を `request.signal` で検知できます
 
 `createRateLimitMiddleware({ limit, windowMs, key?, headers?, store? })`:
 
+- **ガードより後に実行されます。** ガードが拒否したリクエスト（認証失敗など）はこのミドルウェアに届かないため数えられず、パスワードやトークンの総当たりは制限されません。認証の試行回数を制限するには、リバースプロキシ / WAF で制限するか、認証ガードの前に `RateLimitStore`（`MemoryRateLimitStore` など）の `increment` を呼ぶ独自ガードを置いてください
 - キーごとの固定ウィンドウでメモリ上に数えます。上限を超えると `429 { message: 'Too Many Requests' }` と `Retry-After`
 - レスポンスに `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset`（秒）を付けます（`headers: false` で無効）
 - キーの既定はクライアントのアドレス（`getClientAddress(request)`、Bun の `server.requestIP`）。リバースプロキシの後ろではプロキシのアドレスになるので、信頼できる転送ヘッダから `key` を自分で作ってください。`key` が `undefined` を返したリクエストは制限しません

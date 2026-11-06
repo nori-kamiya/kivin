@@ -1,6 +1,8 @@
-// Self-contained on purpose: pack.ts copies this file into .release/ as publish.mts (so Node treats it as an ES module without a package.json), and the publish job (the only one holding
-// id-token: write) runs that copy with plain Node. It must import nothing from the repository, so the job needs
-// no checkout and no install.
+// Self-contained on purpose: the publish job (the only one holding id-token: write) takes this file from the tagged
+// commit with a sparse checkout, copies it to publish.mts so Node treats it as an ES module without a package.json,
+// and runs it with plain Node. It must import nothing from the repository, so the job needs no install. It is not
+// taken from the build artifact: the artifact is produced by a job that runs repository code, so a script inside it
+// would be unverified, while the commit is what the tag and the reviewer approved.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
