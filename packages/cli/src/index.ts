@@ -1,7 +1,7 @@
 import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivin/core';
 import type * as KivinCore from '@kivin/core';
 import { buildOpenApiDocument } from '@kivin/openapi';
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
@@ -121,28 +121,35 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
 
 export async function generateOpenApi(input: { entry: string; output: string; title?: string; version?: string }) {
   const { appDefinition, core } = await loadApp(input.entry);
-  const manifestPath = resolve(dirname(resolve(input.output)), 'manifest.ts');
-  const generated = await buildManifestSourceFromAst({
-    entry: input.entry,
-    outFile: manifestPath,
-  });
-  assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
-  await mkdir(dirname(manifestPath), { recursive: true });
-  await writeFile(manifestPath, generated.source, 'utf8');
-  const manifest = await loadManifest(manifestPath);
-  const openApi = buildOpenApiDocument({
-    manifest,
-    schemaAdapter: appDefinition.schemaAdapter,
-    info: {
-      title: input.title ?? 'kivin app',
-      version: input.version ?? '0.1.0',
-    },
-    ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
-  });
+  const output = resolve(input.output);
+  // The manifest is only an intermediate; staging it beside the output keeps its relative imports valid without leaving it behind.
+  await mkdir(dirname(output), { recursive: true });
+  // realpath: Bun resolves the manifest's imports from the real location, so a symlinked parent (/tmp on macOS) would break them.
+  const stagingDir = await mkdtemp(resolve(await realpath(dirname(output)), GENERATE_STAGING_PREFIX));
+  const manifestPath = resolve(stagingDir, 'manifest.ts');
 
-  await mkdir(dirname(resolve(input.output)), { recursive: true });
-  await writeFile(resolve(input.output), JSON.stringify(openApi, null, 2), 'utf8');
-  return resolve(input.output);
+  try {
+    const generated = await buildManifestSourceFromAst({
+      entry: input.entry,
+      outFile: manifestPath,
+    });
+    assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
+    await writeFile(manifestPath, generated.source, 'utf8');
+    const manifest = await loadManifest(manifestPath);
+    const openApi = buildOpenApiDocument({
+      manifest,
+      schemaAdapter: appDefinition.schemaAdapter,
+      info: {
+        title: input.title ?? 'kivin app',
+        version: input.version ?? '0.1.0',
+      },
+      ...(appDefinition.openApi ? { config: appDefinition.openApi } : {}),
+    });
+    await writeFile(output, JSON.stringify(openApi, null, 2), 'utf8');
+  } finally {
+    await rm(stagingDir, { recursive: true, force: true });
+  }
+  return output;
 }
 
 export async function inspectRoutes(input: { entry: string }) {
