@@ -298,10 +298,25 @@ export function createSingleRawGuardAllowChecker(
   }
 
   if (invokeRawGuardSync) {
+    // "Sync" only means the method is not declared `async`: a plain function can still return a
+    // promise (`canActivateRaw(req) { return this.auth.check(req); }`). A promise is truthy, so it
+    // must be awaited, never treated as an allow.
     return (request: Request, params: Record<string, string>) => {
-      if (!invokeRawGuardSync(request, params)) {
+      const allowed = invokeRawGuardSync(request, params) as boolean | PromiseLike<boolean>;
+      if (allowed === true) {
+        return undefined;
+      }
+      if (isPromiseLike<boolean>(allowed)) {
+        return Promise.resolve(allowed).then((resolved) => {
+          if (!resolved) {
+            throw new HttpError(403, 'Forbidden');
+          }
+        });
+      }
+      if (!allowed) {
         throw new HttpError(403, 'Forbidden');
       }
+      return undefined;
     };
   }
 
