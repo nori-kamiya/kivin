@@ -52,14 +52,16 @@ defineApplication({
 ## Example
 
 ```ts
+export const UserIdParams = v.object({ id: v.string() });
+
 @Controller('/users')
 @Tag('Users')
 export class UserController {
   @Get('/:id')
   @Summary('Find user by id')
-  @UseParamSchema(v.object({ id: v.string() }))
+  @UseParamSchema(UserIdParams)
   @Response(200, UserSchema, 'User detail')
-  findById({ params }: RouteInput) {
+  findById({ params }: RouteInput<{ params: typeof UserIdParams }>) {
     return { id: params.id, name: 'Ada' };
   }
 }

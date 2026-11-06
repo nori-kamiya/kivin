@@ -2,6 +2,8 @@
 // upstream response, without hop-by-hop headers and without re-encoding the body.
 import { getClientAddress } from '@kivin/core';
 
+type HeadersInput = NonNullable<ConstructorParameters<typeof Headers>[0]>;
+
 // RFC 9110 §7.6.1 connection-specific headers, plus `host` (set from the target URL).
 const HOP_BY_HOP = ['connection', 'keep-alive', 'proxy-connection', 'proxy-authenticate', 'proxy-authorization', 'te', 'trailer', 'transfer-encoding', 'upgrade', 'host'];
 
@@ -20,7 +22,7 @@ function stripHopByHop(headers: Headers) {
 
 export interface ProxyOptions {
   /** Extra / replacement request headers, or a function editing the forwarded headers. */
-  headers?: HeadersInit | ((headers: Headers) => void);
+  headers?: HeadersInput | ((headers: Headers) => void);
   /**
    * Adds `X-Forwarded-For` (appending the client address), `X-Forwarded-Host` and
    * `X-Forwarded-Proto`. Default true. Turn it off when the upstream must not see them.

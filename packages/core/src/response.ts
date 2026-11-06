@@ -1,3 +1,8 @@
+import type { HeadersInput } from './http';
+
+/** Same as `new Response(body)` accepts; `BodyInit` is a DOM-lib name. */
+type ResponseBody = NonNullable<ConstructorParameters<typeof Response>[0]>;
+
 /** The JSON content type kivin sends; it is exactly what Bun's native `Response.json()` writes. */
 export const JSON_CONTENT_TYPE = 'application/json;charset=utf-8';
 export const TEXT_CONTENT_TYPE = 'text/plain; charset=utf-8';
@@ -37,14 +42,14 @@ export function createBodyResponse(data: undefined | Blob | ReadableStream | Arr
   if (data === undefined) {
     return new Response(null, init);
   }
-  const response = new Response(data as BodyInit, init);
+  const response = new Response(data as ResponseBody, init);
   if (!response.headers.has('content-type')) {
     response.headers.set('content-type', 'application/octet-stream');
   }
   return response;
 }
 
-function isHeaderRecord(headers: HeadersInit): headers is Record<string, string> {
+function isHeaderRecord(headers: HeadersInput): headers is Record<string, string> {
   return !Array.isArray(headers) && !(headers instanceof Headers);
 }
 

@@ -1,13 +1,17 @@
 import { JSON_CONTENT_TYPE } from './response';
+
+/** `HeadersInit` is a DOM-lib name; consumers on `lib: ["ESNext"]` (bun init) would see it as `any`. */
+export type HeadersInput = NonNullable<ConstructorParameters<typeof Headers>[0]>;
+
 export interface HttpErrorOptions {
   body?: unknown;
-  headers?: HeadersInit;
+  headers?: HeadersInput;
 }
 
 export class HttpError extends Error {
   readonly status: number;
   readonly body: unknown;
-  readonly headers: HeadersInit | undefined;
+  readonly headers: HeadersInput | undefined;
 
   constructor(status: number, message: string, options?: HttpErrorOptions) {
     super(message);

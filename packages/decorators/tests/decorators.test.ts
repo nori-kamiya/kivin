@@ -169,6 +169,7 @@ describe('decorators', () => {
     }
     const legacyCall = Get('/x') as unknown as (target: object, key: string, descriptor: PropertyDescriptor) => void;
     expect(() => legacyCall(Legacy.prototype, 'handler', Object.getOwnPropertyDescriptor(Legacy.prototype, 'handler')!)).toThrow('kivin uses TC39 standard decorators');
+    expect(() => legacyCall(Legacy.prototype, 'handler', Object.getOwnPropertyDescriptor(Legacy.prototype, 'handler')!)).toThrow('Bun is at least 1.4.0');
     const legacyClassCall = Controller('/x') as unknown as (target: Function) => void;
     expect(() => legacyClassCall(Legacy)).toThrow('kivin uses TC39 standard decorators');
   });

@@ -3,8 +3,18 @@
 kivin の公開 API を package ごとにまとめたリファレンスです。詳細な設計背景は各専用ドキュメント（[architecture](./architecture.md) ほか）を参照してください。
 
 - [@kivin/core](#kivincore)
+- [@kivin/security](#kivinsecurity)
+- [@kivin/http](#kivinhttp)
+- [@kivin/observability](#kivinobservability)
+- [@kivin/config](#kivinconfig)
+- [@kivin/schedule](#kivinschedule)
+- [@kivin/session](#kivinsession)
+- [@kivin/graphql](#kivingraphql)
+- [@kivin/static](#kivinstatic)
 - [@kivin/decorators](#kivindecorators)
 - [@kivin/valibot](#kivinvalibot)
+- [@kivin/standard-schema](#kivinstandard-schema)
+- [@kivin/jwt](#kivinjwt)
 - [@kivin/openapi](#kivinopenapi)
 - [@kivin/logger](#kivinlogger)
 - [@kivin/cli](#kivincli)
@@ -256,6 +266,8 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | `createJwtGuard(options)` | function | Bearer（または Cookie）の JWT を検証する guard。失敗時 401 + `WWW-Authenticate`、`authorize` が false なら 403 |
 | `getJwtPayload(context)` | function | guard が検証した payload |
 | `verifyJwt(token, options)`, `signJwt(payload, options)` | function | HS* / RS* / PS* / ES* / EdDSA。`algorithms` は必須、`exp` は既定で必須 |
+| `createRemoteJwks(url, options?)` | function | リモート JWKS エンドポイント用の鍵リゾルバ。取得は遅延・キャッシュされ、未知の `kid` では 1 回だけ再取得する（`refresh()` で手動更新）。`key` に渡す |
+| `createLocalJwks(jwks)` | function | 固定の JWKS（設定から読み込んだものなど）用の鍵リゾルバ |
 | `JwtError` | class | `code`: `malformed` / `algorithm` / `signature` / `expired` / `not-yet-valid` / `claim` |
 
 ---
@@ -265,7 +277,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 | Export | 種別 | 概要 |
 | --- | --- | --- |
 | `buildOpenApiDocument(input)` | function | manifest から OpenAPI 3.1 ドキュメントを生成する |
-| `createDocsHtml(openApiUrl?)` | function | OpenAPI を表示する self-contained な docs HTML を生成する（既定 URL は `/openapi.json`） |
+| `createDocsHtml(openApiUrl?)` | function | OpenAPI を Swagger UI で表示する docs HTML を生成する（既定 URL は `/openapi.json`）。Swagger UI（`swagger-ui-dist@5.20.0`）は unpkg.com から読み込むため、閲覧側のブラウザから unpkg.com へ到達できる必要があり、CSP を設定している場合は許可が要る |
 | `OpenApiInfo` | type | `info` セクションの型 |
 
 ---
@@ -285,7 +297,9 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ## @kivin/cli
 
-`kivin` CLI（`bun run packages/cli/src/bin.ts <command>`）。
+`kivin` CLI。プロジェクトに `bun add -d @kivin/cli` で入れ、`package.json` の scripts（例: `"generate": "kivin generate --entry app.ts --outDir .kivin/generated"`）か `bunx --package @kivin/cli kivin <command>` で実行する。名前が `kivin` だけの npm パッケージは本プロジェクトのものではないため、`bunx kivin` とは書かない。
+
+`kivin --help` / `-h` は使い方を標準出力に、`kivin --version` / `-v` は `@kivin/cli` のバージョンを出力して終了コード 0 で終わる。未知のコマンドは使い方を標準エラーに出し、非 0 で終わる。
 
 ### `generate`
 
@@ -295,9 +309,17 @@ manifest・contracts・client・OpenAPI を生成する。`client.ts` はサー�
 generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
 ```
 
+`modules` / `imports` には `@Module` クラス・`defineModule(...)`・オブジェクトリテラルのほか、`createLoggerModule()` のようなファクトリ呼び出し（直接でも `const` に束縛しても可）を書ける。ファクトリ呼び出しの中身は静的解析できないため、ルートを持たない前提で扱い、`generate` が読み込んだ実行時の定義と突き合わせる。コントローラーを宣言するファクトリが見つかった場合は、ルートが黙って消えないようエラーにする（ルートは `@Module` か `defineModule` で宣言する）。
+
+公開型定義と生成クライアントは DOM ライブラリに依存しないため、`bun init` の既定（`lib: ["ESNext"]`）の tsconfig でそのまま型検査できる。
+
+**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。
+
+生成に失敗した場合（解析・OpenAPI 変換のエラーなど）、`--outDir` の以前の成果物は変更されない。生成が済んだ 4 ファイルは最後に 1 つずつ置き換えるため、出力先に同名のディレクトリがあるなど置き換え自体が失敗した場合は、一部だけ新しくなることがある。
+
 ### `dev`
 
-ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する。
+ソース変更を監視し、`generate` を実行してから `--main` のサーバーを再起動する。生成に失敗した場合は直前のサーバーを維持する（まだ一度も起動していなければ、そう表示して次の保存を待つ）。
 
 ```
 dev --entry <app.ts> --outDir <dir> --main <main.ts> [--watch <dir>]...
@@ -319,6 +341,8 @@ openapi --entry <app.ts> --output <file.json> [--title <t>] [--version <v>]
 inspect routes  --entry <app.ts> [--format text|json]
 inspect modules --entry <app.ts> [--format text|json]
 ```
+
+`inspect` はエントリから解決される `@kivin/core` 経由でメタデータを読むため、`bunx` やグローバルインストールの CLI でも動く。
 
 `inspect routes` は handler・controller scope・executor mode
 （`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`）・

@@ -1,7 +1,7 @@
 {
   "name": "@kivin/decorators",
   "version": "0.0.1",
-  "description": "Module / Controller / Route / Parameter decorators for kivin",
+  "description": "Module / Controller / Route / Enhancer / OpenAPI decorators for kivin",
   "license": "MIT",
   "author": "nori-kamiya",
   "repository": {
@@ -16,16 +16,38 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "dependencies": {
+  "peerDependencies": {
+    "@kivin/core": "workspace:^"
+  },
+  "devDependencies": {
     "@kivin/core": "workspace:*"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "decorators",
+    "tc39"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

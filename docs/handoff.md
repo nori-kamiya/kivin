@@ -4,7 +4,7 @@ kivin の開発を引き継ぐ人向けに、現状・進め方・壊しては�
 
 ## 1. 現状
 
-- **段階**: 全パッケージ `0.0.1`、npm 未公開（ルートは `private: true`）。Bun 専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）。公開準備は [#57](https://github.com/nori-kamiya/kivin/issues/57)
+- **段階**: 全パッケージ `0.0.1`、npm 未公開（ルートは `private: true`）。Bun 専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）。公開準備は [#57](https://github.com/nori-kamiya/kivin/issues/57)、公開の手順（オーナーだけができる作業を含む）は [release.md](release.md)
 - **性能**: CI のペア計測で Hono より約 10〜34% 速く、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
 - **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
 - **テスト**: `bun test` で約 620 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
@@ -42,6 +42,7 @@ bun install
 bun run check          # generate + 型検査（examples と contracts.ts を含む）
 bun test
 bun run example:smoke  # examples/basic を single binary にして起動確認
+bun run release:pack && bun run release:verify && bun run pack:smoke   # 公開用 tarball の検査（release:check には含めない。手順は release.md）
 bun run perf:regression                                # main との性能比較（CI と同じ判定）
 PERF_SKIP_NETWORK=1 PERF_SCENARIOS=get-param,patch-global-mw bun run perf:regression   # 速く・絞って
 bun run perf:check     # Hono / Elysia との比較（参考値）

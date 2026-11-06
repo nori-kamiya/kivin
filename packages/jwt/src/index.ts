@@ -1,4 +1,5 @@
 // JSON Web Tokens on Web Crypto (no dependencies) and a bearer-token guard for kivin.
+import type { webcrypto } from 'node:crypto';
 import { HttpError, unauthorized, type CanActivate, type RequestContext } from '@kivin/core';
 
 export type JwtAlgorithm =
@@ -20,6 +21,9 @@ export interface JwtPayload {
 }
 
 /** Key material: a shared secret for HS*, otherwise a `CryptoKey` or JWK (public to verify, private to sign). */
+/** `JsonWebKey` is a DOM-lib name; node's copy has the same shape and resolves under `lib: ["ESNext"]`. */
+type JsonWebKey = webcrypto.JsonWebKey;
+
 export type JwtKey = string | Uint8Array | CryptoKey | JsonWebKey;
 
 /** Protected header fields a key resolver can use to pick the key. */

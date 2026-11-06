@@ -16,21 +16,41 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "dependencies": {
-    "@kivin/core": "workspace:*"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
+  "peerDependencies": {
+    "@kivin/core": "workspace:^"
   },
   "devDependencies": {
+    "@kivin/core": "workspace:*",
     "graphql": "^17.1.0",
     "graphql-ws": "^6.4.1",
     "graphql-yoga": "^6.0.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "graphql",
+    "graphql-yoga"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

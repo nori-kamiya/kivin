@@ -16,22 +16,45 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
-  "dependencies": {
-    "@kivin/core": "workspace:*"
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json"
+  "peerDependencies": {
+    "@kivin/core": "workspace:^"
   },
   "devDependencies": {
+    "@kivin/core": "workspace:*",
     "@opentelemetry/api": "^1.10.0",
     "@opentelemetry/context-async-hooks": "^2.12.0",
     "@opentelemetry/core": "^2.12.0",
     "@opentelemetry/sdk-trace-base": "^2.12.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "observability",
+    "opentelemetry",
+    "prometheus",
+    "metrics",
+    "health-check"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

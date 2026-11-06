@@ -1,5 +1,6 @@
 import { watch, type FSWatcher } from 'node:fs';
-import { dirname, relative, resolve, sep } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import type { Subprocess } from 'bun';
 
 export interface DevOptions {
@@ -18,7 +19,7 @@ export interface DevOptions {
 
 export type DevEvent =
   | { type: 'generated'; durationMs: number }
-  | { type: 'generate-failed'; error: string }
+  | { type: 'generate-failed'; error: string; serverRunning: boolean }
   | { type: 'started'; pid: number }
   | { type: 'change'; files: string[] }
   | { type: 'exited'; code: number | null };
@@ -29,8 +30,17 @@ export interface DevHandle {
   stop: () => Promise<void>;
 }
 
+// generateArtifacts stages next to outDir, not inside it (relative imports must not change), so the outDir ignore does not cover it.
+const GENERATE_STAGING_PREFIX = '.kivin-gen-';
 const IGNORED_SEGMENTS = new Set(['node_modules', '.git', '.kivin', 'dist', 'bin']);
-const binPath = resolve(import.meta.dir, 'bin.ts');
+
+/** The published package ships only compiled `bin.js`; the monorepo runs `bin.ts` from src. */
+export function resolveCliBin(directory: string): string {
+  const source = join(directory, 'bin.ts');
+  return existsSync(source) ? source : join(directory, 'bin.js');
+}
+
+const binPath = resolveCliBin(import.meta.dir);
 
 /**
  * `kivin dev`: generate the manifest, start the server, and on every source change regenerate and
@@ -60,7 +70,7 @@ export function startDev(options: DevOptions): DevHandle {
     });
     const [code, stderr] = await Promise.all([processHandle.exited, new Response(processHandle.stderr).text()]);
     if (code !== 0) {
-      emit({ type: 'generate-failed', error: stderr.trim() || `generate exited with code ${code}` });
+      emit({ type: 'generate-failed', error: stderr.trim() || `generate exited with code ${code}`, serverRunning: child !== undefined && child.exitCode === null });
       return false;
     }
     emit({ type: 'generated', durationMs: Math.round(performance.now() - startedAt) });
@@ -110,7 +120,7 @@ export function startDev(options: DevOptions): DevHandle {
       return;
     }
     const absolute = resolve(root, fileName);
-    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment))) {
+    if (absolute.startsWith(outDir + sep) || relative(root, absolute).split(sep).some((segment) => IGNORED_SEGMENTS.has(segment) || segment.startsWith(GENERATE_STAGING_PREFIX))) {
       return;
     }
     if (!/\.(ts|tsx|mts|cts|js|mjs|json)$/.test(absolute)) {
@@ -154,7 +164,7 @@ function logEvent(event: DevEvent) {
       console.log(`${prefix} generated manifest, contracts and client in ${event.durationMs}ms`);
       break;
     case 'generate-failed':
-      console.error(`${prefix} \x1b[31mgenerate failed, keeping the previous server running\x1b[0m\n${event.error}`);
+      console.error(`${prefix} \x1b[31mgenerate failed, ${event.serverRunning ? 'keeping the previous server running' : 'no server is running yet; fix the error and save to retry'}\x1b[0m\n${event.error}`);
       break;
     case 'started':
       console.log(`${prefix} server started (pid ${event.pid})`);

@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { readFileSync } from 'node:fs';
 import { startDev } from './dev';
 import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
 
@@ -24,8 +25,37 @@ function readFormatFlag() {
   return readFlag('--format') ?? 'text';
 }
 
+const USAGE = `Usage: kivin <command> [options]
+
+Commands:
+  generate  --entry <file> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
+  dev       --entry <file> --outDir <dir> --main <file> [--watch <dir>]...
+  openapi   --entry <file> --output <file> [--title <t>] [--version <v>]
+  inspect   routes|modules --entry <file> [--format text|json]
+
+Options:
+  -h, --help     Show this help
+  -v, --version  Show the CLI version`;
+
+// package.json sits one level above both src/ and dist/, so the same URL works installed and in the monorepo.
+function readCliVersion(): string {
+  const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
+  return manifest.version;
+}
+
 async function main() {
   const command = process.argv[2];
+
+  // Only argv[2] counts: `generate --version <v>` is the OpenAPI document version, not a request for ours.
+  if (command === '--version' || command === '-v') {
+    console.log(readCliVersion());
+    return;
+  }
+
+  if (command === '--help' || command === '-h' || command === 'help' || process.argv.slice(3).some((arg) => arg === '--help' || arg === '-h')) {
+    console.log(USAGE);
+    return;
+  }
 
   if (command === 'generate') {
     const entry = readFlag('--entry');
@@ -119,7 +149,8 @@ async function main() {
     throw new Error('inspect supports: routes, modules');
   }
 
-  throw new Error('supported commands: generate, dev, openapi, inspect');
+  console.error(`${command ? `Unknown command: ${command}` : 'Missing command'}\n\n${USAGE}`);
+  process.exitCode = 1;
 }
 
 function renderRoutes(routes: RouteInspection[]) {

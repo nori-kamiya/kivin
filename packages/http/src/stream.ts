@@ -1,4 +1,6 @@
 // Streaming response helpers (equivalent of Hono's `stream` / `streamText`, plus NDJSON).
+type HeadersInput = NonNullable<ConstructorParameters<typeof Headers>[0]>;
+
 const encoder = new TextEncoder();
 
 export interface StreamWriter {
@@ -20,7 +22,7 @@ export interface StreamWriter {
 
 export interface StreamOptions {
   status?: number;
-  headers?: HeadersInit;
+  headers?: HeadersInput;
   /**
    * Abort signal to watch besides the response stream itself; pass `request.signal` so a client that
    * disconnects while the handler is not writing is noticed too.

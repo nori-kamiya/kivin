@@ -2,7 +2,7 @@ import { parseCookies, serializeCookie, serializeDeletedCookie, serializeSignedC
 import type { ContainerLike } from './metadata';
 import { createEventStream, type EventStreamHandler, type EventStreamOptions } from './sse';
 import { readNullableQueryParam } from './request-url';
-import { formDataToObject } from './runtime/form-body';
+import { formDataToObject, type FormBodyValue } from './runtime/form-body';
 import { rethrowJsonBodyError } from './runtime/utils';
 import { EMPTY_RESPONSE_INIT, createJsonResponse, createJsonResponseCreated, createJsonResponseWithHeader, createJsonResponseWithStatus, createJsonResponseWithStatusAndHeader, createNoContentResponse, createNoContentResponseWithHeader, createTextResponse } from './response';
 import type { Token } from './types';
@@ -412,7 +412,7 @@ export class RequestContext {
    * The request body as a plain object: each field is a string or `File`, and repeated fields become
    * arrays. Validate it with your schema library (e.g. `v.object({ avatar: v.file(), name: v.string() })`).
    */
-  async form(): Promise<Record<string, FormDataEntryValue | FormDataEntryValue[]>> {
+  async form(): Promise<Record<string, FormBodyValue>> {
     return formDataToObject(await this.formData());
   }
 
