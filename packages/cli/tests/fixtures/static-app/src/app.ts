@@ -1,5 +1,5 @@
-import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { StaticController } from './controllers';
 
 export default defineApplication({

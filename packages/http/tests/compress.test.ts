@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivinjs/core';
 import { createCompressMiddleware, createEtagMiddleware } from '../src/index';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import { brotliDecompressSync } from 'node:zlib';
 

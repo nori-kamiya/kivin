@@ -1,4 +1,4 @@
-import { parseCron } from '@kivin/schedule';
+import { parseCron } from '@kivinjs/schedule';
 import { describe, expect, test } from 'bun:test';
 
 const iso = (date: Date | undefined) => date?.toISOString();

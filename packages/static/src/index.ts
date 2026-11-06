@@ -8,7 +8,7 @@
 // backslashes, or name dotfiles are refused before touching the file system.
 import { stat } from 'node:fs/promises';
 import { resolve, sep } from 'node:path';
-import { acceptsEncoding } from '@kivin/http';
+import { acceptsEncoding } from '@kivinjs/http';
 
 export interface ServeStaticOptions {
   /** Directory to serve from (resolved against the current working directory). */

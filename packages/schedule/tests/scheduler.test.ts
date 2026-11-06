@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule } from '@kivin/core';
-import { createScheduler, Scheduler } from '@kivin/schedule';
+import { createApp, defineApplication, defineModule } from '@kivinjs/core';
+import { createScheduler, Scheduler } from '@kivinjs/schedule';
 import { describe, expect, spyOn, test } from 'bun:test';
 
 const waitFor = async (condition: () => boolean, timeoutMs = 4000) => {

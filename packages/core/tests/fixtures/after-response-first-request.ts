@@ -1,6 +1,6 @@
 // Runs in its own process: `afterResponseInUse` is module state, so "the first registration in the
 // process" cannot be reproduced once any other test has registered a callback.
-import { afterResponse, createApp, defineApplication, defineModule, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivin/core';
+import { afterResponse, createApp, defineApplication, defineModule, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivinjs/core';
 
 const statuses: number[] = [];
 

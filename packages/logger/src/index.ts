@@ -1,5 +1,5 @@
-import { createToken, defineModule, markErrorReported, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
+import { createToken, defineModule, markErrorReported, readPathname, type ModuleDefinition, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -97,7 +97,7 @@ export class RequestLoggerMiddleware implements NestLikeMiddleware {
     const startedAt = performance.now();
     const request = context.request;
     // Prefer the ID a request ID middleware validated / assigned (context `requestId`, set by
-    // @kivin/http's createRequestIdMiddleware) over the raw header.
+    // @kivinjs/http's createRequestIdMiddleware) over the raw header.
     const requestId = context.get<string>('requestId') ?? request.headers.get('x-request-id') ?? crypto.randomUUID();
     context.set(REQUEST_LOGGER_KEY, this.rootLogger);
     let requestLogger: Logger | undefined;

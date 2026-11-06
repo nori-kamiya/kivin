@@ -10,8 +10,8 @@ import {
   setInjectableMetadata,
   type AppManifest,
   type RequestContext,
-} from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+} from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 type Route = AppManifest['routes'][number];

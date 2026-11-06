@@ -1,4 +1,4 @@
-import { accepts, acceptsEncoding, acceptsLanguage, acceptsType, negotiate, parseAcceptHeader } from '@kivin/http';
+import { accepts, acceptsEncoding, acceptsLanguage, acceptsType, negotiate, parseAcceptHeader } from '@kivinjs/http';
 import { describe, expect, test } from 'bun:test';
 
 const request = (headers: Record<string, string>) => new Request('http://localhost/', { headers });

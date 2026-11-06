@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule } from '@kivin/core';
+import { createApp, defineApplication, defineModule } from '@kivinjs/core';
 import { serveStatic } from '../src/index';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

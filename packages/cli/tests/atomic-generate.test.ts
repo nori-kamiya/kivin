@@ -7,7 +7,7 @@ const dir = join(import.meta.dir, '.generated/atomic-generate');
 const outDir = join(dir, 'out/generated');
 const artifacts = ['manifest.ts', 'contracts.ts', 'client.ts', 'openapi.json'];
 
-const controllerSource = (path: string) => `import { ApiResponse, Controller, Get } from '@kivin/decorators';
+const controllerSource = (path: string) => `import { ApiResponse, Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/atomic')
 export class AtomicController {
@@ -19,7 +19,7 @@ export class AtomicController {
 }
 `;
 
-const appSource = `import { defineApplication, defineModule } from '@kivin/core';
+const appSource = `import { defineApplication, defineModule } from '@kivinjs/core';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { AtomicController } from './controller';

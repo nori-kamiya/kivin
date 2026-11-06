@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, toValidationIssues, type AppManifest } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, toValidationIssues, type AppManifest } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import * as v from 'valibot';
 

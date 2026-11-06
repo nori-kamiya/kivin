@@ -11,8 +11,8 @@ import { ImportRenderer, isNamedSchemaExpression, joinPaths, renderExpression, t
  */
 export function renderClient(controllers: AstControllerNode[], outFile: string) {
   const renderer = new ImportRenderer(outFile, true);
-  const inferInput = renderer.addTypeImport('@kivin/core', 'InferSchemaInput');
-  const inferOutput = renderer.addTypeImport('@kivin/core', 'InferSchemaOutput');
+  const inferInput = renderer.addTypeImport('@kivinjs/core', 'InferSchemaInput');
+  const inferOutput = renderer.addTypeImport('@kivinjs/core', 'InferSchemaOutput');
   const groups = new Map<string, Map<string, string>>();
   const operations: string[] = [];
 

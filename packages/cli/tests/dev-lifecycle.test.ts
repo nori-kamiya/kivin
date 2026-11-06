@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { startDev, type DevEvent } from '../src/dev';
 
-const controllerSource = `import { Controller, Get } from '@kivin/decorators';
+const controllerSource = `import { Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/hello')
 export class HelloController {
@@ -15,8 +15,8 @@ export class HelloController {
 }
 `;
 
-const appSource = `import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+const appSource = `import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { HelloController } from './controller';
 
 export default defineApplication({

@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestContext } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import { createJwtGuard, getJwtPayload, JwtError, signJwt, verifyJwt } from '../src/index';
 

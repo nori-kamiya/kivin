@@ -5,7 +5,7 @@ import { generateArtifacts } from '../src/index';
 
 const root = join(import.meta.dir, '.generated/generated-import');
 
-const controllerSource = `import { ApiResponse, Controller, Get } from '@kivin/decorators';
+const controllerSource = `import { ApiResponse, Controller, Get } from '@kivinjs/decorators';
 import { createClient } from './.kivin/generated/client';
 
 @Controller('/self')
@@ -18,7 +18,7 @@ export class SelfController {
 }
 `;
 
-const appSource = `import { defineApplication, defineModule } from '@kivin/core';
+const appSource = `import { defineApplication, defineModule } from '@kivinjs/core';
 import { SelfController } from './controller';
 
 export default defineApplication({

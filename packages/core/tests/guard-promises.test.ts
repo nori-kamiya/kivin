@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, unauthorized, type AppManifest, type CanActivate, type RequestContext } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, unauthorized, type AppManifest, type CanActivate, type RequestContext } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 // Guards whose methods are plain functions (not `async`) but return promises, e.g. delegating to an

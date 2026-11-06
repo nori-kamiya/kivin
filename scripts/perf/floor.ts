@@ -6,8 +6,8 @@
 //   bun run bench:stack:generate
 //   bun scripts/perf/floor.ts                 # all workloads
 //   ONLY=patch-user N=200000 bun scripts/perf/floor.ts
-import { createApp, defineApplication } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import * as v from 'valibot';
 import manifest from '../../examples/benchmark-stack-kivin/.kivin/generated/manifest';
 import { BenchmarkModule, LoggerModule, RequestIdMiddleware } from '../../examples/benchmark-stack-kivin/src/app';

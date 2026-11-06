@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { createRequestStorageMiddleware, escapeHtml, getCurrentRequest, getRequestValue, html, htmlResponse, proxy, raw, setRequestValue } from '@kivin/http';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { createRequestStorageMiddleware, escapeHtml, getCurrentRequest, getRequestValue, html, htmlResponse, proxy, raw, setRequestValue } from '@kivinjs/http';
 import { describe, expect, spyOn, test } from 'bun:test';
 import { gzipSync } from 'node:zlib';
 

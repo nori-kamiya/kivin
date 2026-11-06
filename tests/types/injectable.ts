@@ -1,7 +1,7 @@
 // Compile-time tests for `@Injectable({ deps })`. `bun run check` fails if an expectation breaks.
-import { createToken } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
-import { LOGGER, type Logger } from '@kivin/logger';
+import { createToken } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
+import { LOGGER, type Logger } from '@kivinjs/logger';
 
 class Repo {
   find() {

@@ -1,5 +1,5 @@
-import { RequestContext } from '@kivin/core';
-import { Controller, Get, UseFilters, UseGuards, UseMiddleware } from '@kivin/decorators';
+import { RequestContext } from '@kivinjs/core';
+import { Controller, Get, UseFilters, UseGuards, UseMiddleware } from '@kivinjs/decorators';
 
 export const REQUEST_TRACE = Symbol.for('cli.inspect.requestTrace');
 

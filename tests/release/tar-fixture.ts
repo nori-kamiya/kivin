@@ -43,7 +43,7 @@ export function buildTarball(files: Record<string, string>): Uint8Array {
 
 export function validPackageJson(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
-    name: '@kivin/core',
+    name: '@kivinjs/core',
     version: '1.2.3',
     type: 'module',
     main: './dist/index.js',

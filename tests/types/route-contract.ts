@@ -1,5 +1,5 @@
 // Compile-time tests for the helpers used by the generated `contracts.ts`.
-import type { InferSchemaInput, InferSchemaOutput, RouteContract, RouteInput } from '@kivin/core';
+import type { InferSchemaInput, InferSchemaOutput, RouteContract, RouteInput } from '@kivinjs/core';
 import * as v from 'valibot';
 
 const BodySchema = v.object({ name: v.string(), age: v.optional(v.number()) });

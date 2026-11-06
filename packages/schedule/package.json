@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/schedule",
+  "name": "@kivinjs/schedule",
   "version": "0.1.0",
   "description": "Cron jobs for kivin that follow the application lifecycle (time zones, no overlap, graceful stop)",
   "license": "MIT",

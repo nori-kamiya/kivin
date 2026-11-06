@@ -1,4 +1,4 @@
-import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivin/core';
+import type { AotRouteRuntime, AppManifest, RequestContext } from '@kivinjs/core';
 import { ApiKeyGuard } from '../../../../examples/basic/src/api-key.guard';
 import { UserNotFoundFilter } from '../../../../examples/basic/src/user-not-found.filter';
 import { UserController } from '../../../../examples/basic/src/users.controller';

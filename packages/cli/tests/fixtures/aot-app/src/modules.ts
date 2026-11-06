@@ -1,4 +1,4 @@
-import { defineModule } from '@kivin/core';
+import { defineModule } from '@kivinjs/core';
 import { AotController } from './controller';
 import { HeaderMiddleware, MissingFilter, RawKeyGuard, requestIdProvider, RoleGuard, Store, TraceMiddleware } from './providers';
 

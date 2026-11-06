@@ -1,4 +1,4 @@
-# @kivin/schedule
+# @kivinjs/schedule
 
 *English | [日本語](#日本語)*
 
@@ -9,21 +9,21 @@ Cron jobs for kivin that follow the application lifecycle: time zones, no overla
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/schedule
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/schedule
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-This package has no dependencies of its own; it is used inside a kivin application, so install `@kivin/core` as well (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+This package has no dependencies of its own; it is used inside a kivin application, so install `@kivinjs/core` as well (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 With several instances every instance runs the jobs; use a lock for run-once jobs.
 
 ## Usage
 
 ```ts
-import { Injectable } from '@kivin/decorators';
-import { Scheduler } from '@kivin/schedule';
+import { Injectable } from '@kivinjs/decorators';
+import { Scheduler } from '@kivinjs/schedule';
 
 @Injectable({ deps: [] })
 export class Jobs extends Scheduler {
@@ -51,21 +51,21 @@ export class Jobs extends Scheduler {
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/schedule
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/schedule
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-このパッケージ自体に依存はなく、kivin アプリケーションの中で使うため `@kivin/core` も入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+このパッケージ自体に依存はなく、kivin アプリケーションの中で使うため `@kivinjs/core` も入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 複数インスタンスで動かすと、それぞれがジョブを実行します。1 回だけ実行したいジョブにはロックを使ってください。
 
 ### 使い方
 
 ```ts
-import { Injectable } from '@kivin/decorators';
-import { Scheduler } from '@kivin/schedule';
+import { Injectable } from '@kivinjs/decorators';
+import { Scheduler } from '@kivinjs/schedule';
 
 @Injectable({ deps: [] })
 export class Jobs extends Scheduler {

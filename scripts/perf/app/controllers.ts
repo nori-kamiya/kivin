@@ -1,5 +1,5 @@
-import type { RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import type { RouteInput } from '@kivinjs/core';
+import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, UseBodySchema, UseFilters, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivinjs/decorators';
 import { ApiKeyGuard, REQUEST_STAMP, RequestIdMiddleware, UserNotFoundFilter, UserStore } from './providers';
 import { CreateUserSchema, IdParamSchema, PatchUserSchema, SearchQuerySchema, UserSchema } from './schemas';
 

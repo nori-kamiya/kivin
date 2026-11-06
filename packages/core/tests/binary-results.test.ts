@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest, type NestLikeMiddleware, type RequestContext, type ResponseState } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, describe, expect, test } from 'bun:test';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

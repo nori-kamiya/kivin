@@ -158,8 +158,8 @@ export const NameParamSchema = v.object({ name: v.string() });
 export const CreateGreetingSchema = v.object({ name: v.pipe(v.string(), v.minLength(1)) });
 export const GreetingSchema = v.object({ message: v.string() });
 `,
-  'src/greeting.service.ts': `import { Injectable } from '@kivin/decorators';
-import { LOGGER, type Logger } from '@kivin/logger';
+  'src/greeting.service.ts': `import { Injectable } from '@kivinjs/decorators';
+import { LOGGER, type Logger } from '@kivinjs/logger';
 
 @Injectable({ deps: [LOGGER] })
 export class GreetingService {
@@ -171,8 +171,8 @@ export class GreetingService {
   }
 }
 `,
-  'src/greeting.controller.ts': `import type { RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Get, Injectable, OperationId, Post, UseBodySchema, UseParamSchema } from '@kivin/decorators';
+  'src/greeting.controller.ts': `import type { RouteInput } from '@kivinjs/core';
+import { ApiResponse, Controller, Get, Injectable, OperationId, Post, UseBodySchema, UseParamSchema } from '@kivinjs/decorators';
 import { CreateGreetingSchema, GreetingSchema, NameParamSchema } from './greeting.schemas';
 import { GreetingService } from './greeting.service';
 
@@ -198,16 +198,16 @@ export class GreetingController {
   }
 }
 `,
-  'src/greeting.module.ts': `import { Module } from '@kivin/decorators';
+  'src/greeting.module.ts': `import { Module } from '@kivinjs/decorators';
 import { GreetingController } from './greeting.controller';
 import { GreetingService } from './greeting.service';
 
 @Module({ providers: [GreetingService], controllers: [GreetingController] })
 export class GreetingModule {}
 `,
-  'src/app.ts': `import { defineApplication } from '@kivin/core';
-import { createLoggerModule, RequestLoggerMiddleware } from '@kivin/logger';
-import { createValibotAdapter } from '@kivin/valibot';
+  'src/app.ts': `import { defineApplication } from '@kivinjs/core';
+import { createLoggerModule, RequestLoggerMiddleware } from '@kivinjs/logger';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { GreetingModule } from './greeting.module';
 
 export default defineApplication({
@@ -216,7 +216,7 @@ export default defineApplication({
   globals: { guards: [], middleware: [RequestLoggerMiddleware], filters: [] },
 });
 `,
-  'src/main.ts': `import { createApp } from '@kivin/core';
+  'src/main.ts': `import { createApp } from '@kivinjs/core';
 import manifest from '../.kivin/generated/manifest';
 import appDefinition from './app';
 
@@ -238,13 +238,13 @@ export async function typedClientUsage() {
 try {
   step(`install ${release.packages.length} tarballs into ${appDir}`);
   const tarballs = Object.fromEntries(release.packages.map((entry) => [entry.name, `file:${join(releaseDir, entry.tarball)}`]));
-  // overrides: the tarballs' own @kivin/* ranges (for example ^0.0.1) would otherwise resolve against the registry.
+  // overrides: the tarballs' own @kivinjs/* ranges (for example ^0.0.1) would otherwise resolve against the registry.
   const packageJson = {
     name: 'kivin-pack-smoke-app',
     private: true,
     type: 'module',
-    dependencies: Object.fromEntries(Object.entries(tarballs).filter(([name]) => name !== '@kivin/cli')),
-    devDependencies: { '@kivin/cli': tarballs['@kivin/cli'] },
+    dependencies: Object.fromEntries(Object.entries(tarballs).filter(([name]) => name !== '@kivinjs/cli')),
+    devDependencies: { '@kivinjs/cli': tarballs['@kivinjs/cli'] },
     overrides: tarballs,
   };
   mkdirSync(join(appDir, 'src'), { recursive: true });
@@ -256,19 +256,19 @@ try {
   await mustRun('bun add valibot', ['bun', 'add', `valibot@${valibot}`], appDir);
   await mustRun('bun add typescript @types/bun', ['bun', 'add', '-d', `typescript@${typescript}`, '@types/bun'], appDir);
 
-  step('exactly one copy of @kivin/core is installed');
-  const cores = [...new Bun.Glob('**/@kivin/core/package.json').scanSync({ cwd: join(appDir, 'node_modules'), dot: true, followSymlinks: false })];
-  assert(cores.length === 1, `expected exactly one @kivin/core, found ${cores.length}: ${cores.join(', ')}`);
+  step('exactly one copy of @kivinjs/core is installed');
+  const cores = [...new Bun.Glob('**/@kivinjs/core/package.json').scanSync({ cwd: join(appDir, 'node_modules'), dot: true, followSymlinks: false })];
+  assert(cores.length === 1, `expected exactly one @kivinjs/core, found ${cores.length}: ${cores.join(', ')}`);
 
   step('every installed package imports from the installed artifact');
   const importAll = `import { readdirSync, readFileSync } from 'node:fs';
 const failures = [];
 let count = 0;
-for (const dir of readdirSync('node_modules/@kivin')) {
-  const manifest = JSON.parse(readFileSync(\`node_modules/@kivin/\${dir}/package.json\`, 'utf8'));
+for (const dir of readdirSync('node_modules/@kivinjs')) {
+  const manifest = JSON.parse(readFileSync(\`node_modules/@kivinjs/\${dir}/package.json\`, 'utf8'));
   for (const key of Object.keys(manifest.exports ?? {})) {
     if (key === './package.json' || key.includes('*')) continue;
-    const specifier = \`@kivin/\${dir}\${key.slice(1)}\`;
+    const specifier = \`@kivinjs/\${dir}\${key.slice(1)}\`;
     try {
       await import(specifier);
       count += 1;
@@ -362,10 +362,10 @@ console.log(\`imported \${count} entry points\`);
   };
   assert(scaffoldManifest.name === scaffoldName, `scaffold package name is ${scaffoldManifest.name}`);
   assert(['dev', 'generate', 'build', 'typecheck', 'test'].every((script) => scaffoldManifest.scripts[script]), 'scaffold is missing one of dev, generate, build, typecheck, test');
-  for (const name of ['@kivin/core', '@kivin/decorators', '@kivin/valibot']) {
+  for (const name of ['@kivinjs/core', '@kivinjs/decorators', '@kivinjs/valibot']) {
     assert(scaffoldManifest.dependencies[name] === `^${expectedVersion}`, `scaffold ${name} is ${scaffoldManifest.dependencies[name]}, expected ^${expectedVersion}`);
   }
-  assert(scaffoldManifest.devDependencies['@kivin/cli'] === `^${expectedVersion}`, 'scaffold @kivin/cli does not track the CLI version');
+  assert(scaffoldManifest.devDependencies['@kivinjs/cli'] === `^${expectedVersion}`, 'scaffold @kivinjs/cli does not track the CLI version');
   const scaffoldTsconfig = JSON.parse(readFileSync(join(scaffoldDir, 'tsconfig.json'), 'utf8')) as { compilerOptions: Record<string, unknown> };
   assert(!('experimentalDecorators' in scaffoldTsconfig.compilerOptions), 'scaffold tsconfig sets experimentalDecorators');
   assert(JSON.stringify(scaffoldTsconfig.compilerOptions.types) === '["bun"]' && JSON.stringify(scaffoldTsconfig.compilerOptions.lib) === '["ESNext"]' && scaffoldTsconfig.compilerOptions.strict === true, 'scaffold tsconfig lacks types bun, lib ESNext or strict');

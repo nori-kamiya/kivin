@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule, type AppManifest, type RequestHook } from '@kivin/core';
-import { createMethodOverride, createTrailingSlash } from '@kivin/http';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest, type RequestHook } from '@kivinjs/core';
+import { createMethodOverride, createTrailingSlash } from '@kivinjs/http';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 class Posts {

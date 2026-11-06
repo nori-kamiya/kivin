@@ -1,4 +1,4 @@
-import { Module } from '@kivin/decorators';
+import { Module } from '@kivinjs/decorators';
 import { ApiKeyGuard } from './api-key.guard';
 import { RequestIdMiddleware } from './request-id.middleware';
 import { UserNotFoundFilter } from './user-not-found.filter';

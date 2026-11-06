@@ -1,5 +1,5 @@
 // Fixed-window rate limiting middleware with a pluggable counter store (memory by default).
-import { getClientAddress, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { getClientAddress, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
 export interface RateLimitOptions {
   /** Requests allowed per key and window. */

@@ -15,19 +15,19 @@ Goals:
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/decorators @kivin/valibot valibot
-bun add -d @kivin/cli @types/bun typescript
+bun add @kivinjs/core @kivinjs/decorators @kivinjs/valibot valibot
+bun add -d @kivinjs/cli @types/bun typescript
 ```
 
-`@kivin/cli` must be installed in your project as a dev dependency (not only run from elsewhere): it generates the route manifest by loading your app against the `@kivin/core` your project installed. Packages that plug into the core (`@kivin/security`, `@kivin/http`, ...) list `@kivin/core` as a peer dependency; install them with `bun add` the same way. Zod, ArkType and other Standard Schema validators use `@kivin/standard-schema` instead of `@kivin/valibot` ([docs/schema-adapter.md](docs/schema-adapter.md), Japanese).
+`@kivinjs/cli` must be installed in your project as a dev dependency (not only run from elsewhere): it generates the route manifest by loading your app against the `@kivinjs/core` your project installed. Packages that plug into the core (`@kivinjs/security`, `@kivinjs/http`, ...) list `@kivinjs/core` as a peer dependency; install them with `bun add` the same way. Zod, ArkType and other Standard Schema validators use `@kivinjs/standard-schema` instead of `@kivinjs/valibot` ([docs/schema-adapter.md](docs/schema-adapter.md), Japanese).
 
 To scaffold a project instead of wiring it by hand:
 
 ```bash
-bunx --package @kivin/cli kivin init my-app
+bunx --package @kivinjs/cli kivin init my-app
 ```
 
-(Use the scoped `--package @kivin/cli` form. The unscoped npm name `kivin` is not this project.)
+(Use the scoped `--package @kivinjs/cli` form. The unscoped npm name `kivin` is not this project.)
 
 ### TypeScript setup
 
@@ -58,9 +58,9 @@ The smallest app is a controller, a module and an application.
 
 ```ts
 // app.ts
-import { defineApplication, defineModule } from '@kivin/core';
-import { Controller, Get } from '@kivin/decorators';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { Controller, Get } from '@kivinjs/decorators';
+import { createValibotAdapter } from '@kivinjs/valibot';
 
 @Controller('/hello')
 export class HelloController {
@@ -86,7 +86,7 @@ export default defineApplication({
 
 ```ts
 // main.ts
-import { createApp } from '@kivin/core';
+import { createApp } from '@kivinjs/core';
 import manifest from './.kivin/generated/manifest';
 import appDefinition from './app';
 
@@ -96,7 +96,7 @@ const app = createApp(appDefinition, manifest);
 app.listen(3000);
 ```
 
-Add scripts to `package.json` (the `kivin` binary comes from the local `@kivin/cli`):
+Add scripts to `package.json` (the `kivin` binary comes from the local `@kivinjs/cli`):
 
 ```json
 {
@@ -134,7 +134,7 @@ For a single binary, keep the generated manifest as a static import and run `bun
 
 ### What `generate` does and does not do
 
-- `kivin generate` analyses the source (AST) for decorators, **and it imports your entry file and everything it imports**. Top-level side effects therefore run at build time: reading required environment variables, opening connections and similar code in modules reachable from `app.ts` will fail a CI/Docker build that has no secrets. Validate the environment through DI (`envProvider` from `@kivin/config`) or in `main.ts` ([docs/production.md](docs/production.md), Japanese).
+- `kivin generate` analyses the source (AST) for decorators, **and it imports your entry file and everything it imports**. Top-level side effects therefore run at build time: reading required environment variables, opening connections and similar code in modules reachable from `app.ts` will fail a CI/Docker build that has no secrets. Validate the environment through DI (`envProvider` from `@kivinjs/config`) or in `main.ts` ([docs/production.md](docs/production.md), Japanese).
 - Guards and middleware passed to decorators must be **exported** or written inline. **Export your schemas** too: an exported schema is what the compile-time contracts and the typed client read. An inline schema (`@UseQuerySchema(v.object({ ... }))`) still validates at runtime, but `kivin generate` warns and skips the contract check, and the typed client falls back to loose input types. A `const IdSchema = ...` that is not exported fails generation.
 - If generation fails, the previous contents of `--outDir` are left untouched.
 
@@ -174,8 +174,8 @@ kivin uses TC39 standard decorators, which have no parameter decorators, so a ha
 
 ```ts
 import * as v from 'valibot';
-import type { RouteInput } from '@kivin/core';
-import { Controller, Get, Post, UseBodySchema, UseParamSchema } from '@kivin/decorators';
+import type { RouteInput } from '@kivinjs/core';
+import { Controller, Get, Post, UseBodySchema, UseParamSchema } from '@kivinjs/decorators';
 
 export const UserIdParamSchema = v.object({ id: v.string() });
 export const CreateUserSchema = v.object({ name: v.string(), email: v.pipe(v.string(), v.email()) });
@@ -229,22 +229,22 @@ Every package requires Bun 1.4.0 or later. Details: [docs/reference.md](docs/ref
 
 | Package | Purpose |
 | --- | --- |
-| `@kivin/core` | Router, DI, modules, lifecycle, input validation, cookies / SSE / WebSocket: the runtime core |
-| `@kivin/decorators` | Module / Controller / Route / Enhancer / OpenAPI decorators |
-| `@kivin/valibot` | Valibot schema adapter |
-| `@kivin/standard-schema` | Standard Schema adapter (Zod, ArkType, Valibot, ...) |
-| `@kivin/cli` | Code generation CLI (`generate`, `dev`, `openapi`, `inspect`) |
-| `@kivin/openapi` | OpenAPI 3.1 document generation |
-| `@kivin/security` | Basic / Bearer guards, CSRF, secure headers, rate limiting, IP restriction |
-| `@kivin/jwt` | JWT verification / signing (Web Crypto), JWKS, auth guard |
-| `@kivin/http` | Compression, ETag, timeout, request ID, content negotiation, streaming, pretty JSON, method override, trailing slash |
-| `@kivin/static` | Static file serving (`serveStatic`) |
-| `@kivin/session` | Server-side sessions (signed cookie, pluggable stores) |
-| `@kivin/logger` | JSON-line logger and request logger middleware |
-| `@kivin/observability` | OpenTelemetry tracing, Prometheus metrics, Server-Timing, health checks |
-| `@kivin/config` | Typed, validated environment variables |
-| `@kivin/schedule` | Cron jobs tied to the application lifecycle |
-| `@kivin/graphql` | Mount GraphQL Yoga |
+| `@kivinjs/core` | Router, DI, modules, lifecycle, input validation, cookies / SSE / WebSocket: the runtime core |
+| `@kivinjs/decorators` | Module / Controller / Route / Enhancer / OpenAPI decorators |
+| `@kivinjs/valibot` | Valibot schema adapter |
+| `@kivinjs/standard-schema` | Standard Schema adapter (Zod, ArkType, Valibot, ...) |
+| `@kivinjs/cli` | Code generation CLI (`generate`, `dev`, `openapi`, `inspect`) |
+| `@kivinjs/openapi` | OpenAPI 3.1 document generation |
+| `@kivinjs/security` | Basic / Bearer guards, CSRF, secure headers, rate limiting, IP restriction |
+| `@kivinjs/jwt` | JWT verification / signing (Web Crypto), JWKS, auth guard |
+| `@kivinjs/http` | Compression, ETag, timeout, request ID, content negotiation, streaming, pretty JSON, method override, trailing slash |
+| `@kivinjs/static` | Static file serving (`serveStatic`) |
+| `@kivinjs/session` | Server-side sessions (signed cookie, pluggable stores) |
+| `@kivinjs/logger` | JSON-line logger and request logger middleware |
+| `@kivinjs/observability` | OpenTelemetry tracing, Prometheus metrics, Server-Timing, health checks |
+| `@kivinjs/config` | Typed, validated environment variables |
+| `@kivinjs/schedule` | Cron jobs tied to the application lifecycle |
+| `@kivinjs/graphql` | Mount GraphQL Yoga |
 
 ## Performance
 

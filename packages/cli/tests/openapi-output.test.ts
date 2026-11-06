@@ -6,7 +6,7 @@ import { generateOpenApi } from '../src/index';
 
 const dir = join(import.meta.dir, '.generated/openapi-output');
 
-const controllerSource = `import { ApiResponse, Controller, Get } from '@kivin/decorators';
+const controllerSource = `import { ApiResponse, Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/docs')
 export class DocsController {
@@ -18,7 +18,7 @@ export class DocsController {
 }
 `;
 
-const appSource = `import { defineApplication, defineModule } from '@kivin/core';
+const appSource = `import { defineApplication, defineModule } from '@kivinjs/core';
 import { DocsController } from './controller';
 
 export default defineApplication({

@@ -1,6 +1,6 @@
 // HTTP Basic / Bearer authentication guards and cross-origin request (CSRF) protection.
 import { timingSafeEqual } from 'node:crypto';
-import { forbidden, unauthorized, type CanActivate, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { forbidden, unauthorized, type CanActivate, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
 export interface BasicCredentials {
   username: string;
@@ -98,7 +98,7 @@ export interface BearerAuthOptions {
 
 /**
  * Guard for `Authorization: Bearer <token>` with static tokens or a custom check (for JWTs use
- * `@kivin/jwt`). Answers `401` with a `WWW-Authenticate: Bearer` challenge.
+ * `@kivinjs/jwt`). Answers `401` with a `WWW-Authenticate: Bearer` challenge.
  */
 export function createBearerAuthGuard(options: BearerAuthOptions) {
   if (!options.tokens && !options.verify) {

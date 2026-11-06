@@ -1,4 +1,4 @@
-import { buildManifest, createApp, defineApplication, defineModule, setControllerMetadata, setRouteMetadata } from '@kivin/core';
+import { buildManifest, createApp, defineApplication, defineModule, setControllerMetadata, setRouteMetadata } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -22,9 +22,9 @@ describe('defineApplication({ basePath })', () => {
     const dir = join(import.meta.dir, '.generated/base-path-invalid');
     await mkdir(dir, { recursive: true });
     const entry = join(dir, 'app.ts');
-    await writeFile(entry, "import { defineApplication } from '@kivin/core';\nexport default defineApplication({ basePath: 'api', modules: [] });\n");
+    await writeFile(entry, "import { defineApplication } from '@kivinjs/core';\nexport default defineApplication({ basePath: 'api', modules: [] });\n");
     await expect(buildManifestSourceFromAst({ entry, outFile: join(dir, 'manifest.ts') })).rejects.toThrow(/must start with "\/"/);
-    await writeFile(entry, "import { defineApplication } from '@kivin/core';\nconst prefix = '/api';\nexport default defineApplication({ basePath: prefix, modules: [] });\n");
+    await writeFile(entry, "import { defineApplication } from '@kivinjs/core';\nconst prefix = '/api';\nexport default defineApplication({ basePath: prefix, modules: [] });\n");
     await expect(buildManifestSourceFromAst({ entry, outFile: join(dir, 'manifest.ts') })).rejects.toThrow(/basePath/);
   });
 

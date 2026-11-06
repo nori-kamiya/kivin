@@ -1,4 +1,4 @@
-import type { ParseResult, SchemaAdapter } from '@kivin/core';
+import type { ParseResult, SchemaAdapter } from '@kivinjs/core';
 
 // Minimal local copies of the Standard Schema / Standard JSON Schema v1 interfaces
 // (https://standardschema.dev) so this package needs no runtime dependency.

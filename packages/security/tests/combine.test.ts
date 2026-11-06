@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type CanActivate, type RequestContext } from '@kivin/core';
-import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivin/security';
+import { createApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type CanActivate, type RequestContext } from '@kivinjs/core';
+import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivinjs/security';
 import { describe, expect, test } from 'bun:test';
 
 class Routes {

@@ -1,6 +1,6 @@
 // Prometheus metrics: a small dependency-free registry (counters, gauges, histograms with labels),
 // request metrics middleware and a `/metrics` handler in the text exposition format (0.0.4).
-import { afterResponse, enableAfterResponse, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { afterResponse, enableAfterResponse, type ManifestRoute, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
 export type Labels = Record<string, string | number>;
 

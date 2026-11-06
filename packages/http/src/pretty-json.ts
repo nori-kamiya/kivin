@@ -1,5 +1,5 @@
 // Pretty-printed JSON on demand (equivalent of Hono's `prettyJSON`).
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
 
 export interface PrettyJsonOptions {
   /** Query parameter that turns indentation on (`?pretty`). Default `pretty`. */

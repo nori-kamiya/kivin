@@ -2,8 +2,8 @@ import { lstatSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node
 import { basename, dirname, join, resolve } from 'node:path';
 
 /**
- * Ranges for everything that is not a @kivin/* package. valibot must stay inside the peer range of
- * @kivin/valibot.
+ * Ranges for everything that is not a @kivinjs/* package. valibot must stay inside the peer range of
+ * @kivinjs/valibot.
  */
 export const TEMPLATE_RANGES = {
   valibot: '^1.5.0',
@@ -15,7 +15,7 @@ export interface InitOptions {
   /** Target directory. Relative paths resolve against `cwd`; an absolute path or `..` is honoured only because the caller passed it explicitly. */
   dir: string;
   cwd?: string;
-  /** Version of the running CLI; the @kivin/* dependencies are pinned to ^<version>. */
+  /** Version of the running CLI; the @kivinjs/* dependencies are pinned to ^<version>. */
   version: string;
 }
 
@@ -54,13 +54,13 @@ function templateFiles(name: string, version: string): Record<string, string> {
       test: 'bun test',
     },
     dependencies: {
-      '@kivin/core': range,
-      '@kivin/decorators': range,
-      '@kivin/valibot': range,
+      '@kivinjs/core': range,
+      '@kivinjs/decorators': range,
+      '@kivinjs/valibot': range,
       valibot: TEMPLATE_RANGES.valibot,
     },
     devDependencies: {
-      '@kivin/cli': range,
+      '@kivinjs/cli': range,
       '@types/bun': TEMPLATE_RANGES['@types/bun'],
       typescript: TEMPLATE_RANGES.typescript,
     },
@@ -101,7 +101,7 @@ export const NameParamSchema = v.object({ name: v.string() });
 export const CreateGreetingSchema = v.object({ name: v.pipe(v.string(), v.minLength(1)) });
 export const GreetingSchema = v.object({ message: v.string() });
 `,
-    'src/greeting.service.ts': `import { Injectable } from '@kivin/decorators';
+    'src/greeting.service.ts': `import { Injectable } from '@kivinjs/decorators';
 
 @Injectable({ deps: [] })
 export class GreetingService {
@@ -110,8 +110,8 @@ export class GreetingService {
   }
 }
 `,
-    'src/greeting.controller.ts': `import type { RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Get, Injectable, OperationId, Post, UseBodySchema, UseParamSchema } from '@kivin/decorators';
+    'src/greeting.controller.ts': `import type { RouteInput } from '@kivinjs/core';
+import { ApiResponse, Controller, Get, Injectable, OperationId, Post, UseBodySchema, UseParamSchema } from '@kivinjs/decorators';
 import { CreateGreetingSchema, GreetingSchema, NameParamSchema } from './greeting.schemas';
 import { GreetingService } from './greeting.service';
 
@@ -137,15 +137,15 @@ export class GreetingController {
   }
 }
 `,
-    'src/greeting.module.ts': `import { Module } from '@kivin/decorators';
+    'src/greeting.module.ts': `import { Module } from '@kivinjs/decorators';
 import { GreetingController } from './greeting.controller';
 import { GreetingService } from './greeting.service';
 
 @Module({ providers: [GreetingService], controllers: [GreetingController] })
 export class GreetingModule {}
 `,
-    'src/app.ts': `import { defineApplication } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+    'src/app.ts': `import { defineApplication } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { GreetingModule } from './greeting.module';
 
 export default defineApplication({
@@ -154,7 +154,7 @@ export default defineApplication({
   globals: { guards: [], middleware: [], filters: [] },
 });
 `,
-    'src/main.ts': `import { createApp } from '@kivin/core';
+    'src/main.ts': `import { createApp } from '@kivinjs/core';
 import manifest from '../.kivin/generated/manifest';
 import app from './app';
 
@@ -162,7 +162,7 @@ createApp(app, manifest).listen({ port: Number(process.env.PORT ?? 3000) });
 console.log(\`listening on http://localhost:\${process.env.PORT ?? 3000}\`);
 `,
     // createTestingApp builds its manifest from decorator metadata, so this test needs no generated files.
-    'src/greeting.test.ts': `import { createTestingApp } from '@kivin/core';
+    'src/greeting.test.ts': `import { createTestingApp } from '@kivinjs/core';
 import { describe, expect, test } from 'bun:test';
 import app from './app';
 
@@ -217,7 +217,7 @@ The routes live in \`src/greeting.controller.ts\`; \`src/app.ts\` wires the modu
  */
 export function initProject(options: InitOptions): InitResult {
   if (!SEMVER.test(options.version)) {
-    throw new Error(`init: cannot derive @kivin/* ranges from CLI version "${options.version}"`);
+    throw new Error(`init: cannot derive @kivinjs/* ranges from CLI version "${options.version}"`);
   }
   if (options.dir.length === 0) {
     throw new Error('init requires a target directory');

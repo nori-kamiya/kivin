@@ -1,5 +1,5 @@
 // Pre-routing hooks (`defineApplication({ onRequest })`): method override and trailing-slash redirects.
-import type { RequestHook } from '@kivin/core';
+import type { RequestHook } from '@kivinjs/core';
 
 export interface MethodOverrideOptions {
   /**

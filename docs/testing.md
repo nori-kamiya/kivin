@@ -79,7 +79,7 @@ BENCH_VARIANTS=create,patch,delete BENCH_ITERATIONS=10 bun run bench:stack:spot 
 
 同日の post-optimization rerun `stack-spot-create-patch-delete-20260312f.txt` と `stack-spot-create-patch-delete-20260312g.txt` は、`201` no-schema finalizer の route-specific specialization 後の確認用です。ただし framework 横断で振れが大きく canonical baseline には不向きだったため、docs 更新の基準値としては `e` を優先します。
 
-`stack-spot-create-patch-delete-20260313a.txt` は `@kivin/logger` の disabled log allocation 削減後の確認用 rerun です。correctness と build は通りましたが、focused CRUD の `compiled create` 順位は依然として変わらなかったため、この artifact も benchmark truth の更新には使いません。
+`stack-spot-create-patch-delete-20260313a.txt` は `@kivinjs/logger` の disabled log allocation 削減後の確認用 rerun です。correctness と build は通りましたが、focused CRUD の `compiled create` 順位は依然として変わらなかったため、この artifact も benchmark truth の更新には使いません。
 
 `compiled create` の残差を kivin 単体で分解する時は次を使います。
 

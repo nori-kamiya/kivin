@@ -16,12 +16,12 @@
     "examples/basic": {
       "name": "kivin-example-basic",
       "dependencies": {
-        "@kivin/core": "workspace:*",
-        "@kivin/decorators": "workspace:*",
-        "@kivin/logger": "workspace:*",
-        "@kivin/openapi": "workspace:*",
-        "@kivin/security": "workspace:*",
-        "@kivin/valibot": "workspace:*",
+        "@kivinjs/core": "workspace:*",
+        "@kivinjs/decorators": "workspace:*",
+        "@kivinjs/logger": "workspace:*",
+        "@kivinjs/openapi": "workspace:*",
+        "@kivinjs/security": "workspace:*",
+        "@kivinjs/valibot": "workspace:*",
         "valibot": "^1.5.0",
       },
     },
@@ -40,7 +40,7 @@
     "examples/benchmark-kivin": {
       "name": "kivin-example-benchmark-kivin",
       "dependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
     },
     "examples/benchmark-stack-elysia": {
@@ -59,184 +59,184 @@
     "examples/benchmark-stack-kivin": {
       "name": "kivin-example-benchmark-stack-kivin",
       "dependencies": {
-        "@kivin/core": "workspace:*",
-        "@kivin/decorators": "workspace:*",
-        "@kivin/logger": "workspace:*",
-        "@kivin/valibot": "workspace:*",
+        "@kivinjs/core": "workspace:*",
+        "@kivinjs/decorators": "workspace:*",
+        "@kivinjs/logger": "workspace:*",
+        "@kivinjs/valibot": "workspace:*",
         "valibot": "^1.5.0",
       },
     },
     "packages/cli": {
-      "name": "@kivin/cli",
+      "name": "@kivinjs/cli",
       "version": "0.1.0",
       "bin": {
         "kivin": "./dist/bin.js",
       },
       "dependencies": {
-        "@kivin/openapi": "workspace:^",
+        "@kivinjs/openapi": "workspace:^",
         "oxc-parser": "0.155.0",
         "oxc-resolver": "11.24.2",
       },
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/config": {
-      "name": "@kivin/config",
+      "name": "@kivinjs/config",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/core": {
-      "name": "@kivin/core",
+      "name": "@kivinjs/core",
       "version": "0.1.0",
     },
     "packages/decorators": {
-      "name": "@kivin/decorators",
+      "name": "@kivinjs/decorators",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/graphql": {
-      "name": "@kivin/graphql",
+      "name": "@kivinjs/graphql",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
         "graphql": "^17.1.0",
         "graphql-ws": "^6.4.1",
         "graphql-yoga": "^6.0.1",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/http": {
-      "name": "@kivin/http",
+      "name": "@kivinjs/http",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/jwt": {
-      "name": "@kivin/jwt",
+      "name": "@kivinjs/jwt",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/logger": {
-      "name": "@kivin/logger",
+      "name": "@kivinjs/logger",
       "version": "0.1.0",
       "dependencies": {
-        "@kivin/decorators": "workspace:^",
+        "@kivinjs/decorators": "workspace:^",
       },
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/observability": {
-      "name": "@kivin/observability",
+      "name": "@kivinjs/observability",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
         "@opentelemetry/api": "^1.10.0",
         "@opentelemetry/context-async-hooks": "^2.12.0",
         "@opentelemetry/core": "^2.12.0",
         "@opentelemetry/sdk-trace-base": "^2.12.0",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/openapi": {
-      "name": "@kivin/openapi",
+      "name": "@kivinjs/openapi",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/schedule": {
-      "name": "@kivin/schedule",
+      "name": "@kivinjs/schedule",
       "version": "0.1.0",
     },
     "packages/security": {
-      "name": "@kivin/security",
+      "name": "@kivinjs/security",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/session": {
-      "name": "@kivin/session",
+      "name": "@kivinjs/session",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/standard-schema": {
-      "name": "@kivin/standard-schema",
+      "name": "@kivinjs/standard-schema",
       "version": "0.1.0",
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/static": {
-      "name": "@kivin/static",
+      "name": "@kivinjs/static",
       "version": "0.1.0",
       "dependencies": {
-        "@kivin/http": "workspace:^",
+        "@kivinjs/http": "workspace:^",
       },
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
       },
     },
     "packages/valibot": {
-      "name": "@kivin/valibot",
+      "name": "@kivinjs/valibot",
       "version": "0.1.0",
       "dependencies": {
         "@valibot/to-json-schema": "^1.8.0",
       },
       "devDependencies": {
-        "@kivin/core": "workspace:*",
+        "@kivinjs/core": "workspace:*",
         "valibot": "^1.5.0",
       },
       "peerDependencies": {
-        "@kivin/core": "workspace:^",
+        "@kivinjs/core": "workspace:^",
         "valibot": "^1.5.0",
       },
     },
@@ -274,37 +274,37 @@
 
     "@graphql-yoga/typed-event-target": ["@graphql-yoga/typed-event-target@4.0.0", "", { "dependencies": { "@repeaterjs/repeater": "^3.0.4", "tslib": "^2.8.1" } }, "sha512-kqe6SXPi91qe5Ql3tB4mnD8SGXhplv5E0SpBG7JDzxDPYfxbDSVuxz/RKn0uAVLw4URkSy2P84LiMd88YxCJBQ=="],
 
-    "@kivin/cli": ["@kivin/cli@workspace:packages/cli"],
+    "@kivinjs/cli": ["@kivinjs/cli@workspace:packages/cli"],
 
-    "@kivin/config": ["@kivin/config@workspace:packages/config"],
+    "@kivinjs/config": ["@kivinjs/config@workspace:packages/config"],
 
-    "@kivin/core": ["@kivin/core@workspace:packages/core"],
+    "@kivinjs/core": ["@kivinjs/core@workspace:packages/core"],
 
-    "@kivin/decorators": ["@kivin/decorators@workspace:packages/decorators"],
+    "@kivinjs/decorators": ["@kivinjs/decorators@workspace:packages/decorators"],
 
-    "@kivin/graphql": ["@kivin/graphql@workspace:packages/graphql"],
+    "@kivinjs/graphql": ["@kivinjs/graphql@workspace:packages/graphql"],
 
-    "@kivin/http": ["@kivin/http@workspace:packages/http"],
+    "@kivinjs/http": ["@kivinjs/http@workspace:packages/http"],
 
-    "@kivin/jwt": ["@kivin/jwt@workspace:packages/jwt"],
+    "@kivinjs/jwt": ["@kivinjs/jwt@workspace:packages/jwt"],
 
-    "@kivin/logger": ["@kivin/logger@workspace:packages/logger"],
+    "@kivinjs/logger": ["@kivinjs/logger@workspace:packages/logger"],
 
-    "@kivin/observability": ["@kivin/observability@workspace:packages/observability"],
+    "@kivinjs/observability": ["@kivinjs/observability@workspace:packages/observability"],
 
-    "@kivin/openapi": ["@kivin/openapi@workspace:packages/openapi"],
+    "@kivinjs/openapi": ["@kivinjs/openapi@workspace:packages/openapi"],
 
-    "@kivin/schedule": ["@kivin/schedule@workspace:packages/schedule"],
+    "@kivinjs/schedule": ["@kivinjs/schedule@workspace:packages/schedule"],
 
-    "@kivin/security": ["@kivin/security@workspace:packages/security"],
+    "@kivinjs/security": ["@kivinjs/security@workspace:packages/security"],
 
-    "@kivin/session": ["@kivin/session@workspace:packages/session"],
+    "@kivinjs/session": ["@kivinjs/session@workspace:packages/session"],
 
-    "@kivin/standard-schema": ["@kivin/standard-schema@workspace:packages/standard-schema"],
+    "@kivinjs/standard-schema": ["@kivinjs/standard-schema@workspace:packages/standard-schema"],
 
-    "@kivin/static": ["@kivin/static@workspace:packages/static"],
+    "@kivinjs/static": ["@kivinjs/static@workspace:packages/static"],
 
-    "@kivin/valibot": ["@kivin/valibot@workspace:packages/valibot"],
+    "@kivinjs/valibot": ["@kivinjs/valibot@workspace:packages/valibot"],
 
     "@napi-rs/wasm-runtime": ["@napi-rs/wasm-runtime@1.2.5", "", { "dependencies": { "@tybys/wasm-util": "^0.10.3" }, "peerDependencies": { "@emnapi/core": "^1.7.1 || ^2.0.0-alpha.4", "@emnapi/runtime": "^1.7.1 || ^2.0.0-alpha.4" } }, "sha512-HshSvXzmBxNzqejd3k/KemgQ3hdREUYFRRrgxOZ+gPljDIsO2SDZrVZMd4Z/HsxudQbE62OVyVFE8z9BCurfjA=="],
 

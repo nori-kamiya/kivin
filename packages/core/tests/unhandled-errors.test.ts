@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, HttpError, type AppManifest, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, HttpError, type AppManifest, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 
 class Routes {

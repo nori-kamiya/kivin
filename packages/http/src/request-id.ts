@@ -1,5 +1,5 @@
 // Request IDs for correlating logs across services (equivalent of Hono's `requestId`).
-import type { NestLikeMiddleware, RequestContext, ResponseState } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext, ResponseState } from '@kivinjs/core';
 
 const requestIds = new WeakMap<Request, string>();
 
@@ -23,7 +23,7 @@ export function getRequestId(request: Request): string | undefined {
 /**
  * Assigns each request an ID (the incoming header when well-formed, otherwise a new UUID), echoes
  * it in the response header and makes it available via `getRequestId(request)` and
- * `context.get('requestId')` (which `@kivin/logger` includes in its records).
+ * `context.get('requestId')` (which `@kivinjs/logger` includes in its records).
  */
 export function createRequestIdMiddleware(options: RequestIdOptions = {}) {
   const header = (options.header ?? 'x-request-id').toLowerCase();

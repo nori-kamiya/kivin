@@ -2,7 +2,7 @@
 // `contextStorage`), via AsyncLocalStorage. Opt-in: only requests passing through the middleware
 // pay for it.
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
 
 interface RequestScope {
   request: Request;

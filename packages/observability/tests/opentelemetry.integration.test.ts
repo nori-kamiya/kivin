@@ -2,9 +2,9 @@ import { context, propagation, SpanKind, SpanStatusCode, trace } from '@opentele
 import { AsyncLocalStorageContextManager } from '@opentelemetry/context-async-hooks';
 import { W3CTraceContextPropagator } from '@opentelemetry/core';
 import { BasicTracerProvider, InMemorySpanExporter, SimpleSpanProcessor } from '@opentelemetry/sdk-trace-base';
-import { createApp, defineApplication, defineModule, type AppManifest, type ExceptionFilter } from '@kivin/core';
-import { createTracingMiddleware } from '@kivin/observability';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest, type ExceptionFilter } from '@kivinjs/core';
+import { createTracingMiddleware } from '@kivinjs/observability';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, beforeEach, describe, expect, spyOn, test } from 'bun:test';
 
 class Teapot extends Error {}

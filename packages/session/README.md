@@ -1,4 +1,4 @@
-# @kivin/session
+# @kivinjs/session
 
 *English | [日本語](#日本語)*
 
@@ -9,22 +9,22 @@ Server-side sessions for kivin: signed session-ID cookie and pluggable stores (a
 ## Install
 
 ```bash
-bun add @kivin/core @kivin/session @kivin/decorators
+bun add @kivinjs/core @kivinjs/session @kivinjs/decorators
 bun add -d @types/bun typescript
 ```
 
 kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig.json`; `NodeNext` is not supported. `@types/bun` and `typescript` are needed for type checking.
 
-`@kivin/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivin/cli` (`bun add -d @kivin/cli`) to generate the route manifest.
+`@kivinjs/core` is a peer dependency of this package, so install it in your project too (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
 The default in-memory store is for development, tests and a single process only.
 
 ## Usage
 
 ```ts
-import { type RouteInput } from '@kivin/core';
-import { Controller, Post } from '@kivin/decorators';
-import { createSessionMiddleware, getSession } from '@kivin/session';
+import { type RouteInput } from '@kivinjs/core';
+import { Controller, Post } from '@kivinjs/decorators';
+import { createSessionMiddleware, getSession } from '@kivinjs/session';
 
 // Register in defineApplication({ globals: { middleware: [Sessions] } })
 export const Sessions = createSessionMiddleware({
@@ -62,22 +62,22 @@ kivin 用のサーバー側セッションです。署名付きのセッショ�
 ### インストール
 
 ```bash
-bun add @kivin/core @kivin/session @kivin/decorators
+bun add @kivinjs/core @kivinjs/session @kivinjs/decorators
 bun add -d @types/bun typescript
 ```
 
 kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前提にしています。`NodeNext` はサポートしていません。型検査には `@types/bun` と `typescript` が必要です。
 
-`@kivin/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivin/cli`（`bun add -d @kivin/cli`）を使います。
+`@kivinjs/core` はこのパッケージの peer dependency なので、プロジェクトにも入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
 既定のメモリストアは、開発・テスト・単一プロセス向けです。
 
 ### 使い方
 
 ```ts
-import { type RouteInput } from '@kivin/core';
-import { Controller, Post } from '@kivin/decorators';
-import { createSessionMiddleware, getSession } from '@kivin/session';
+import { type RouteInput } from '@kivinjs/core';
+import { Controller, Post } from '@kivinjs/decorators';
+import { createSessionMiddleware, getSession } from '@kivinjs/session';
 
 // Register in defineApplication({ globals: { middleware: [Sessions] } })
 export const Sessions = createSessionMiddleware({

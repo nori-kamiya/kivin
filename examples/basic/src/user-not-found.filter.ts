@@ -1,5 +1,5 @@
-import type { ExceptionFilter, RequestContext } from '@kivin/core';
-import { Injectable } from '@kivin/decorators';
+import type { ExceptionFilter, RequestContext } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
 import { UserNotFoundError } from './users.service';
 
 @Injectable()

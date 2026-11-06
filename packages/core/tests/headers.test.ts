@@ -1,6 +1,6 @@
-import { createApp, defineApplication, defineModule, type AppManifest } from '@kivin/core';
-import { buildOpenApiDocument } from '@kivin/openapi';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, type AppManifest } from '@kivinjs/core';
+import { buildOpenApiDocument } from '@kivinjs/openapi';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import * as v from 'valibot';
 

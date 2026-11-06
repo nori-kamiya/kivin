@@ -1,6 +1,6 @@
 # 引き継ぎメモ
 
-kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #80 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
+kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #81 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
 
 ## 1. 現状
 
@@ -11,25 +11,25 @@ kivin の開発を引き継ぐ人向けに、現状・進め方・壊しては�
 
 ## 2. パッケージ構成
 
-core は実行時の中核だけを持ち、独立した機能は領域ごとのパッケージに分けています（#44）。**core はどのプラグインにも依存しません。** プラグインは core（`@kivin/static` は `@kivin/http` も）にだけ依存します。`@kivin/core` は peerDependency なので、プロセス内で必ず 1 つになります（`instanceof HttpError` や `afterResponse` の状態が壊れないように）。
+core は実行時の中核だけを持ち、独立した機能は領域ごとのパッケージに分けています（#44）。**core はどのプラグインにも依存しません。** プラグインは core（`@kivinjs/static` は `@kivinjs/http` も）にだけ依存します。`@kivinjs/core` は peerDependency なので、プロセス内で必ず 1 つになります（`instanceof HttpError` や `afterResponse` の状態が壊れないように）。
 
 | パッケージ | 役割 | 依存 |
 | --- | --- | --- |
-| `@kivin/core` | ルーティング、DI、モジュール、ライフサイクル、入力検証、Cookie（署名付き含む）/ SSE / WebSocket、CORS、`onRequest` フック、`afterResponse`、`basePath` | — |
-| `@kivin/decorators` | TC39 デコレータ（`@Controller` / `@Get` / `@UseGuards` / `@StaticResponse` …） | core |
-| `@kivin/cli` | `kivin generate`（AST → manifest / OpenAPI / contracts / 型付きクライアント / AOT 実行関数）、`dev`、`inspect` | core, openapi, oxc-parser, oxc-resolver |
-| `@kivin/openapi` | OpenAPI 3.1 生成、Swagger UI の HTML | core |
-| `@kivin/valibot` / `@kivin/standard-schema` | schema adapter | core（valibot は `valibot` も） |
-| `@kivin/logger` | JSON 構造化ロガー、リクエストロガー | core, decorators |
-| `@kivin/jwt` | JWT 検証・署名、JWKS、JWT ガード | core |
-| `@kivin/security` | Basic / Bearer 認証、CSRF、secure headers、レートリミット、IP 制限、`anyGuard` | core |
-| `@kivin/http` | 圧縮、ETag、タイムアウト、リクエスト ID、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、プロキシ、HTML テンプレート、リクエストストレージ | core |
-| `@kivin/static` | 静的ファイル配信 | http（経由で core） |
-| `@kivin/observability` | Prometheus、OpenTelemetry、Server-Timing、ヘルスチェック | core |
-| `@kivin/config` | 型付き環境変数 | core |
-| `@kivin/schedule` | cron ジョブ | なし |
-| `@kivin/session` | サーバー側セッション | core |
-| `@kivin/graphql` | GraphQL Yoga のマウント | core |
+| `@kivinjs/core` | ルーティング、DI、モジュール、ライフサイクル、入力検証、Cookie（署名付き含む）/ SSE / WebSocket、CORS、`onRequest` フック、`afterResponse`、`basePath` | — |
+| `@kivinjs/decorators` | TC39 デコレータ（`@Controller` / `@Get` / `@UseGuards` / `@StaticResponse` …） | core |
+| `@kivinjs/cli` | `kivin generate`（AST → manifest / OpenAPI / contracts / 型付きクライアント / AOT 実行関数）、`dev`、`inspect` | core, openapi, oxc-parser, oxc-resolver |
+| `@kivinjs/openapi` | OpenAPI 3.1 生成、Swagger UI の HTML | core |
+| `@kivinjs/valibot` / `@kivinjs/standard-schema` | schema adapter | core（valibot は `valibot` も） |
+| `@kivinjs/logger` | JSON 構造化ロガー、リクエストロガー | core, decorators |
+| `@kivinjs/jwt` | JWT 検証・署名、JWKS、JWT ガード | core |
+| `@kivinjs/security` | Basic / Bearer 認証、CSRF、secure headers、レートリミット、IP 制限、`anyGuard` | core |
+| `@kivinjs/http` | 圧縮、ETag、タイムアウト、リクエスト ID、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、プロキシ、HTML テンプレート、リクエストストレージ | core |
+| `@kivinjs/static` | 静的ファイル配信 | http（経由で core） |
+| `@kivinjs/observability` | Prometheus、OpenTelemetry、Server-Timing、ヘルスチェック | core |
+| `@kivinjs/config` | 型付き環境変数 | core |
+| `@kivinjs/schedule` | cron ジョブ | なし |
+| `@kivinjs/session` | サーバー側セッション | core |
+| `@kivinjs/graphql` | GraphQL Yoga のマウント | core |
 
 新しいパッケージを足すときは、`packages/<name>/{package.json,tsconfig.json}`、`tsconfig.base.json` の `paths`、`tsconfig.build.json` の `references`、`bun.lock` の workspace エントリ（`bun install` で更新されるが、手で足す場合は既存の形に合わせる）を揃えます（#49 / #50 が例）。
 
@@ -73,7 +73,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 注意:
 
-- 性能ゲートのシナリオ（`scripts/perf/bench-app.ts`）は current 側のものが base 側にも使われます。シナリオを足すのは自由ですが、ベンチアプリが base の `@kivin/*` に無い export を import すると base 側のビルドが壊れます
+- 性能ゲートのシナリオ（`scripts/perf/bench-app.ts`）は current 側のものが base 側にも使われます。シナリオを足すのは自由ですが、ベンチアプリが base の `@kivinjs/*` に無い export を import すると base 側のビルドが壊れます
 - 2 コアの共有 VM（CI ランナーや作業用コンテナ）では、HTTP 経由の計測は同じコード同士でも ±10〜20% ぶれます。数 % の差を HTTP で判断しないこと（[#65](https://github.com/nori-kamiya/kivin/issues/65)）。インプロセスのペア計測を正とする
 - 現在の残りのオーバーヘッドと削り方の案は [#66](https://github.com/nori-kamiya/kivin/issues/66)
 
@@ -122,19 +122,19 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |
 | 判断 | [#68](https://github.com/nori-kamiya/kivin/issues/68) | Hono / Elysia との残りの差分（JSX・SSG・Cache・tRPC など）の要否 |
 
-## 8. 最近の変更（#38〜#80）
+## 8. 最近の変更（#38〜#81）
 
 | PR | 内容 |
 | --- | --- |
 | #38 | 非 async の raw ガードが promise を返したとき許可扱いになっていた認証バイパスの修正 |
 | #39〜#42 | Basic / Bearer 認証・CSRF、本番構成の結合テスト、ボディサイズ制限、リクエスト ID |
-| #44 | core とプラグインの分離（`@kivin/security` / `@kivin/http` / `@kivin/static`）。破壊的変更 |
+| #44 | core とプラグインの分離（`@kivinjs/security` / `@kivinjs/http` / `@kivinjs/static`）。破壊的変更 |
 | #45 | promise の段数とリクエスト毎の割り当ての削減（インプロセス幾何平均 +5.9%） |
 | #46 | 署名付き Cookie |
 | #47 | `onRequest` フック、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ |
 | #48 | IP 制限 |
-| #49 | `@kivin/observability` と `afterResponse` |
-| #50 | `@kivin/config` / `@kivin/schedule` / `@kivin/session` / `@kivin/graphql` |
+| #49 | `@kivinjs/observability` と `afterResponse` |
+| #50 | `@kivinjs/config` / `@kivinjs/schedule` / `@kivinjs/session` / `@kivinjs/graphql` |
 | #51 | 書き換えたリクエストでの `afterResponse` 修正と、判定のインライン化 |
 | #52 | 定数でないハンドラの結果を起動時に固定していた不具合の修正、`@StaticResponse()` |
 | #53 | リバースプロキシ、HTML テンプレート、リクエストストレージ、`anyGuard`、レートリミットの共有ストア |
@@ -151,6 +151,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | #78 | `kivin init` |
 | #79 | `0.1.0` への更新と CHANGELOG の整理 |
 | #80 | リリース候補の受け入れ検証で見つかった 20 件の修正（Bun のバージョン確認、インライン schema の警告など） |
+| #81 | スコープを `@kivinjs` に変更（npm で `kivin` を取得できなかったため） |
 
 それ以前の変更は `CHANGELOG.md` を見てください。
 

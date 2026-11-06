@@ -1,7 +1,7 @@
-import { defineApplication, defineModule, forbidden, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext, type ResponseState, type RouteInput } from '@kivin/core';
-import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, Tag, UseBodySchema, UseFilters, UseGuards, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
-import { createLoggerModule, LOGGER, type Logger } from '@kivin/logger';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule, forbidden, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext, type ResponseState, type RouteInput } from '@kivinjs/core';
+import { ApiResponse, Controller, Delete, Get, Injectable, Patch, Post, Tag, UseBodySchema, UseFilters, UseGuards, UseParamSchema, UseQuerySchema } from '@kivinjs/decorators';
+import { createLoggerModule, LOGGER, type Logger } from '@kivinjs/logger';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import * as v from 'valibot';
 
 export const SearchQuerySchema = v.object({

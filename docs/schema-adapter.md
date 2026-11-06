@@ -20,17 +20,17 @@ export interface SchemaAdapter<TSchema = unknown> {
 
 ## Current implementation
 
-`@kivin/valibot` は次を提供します。
+`@kivinjs/valibot` は次を提供します。
 
 - `parse` は `safeParse` ベース
 - `toOpenApiSchema` は `@valibot/to-json-schema` を利用
 
 ## Standard Schema adapter
 
-`@kivin/standard-schema` は [Standard Schema](https://standardschema.dev) に対応した任意の validator（Zod / ArkType / Valibot など）をそのまま使えるアダプタです。
+`@kivinjs/standard-schema` は [Standard Schema](https://standardschema.dev) に対応した任意の validator（Zod / ArkType / Valibot など）をそのまま使えるアダプタです。
 
 ```ts
-import { createStandardSchemaAdapter } from '@kivin/standard-schema';
+import { createStandardSchemaAdapter } from '@kivinjs/standard-schema';
 
 export default defineApplication({
   modules: [UsersModule],

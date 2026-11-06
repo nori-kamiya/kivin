@@ -5,7 +5,7 @@ import { generateArtifacts, inspectRoutes } from '../src/index';
 
 const root = join(import.meta.dir, '.generated/module-factory');
 
-const controllerSource = `import { Controller, Get } from '@kivin/decorators';
+const controllerSource = `import { Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/ping')
 export class PingController {
@@ -16,7 +16,7 @@ export class PingController {
 }
 `;
 
-const factorySource = `import { defineModule } from '@kivin/core';
+const factorySource = `import { defineModule } from '@kivinjs/core';
 import { PingController } from './controller';
 
 export function createPingModule() {
@@ -30,9 +30,9 @@ async function makeApp(name: string, appBody: string) {
   await mkdir(dir, { recursive: true });
   await writeFile(join(dir, 'controller.ts'), controllerSource);
   await writeFile(join(dir, 'factory.ts'), factorySource);
-  await writeFile(join(dir, 'app.ts'), `import { defineApplication, defineModule } from '@kivin/core';
-import { createLoggerModule } from '@kivin/logger';
-import { createValibotAdapter } from '@kivin/valibot';
+  await writeFile(join(dir, 'app.ts'), `import { defineApplication, defineModule } from '@kivinjs/core';
+import { createLoggerModule } from '@kivinjs/logger';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { PingController } from './controller';
 import { createPingModule } from './factory';
 
@@ -97,7 +97,7 @@ export default defineApplication({
     const dir = join(root, 'same-name');
     await mkdir(join(dir, 'other'), { recursive: true });
     await writeFile(join(dir, 'other/controller.ts'), controllerSource.replace('/ping', '/other'));
-    await writeFile(join(dir, 'other/module.ts'), `import { defineModule } from '@kivin/core';
+    await writeFile(join(dir, 'other/module.ts'), `import { defineModule } from '@kivinjs/core';
 import { PingController } from './controller';
 
 export function createOtherModule() {

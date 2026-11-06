@@ -1,5 +1,5 @@
-import { defineApplication, defineModule } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { defineApplication, defineModule } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { ContractController } from './controller';
 
 const ContractModule = defineModule({

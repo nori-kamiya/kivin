@@ -3,7 +3,7 @@
 // The app itself lives in ./app (decorators, schemas, guards, middleware, filters). The gate runs each
 // tree's own `kivin generate` on it into ./generated, so base and current are measured exactly as
 // users would build them, including whatever the generator emits (e.g. AOT executors).
-import { createApp } from '@kivin/core';
+import { createApp } from '@kivinjs/core';
 import appDefinition from './app/app';
 import { RequestIdMiddleware } from './app/providers';
 import manifest from './generated/manifest';

@@ -1,5 +1,5 @@
-import { buildManifest, defineApplication, getControllerMetadata, getInjectableMetadata, getModuleDecoratorMetadata, getRouteDescriptors, getRouteMetadataOwner, METADATA_SYMBOL } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { buildManifest, defineApplication, getControllerMetadata, getInjectableMetadata, getModuleDecoratorMetadata, getRouteDescriptors, getRouteMetadataOwner, METADATA_SYMBOL } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 import {
     ApiResponse,

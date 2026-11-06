@@ -1,5 +1,5 @@
 // Server-Timing header (equivalent of Hono's `timing`): total time plus metrics recorded by handlers.
-import { afterResponse, enableAfterResponse, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
+import { afterResponse, enableAfterResponse, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 import { withHeader } from './shared';
 
 interface Metric {

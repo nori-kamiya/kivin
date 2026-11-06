@@ -1,6 +1,6 @@
-import { createApp, defineApplication, unauthorized } from '@kivin/core';
-import { createGraphqlRoutes } from '@kivin/graphql';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, unauthorized } from '@kivinjs/core';
+import { createGraphqlRoutes } from '@kivinjs/graphql';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { afterAll, describe, expect, test } from 'bun:test';
 import { createSchema, createYoga } from 'graphql-yoga';
 

@@ -1,4 +1,4 @@
-import type { NestLikeMiddleware, RequestContext } from '@kivin/core';
+import type { NestLikeMiddleware, RequestContext } from '@kivinjs/core';
 
 const DEFAULT_SECURITY_HEADERS = Object.freeze({
   'referrer-policy': 'no-referrer',

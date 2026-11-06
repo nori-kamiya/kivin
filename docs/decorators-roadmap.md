@@ -22,7 +22,7 @@ kivin は TC39 標準デコレータ（TypeScript 5+ の既定、Bun の既定�
   - 分割代入しない（`find(input)`）場合は全フィールドを渡します。
 - **メタデータの保存先**:
   - メソッドデコレータは `context.metadata`（= `Class[Symbol.metadata]`）に、クラスデコレータはクラス自体に保存します。
-  - Bun は `Symbol.metadata` をまだ持たないため、`@kivin/core` が well-known symbol（`Symbol.for('Symbol.metadata')`）を補います。
+  - Bun は `Symbol.metadata` をまだ持たないため、`@kivinjs/core` が well-known symbol（`Symbol.for('Symbol.metadata')`）を補います。
 - **型チェック**:
   - 型付き `@Injectable({ deps })` はクラスデコレータなので、そのまま型チェックが効きます。
   - `contracts.ts` は、`RouteInput<...>` の型と `@UseParamSchema` / `@UseQuerySchema` / `@UseBodySchema` のズレを検出します。

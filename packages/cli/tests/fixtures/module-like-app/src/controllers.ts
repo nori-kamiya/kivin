@@ -1,4 +1,4 @@
-import { ApiResponse, Controller, Get } from '@kivin/decorators';
+import { ApiResponse, Controller, Get } from '@kivinjs/decorators';
 import * as v from 'valibot';
 
 const PingSchema = v.object({

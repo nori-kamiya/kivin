@@ -1,6 +1,6 @@
-import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivin/core';
-import type * as KivinCore from '@kivin/core';
-import { buildOpenApiDocument } from '@kivin/openapi';
+import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivinjs/core';
+import type * as KivinCore from '@kivinjs/core';
+import { buildOpenApiDocument } from '@kivinjs/openapi';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -41,17 +41,17 @@ export interface ModuleInspection {
 type CoreRuntime = Pick<typeof KivinCore, 'flattenModules' | 'getInjectableMetadata' | 'normalizeModule'>;
 
 /**
- * Decorators write metadata into whichever @kivin/core the app resolves, which differs from the CLI's own
+ * Decorators write metadata into whichever @kivinjs/core the app resolves, which differs from the CLI's own
  * copy under bunx or a global install; reading through the CLI's copy then reports every module as undecorated.
  */
 async function loadCoreFor(absoluteEntry: string): Promise<CoreRuntime> {
   let appCore: string | undefined;
   try {
-    appCore = Bun.resolveSync('@kivin/core', dirname(absoluteEntry));
+    appCore = Bun.resolveSync('@kivinjs/core', dirname(absoluteEntry));
   } catch {
     appCore = undefined;
   }
-  return (await import(appCore ?? '@kivin/core')) as CoreRuntime;
+  return (await import(appCore ?? '@kivinjs/core')) as CoreRuntime;
 }
 
 async function loadApp(entry: string): Promise<{ appDefinition: AppDefinition<unknown>; core: CoreRuntime }> {

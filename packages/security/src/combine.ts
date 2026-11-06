@@ -1,5 +1,5 @@
 // Guard combinators (equivalent of Hono's `some` from the combine middleware).
-import { forbidden, getInjectableMetadata, HttpError, type CanActivate, type ManifestRoute, type RequestContext } from '@kivin/core';
+import { forbidden, getInjectableMetadata, HttpError, type CanActivate, type ManifestRoute, type RequestContext } from '@kivinjs/core';
 
 type GuardClass = new () => CanActivate;
 
@@ -10,7 +10,7 @@ type GuardClass = new () => CanActivate;
  * `403`.
  *
  * The guards are created here, so they must not have constructor dependencies (the guards from
- * `@kivin/security` / `@kivin/jwt` factories have none). Guards that are all raw-capable keep the
+ * `@kivinjs/security` / `@kivinjs/jwt` factories have none). Guards that are all raw-capable keep the
  * context-free fast path.
  *
  * ```ts

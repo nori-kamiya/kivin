@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/core",
+  "name": "@kivinjs/core",
   "version": "0.1.0",
   "description": "Router, DI, and runtime core for the kivin framework",
   "license": "MIT",

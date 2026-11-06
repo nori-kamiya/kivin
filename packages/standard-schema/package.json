@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/standard-schema",
+  "name": "@kivinjs/standard-schema",
   "version": "0.1.0",
   "description": "Standard Schema adapter for kivin (Zod, ArkType, Valibot, and any Standard Schema validator)",
   "license": "MIT",
@@ -25,10 +25,10 @@
     "LICENSE"
   ],
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

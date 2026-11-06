@@ -1,5 +1,5 @@
 {
-  "name": "@kivin/logger",
+  "name": "@kivinjs/logger",
   "version": "0.1.0",
   "description": "Structured JSON-line logger and request logger middleware for kivin",
   "license": "MIT",
@@ -25,13 +25,13 @@
     "LICENSE"
   ],
   "dependencies": {
-    "@kivin/decorators": "workspace:^"
+    "@kivinjs/decorators": "workspace:^"
   },
   "peerDependencies": {
-    "@kivin/core": "workspace:^"
+    "@kivinjs/core": "workspace:^"
   },
   "devDependencies": {
-    "@kivin/core": "workspace:*"
+    "@kivinjs/core": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

@@ -12,7 +12,7 @@
 
 全パッケージの一覧と依存関係は [handoff.md](handoff.md#2-パッケージ構成) にあります。core は実行時の中核だけを持ち、独立した機能（認証・HTTP ヘルパー・静的ファイル・観測・設定・cron・セッション・GraphQL）は領域ごとのパッケージに分けています。core はどのプラグインにも依存しません。以下は中核パッケージの詳細です。
 
-### `@kivin/core`
+### `@kivinjs/core`
 
 - `defineModule`
 - `defineApplication`
@@ -37,7 +37,7 @@
 | `runtime/executor.ts` | route ごとに特化 executor を選んで組み立てる |
 | `runtime/aot.ts` | `kivin generate` が出力する AOT executor の実行時部品（`AotRouteRuntime`） |
 
-### `@kivin/decorators`
+### `@kivinjs/decorators`
 
 - `@Module`
 - `@Injectable`
@@ -47,23 +47,23 @@
 - `@Tag`, `@Summary`, `@Response`
 - `@UseBodySchema`, `@UseQuerySchema`, `@UseParamSchema`
 
-### `@kivin/valibot`
+### `@kivinjs/valibot`
 
 - Valibot parse wrapper
 - Valibot -> JSON Schema adapter
 
-### `@kivin/openapi`
+### `@kivinjs/openapi`
 
 - generated route manifest を OpenAPI 3.1 に変換
 - `openapi.json` と docs page の組み立て
 
-### `@kivin/logger`
+### `@kivinjs/logger`
 
 - function-based provider で root logger を構成
 - request middleware で request-scoped child logger を context に載せる
 - JSON line を前提に mutation や error を監査しやすくする
 
-### `@kivin/cli`
+### `@kivinjs/cli`
 
 - アプリ entry を import
 - metadata を走査

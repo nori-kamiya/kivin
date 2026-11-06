@@ -1,4 +1,4 @@
-import type { AppManifest, AppOpenApiConfig, SchemaAdapter } from '@kivin/core';
+import type { AppManifest, AppOpenApiConfig, SchemaAdapter } from '@kivinjs/core';
 
 export interface OpenApiInfo {
   title: string;

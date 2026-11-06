@@ -1,5 +1,5 @@
 import { SharedSchema } from '@feature/feature-a/schemas';
-import { ApiResponse, Controller, Get } from '@kivin/decorators';
+import { ApiResponse, Controller, Get } from '@kivinjs/decorators';
 
 @Controller('/a')
 export class FeatureAController {

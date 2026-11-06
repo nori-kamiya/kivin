@@ -1,5 +1,5 @@
-import { createApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivin/core';
-import { createValibotAdapter } from '@kivin/valibot';
+import { createApp, defineApplication, defineModule, setInjectableMetadata, type AppManifest, type CanActivate, type ExceptionFilter, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
+import { createValibotAdapter } from '@kivinjs/valibot';
 import { describe, expect, test } from 'bun:test';
 
 class Config {
