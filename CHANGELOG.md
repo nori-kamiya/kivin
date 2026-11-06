@@ -8,6 +8,8 @@
 
 ### Added
 
+- `@kivin/http`: リバースプロキシ `proxy`、自動エスケープの HTML テンプレート `html` / `raw` / `htmlResponse`、AsyncLocalStorage による `createRequestStorageMiddleware` / `getCurrentRequest` / `getRequestValue` / `setRequestValue` を追加
+- `@kivin/security`: いずれかのガードが通れば許可する `anyGuard` を追加。`createRateLimitMiddleware` の `store` で共有ストア（Redis など）を使えるようにした（`RateLimitStore` / `MemoryRateLimitStore`）
 - `@kivin/decorators`: `@StaticResponse()` を追加（ハンドラの結果が変わらないことを宣言し、応答を起動時に 1 回だけ計算する）
 - `@kivin/config` を追加: `loadEnv` / `envProvider`（Standard Schema または schema adapter で環境変数を検証・変換。不正な変数をまとめて報告し値は出さない。`prefix` 対応）
 - `@kivin/schedule` を追加: `Scheduler` / `createScheduler` / `parseCron`（5 / 6 フィールドの cron 式、IANA タイムゾーンと夏時間、重複実行の抑止、手動実行、`app.init()` / `app.close()` に連動し停止時は実行中のジョブを待つ）

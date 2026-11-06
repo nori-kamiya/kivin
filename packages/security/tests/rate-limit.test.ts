@@ -1,5 +1,5 @@
 import { createApp, defineApplication, defineModule, getClientAddress, type AppManifest, type RequestContext } from '@kivin/core';
-import { createRateLimitMiddleware } from '../src/index';
+import { createRateLimitMiddleware, MemoryRateLimitStore, type RateLimitStore } from '../src/index';
 import { createValibotAdapter } from '@kivin/valibot';
 import { describe, expect, test } from 'bun:test';
 
@@ -84,5 +84,35 @@ describe('createRateLimitMiddleware', () => {
 
   test('invalid options are rejected', () => {
     expect(() => createRateLimitMiddleware({ limit: 0, windowMs: 1000 })).toThrow('positive');
+  });
+
+  test('a shared (async) store: two app instances share one limit', async () => {
+    // Stands in for Redis: async, shared between "instances".
+    const memory = new MemoryRateLimitStore();
+    const calls: string[] = [];
+    const shared: RateLimitStore = {
+      async increment(key, windowMs, now) {
+        calls.push(key);
+        await Bun.sleep(1);
+        return memory.increment(key, windowMs, now);
+      },
+    };
+    const options = { limit: 3, windowMs: 60_000, key: () => 'client-1', store: shared };
+    const first = makeApp([createRateLimitMiddleware(options)]);
+    const second = makeApp([createRateLimitMiddleware(options)]);
+    const statuses: number[] = [];
+    for (const app of [first, second, first, second]) {
+      statuses.push((await app.fetch(new Request('http://x/fast'))).status);
+    }
+    expect(statuses).toEqual([200, 200, 200, 429]);
+    expect(calls).toEqual(['client-1', 'client-1', 'client-1', 'client-1']);
+  });
+
+  test('MemoryRateLimitStore opens a new window after the old one ends', () => {
+    const store = new MemoryRateLimitStore();
+    expect(store.increment('a', 1000, 0)).toEqual({ count: 1, resetAt: 1000 });
+    expect(store.increment('a', 1000, 500)).toEqual({ count: 2, resetAt: 1000 });
+    expect(store.increment('a', 1000, 1000)).toEqual({ count: 1, resetAt: 2000 });
+    expect(store.increment('b', 1000, 1000)).toEqual({ count: 1, resetAt: 2000 });
   });
 });
