@@ -107,3 +107,25 @@ describe('afterResponse', () => {
     expect(seen).toHaveLength(2);
   });
 });
+
+describe('afterResponse with onRequest rewrites', () => {
+  test('a request rewritten by a hook still runs its callbacks (app.fetch and listen)', async () => {
+    seen.length = 0;
+    const rewriting = createApp(defineApplication({
+      modules: [defineModule({ providers: [], controllers: [Routes], imports: [] })],
+      globals: { middleware: [ObserveMiddleware] },
+      onRequest: (request) => (new URL(request.url).pathname === '/alias' ? new Request(new URL('/ok', request.url), request) : undefined),
+    }), { routes: [route('GET', '/ok', 'ok')] });
+    await rewriting.fetch(new Request('http://localhost/alias'));
+    expect(seen).toEqual([{ status: 200, cors: null }]);
+
+    const server = rewriting.listen({ port: 0, hostname: '127.0.0.1' });
+    try {
+      await fetch(new URL('/alias', server.url));
+      await fetch(new URL('/ok', server.url));
+      expect(seen).toHaveLength(3);
+    } finally {
+      await rewriting.close();
+    }
+  });
+});
