@@ -119,6 +119,11 @@ export interface AppDefinition<TSchema = unknown> {
   globals?: Partial<AppEnhancerMetadata>;
   /** Default request body limit in bytes for POST / PUT / PATCH / DELETE routes (`@BodyLimit` overrides). */
   bodyLimit?: number;
+  /**
+   * Path prefix for every route (`'/api'` → `@Get('/users')` in `@Controller('/v1')` is `/api/v1/users`).
+   * Must be a string literal starting with `/` (`kivin generate` reads it from the source).
+   */
+  basePath?: string;
   openApi?: AppOpenApiConfig;
   /** Enables CORS headers on app routes and automatic preflight responses. */
   cors?: import('./cors').CorsOptions;
