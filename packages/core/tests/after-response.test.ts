@@ -137,4 +137,11 @@ describe('afterResponse in a fresh process', () => {
     expect(result.stderr.toString()).toBe('');
     expect(JSON.parse(result.stdout.toString())).toEqual([200]);
   });
+
+  test('enableAfterResponse covers a first request whose middleware runs after an async guard', () => {
+    const fixture = new URL('./fixtures/after-response-enabled-before-async-guard.ts', import.meta.url).pathname;
+    const result = Bun.spawnSync(['bun', 'run', fixture], { cwd: import.meta.dir });
+    expect(result.stderr.toString()).toBe('');
+    expect(JSON.parse(result.stdout.toString())).toEqual([200]);
+  });
 });
