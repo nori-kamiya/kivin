@@ -1,7 +1,7 @@
 {
   "name": "@kivin/security",
   "version": "0.0.1",
-  "description": "Authentication guards (Basic / Bearer), CSRF protection, secure headers and rate limiting for kivin",
+  "description": "Authentication guards (Basic / Bearer), CSRF protection, secure headers, rate limiting and IP restriction for kivin",
   "license": "MIT",
   "author": "nori-kamiya",
   "repository": {

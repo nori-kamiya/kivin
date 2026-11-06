@@ -40,7 +40,7 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 ## Packages
 
 - `@kivin/core`: ルータ、DI、モジュール、ライフサイクル、入力検証、Cookie / SSE / WebSocket などアプリ実行時の中核
-- `@kivin/security`: Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット
+- `@kivin/security`: Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット、IP 制限
 - `@kivin/http`: 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション
 - `@kivin/static`: 静的ファイル配信（`serveStatic`）
 - `@kivin/decorators`: Module / Controller / Route / Parameter decorators

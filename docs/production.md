@@ -227,6 +227,25 @@ admin({ context }: RouteInput) {
 - `trustedOrigins` に挙げたオリジンは常に許可
 - フォームの Content-Type だけを見る方式と違い、JSON など全ボディ型を対象にします
 
+## IP 制限（`@kivin/security`）
+
+許可リスト / 拒否リスト（Hono の `ipRestriction` 相当）。IPv4 / IPv6 のアドレス、CIDR、`*`、判定関数を指定できます。
+
+```ts
+import { createIpRestrictionGuard } from '@kivin/security';
+
+// 管理画面は社内ネットワークだけ
+@UseGuards(createIpRestrictionGuard({ allow: ['10.0.0.0/8', '192.168.0.0/16', '::1'], deny: ['10.0.13.0/24'] }))
+@Controller('/admin')
+export class AdminController { ... }
+```
+
+- 拒否リストが優先され、許可リストがあれば一致しないアドレスは `403` です。
+- `::ffff:10.1.2.3` のような IPv4-mapped IPv6 は IPv4 として判定します。
+- アドレスは既定で接続元（`getClientAddress`）です。リバースプロキシの後ろでは `getAddress` でプロキシが付けたアドレス（`X-Forwarded-For` の最後の値など、信頼できるもの）を返してください。
+- アドレスが分からない・解釈できない場合は既定で拒否します（`unknown: 'allow'` で許可）。`app.fetch` を直接呼ぶテストには接続元が無いので、`getAddress` を差し替えてください。
+- ガードはマッチしたルートにだけ効きます。`listen({ routes })` の静的ファイルなども含め全リクエストを制限するなら、判定関数 `createIpRestriction(options)` を `onRequest` フックで使います: `onRequest: (request) => (passes(request) ? undefined : Response.json({ message: 'Forbidden' }, { status: 403 }))`。
+
 ## WebSocket
 
 ```ts
