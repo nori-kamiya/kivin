@@ -19,21 +19,28 @@ OpenTelemetry is optional: `createTracingMiddleware` accepts the `@opentelemetry
 ## Usage
 
 ```ts
-import { createApp, defineApplication, defineModule } from '@kivin/core';
+// src/app.ts: `kivin generate` imports this file, so it must not start the server
+import { defineApplication, defineModule } from '@kivin/core';
 import { createHealthCheck, createMetrics } from '@kivin/observability';
 import { createValibotAdapter } from '@kivin/valibot';
-import manifest from '../.kivin/generated/manifest';
 
 const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
-const metrics = createMetrics();
-const health = createHealthCheck({ checks: { self: () => true } });
+export const metrics = createMetrics();
+export const health = createHealthCheck({ checks: { self: () => true } });
 
-const definition = defineApplication({
+export default defineApplication({
   modules: [AppModule],
   schemaAdapter: createValibotAdapter(),
   globals: { middleware: [metrics.middleware] },
 });
+```
+
+```ts
+// src/main.ts
+import { createApp } from '@kivin/core';
+import manifest from '../.kivin/generated/manifest';
+import definition, { health, metrics } from './app';
 
 createApp(definition, manifest).listen({
   port: 3000,
@@ -67,21 +74,28 @@ OpenTelemetry は任意です。`createTracingMiddleware` は渡された `@open
 ### 使い方
 
 ```ts
-import { createApp, defineApplication, defineModule } from '@kivin/core';
+// src/app.ts: `kivin generate` imports this file, so it must not start the server
+import { defineApplication, defineModule } from '@kivin/core';
 import { createHealthCheck, createMetrics } from '@kivin/observability';
 import { createValibotAdapter } from '@kivin/valibot';
-import manifest from '../.kivin/generated/manifest';
 
 const AppModule = defineModule({ controllers: [], providers: [], imports: [] }); // your root module
 
-const metrics = createMetrics();
-const health = createHealthCheck({ checks: { self: () => true } });
+export const metrics = createMetrics();
+export const health = createHealthCheck({ checks: { self: () => true } });
 
-const definition = defineApplication({
+export default defineApplication({
   modules: [AppModule],
   schemaAdapter: createValibotAdapter(),
   globals: { middleware: [metrics.middleware] },
 });
+```
+
+```ts
+// src/main.ts
+import { createApp } from '@kivin/core';
+import manifest from '../.kivin/generated/manifest';
+import definition, { health, metrics } from './app';
 
 createApp(definition, manifest).listen({
   port: 3000,
