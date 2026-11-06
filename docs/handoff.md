@@ -120,7 +120,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | --- | --- | --- |
 | 高 | [#67](https://github.com/nori-kamiya/kivin/issues/67) | `main` のブランチ保護と古いブランチの整理（管理者作業） |
 | 高 | [#57](https://github.com/nori-kamiya/kivin/issues/57) | npm 公開の準備（特に `@kivin/core` を peerDependency にすること） |
-| 高 | [#60](https://github.com/nori-kamiya/kivin/issues/60) | GraphQL Yoga の実物との結合確認 |
+| 中 | [#60](https://github.com/nori-kamiya/kivin/issues/60) | `graphql-ws` の結合確認 |
 | 中 | [#58](https://github.com/nori-kamiya/kivin/issues/58) | `kivin init`（#57 の後） |
 | 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
 | 中 | [#64](https://github.com/nori-kamiya/kivin/issues/64) | readiness とシャットダウンの連動 |
