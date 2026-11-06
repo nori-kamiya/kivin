@@ -25,6 +25,20 @@ jobs:
       - name: Compile the example to a single binary and smoke test it
         run: bun run example:smoke
 
+  check-macos:
+    name: Typecheck, test, smoke (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun test
+      - name: Compile the example to a single binary and smoke test it
+        run: bun run example:smoke
+
   perf-regression:
     name: Performance regression vs base
     if: github.event_name == 'pull_request'
