@@ -98,11 +98,7 @@ BENCH_ITERATIONS=10 bun run bench:kivin:create > .bench/kivin-create-breakdown-$
 - core runtime pipeline と AST/OpenAPI generator の回帰防止
 - Bun single binary の build と起動後 endpoint 応答
 
-## Remaining gaps
-
-まだ薄い領域は次です。
-
-- GraphQL の `graphql-ws`（WebSocket）サブスクリプションの結合テスト（[#60](https://github.com/nori-kamiya/kivin/issues/60)）
+## OpenAPI と manifest の整合
 
 OpenAPI と runtime manifest の整合は、snapshot だけでなく example app と dedicated fixture について requestBody / parameters / responses / security / tags / summary / description の semantic diff でも固定しています。特に fixture 側では multi-security、controller + route tag merge、required/optional query params、`204` no-content response を押さえています。
 
