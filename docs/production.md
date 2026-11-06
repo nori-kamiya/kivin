@@ -467,6 +467,101 @@ process.once('SIGTERM', async () => {
 - `/livez` はチェックを行わず常に 200 です（依存先の障害でプロセスを再起動させないため）。
 - `/readyz` はチェックを並列に実行し、例外・`false`・タイムアウトのいずれかで 503 と失敗したチェックを返します（`details: false` で名前だけ）。
 
+## 環境変数（`@kivin/config`）
+
+起動時に一度だけ環境変数を検証し、型付きの値として使います。不正な変数はすべてまとめてエラーにし、値（パスワードなど）はメッセージに出しません。
+
+```ts
+import { envProvider, loadEnv } from '@kivin/config';
+import * as v from 'valibot';
+
+const Env = v.object({
+  PORT: v.optional(v.pipe(v.string(), v.transform(Number), v.integer()), '3000'),
+  DATABASE_URL: v.pipe(v.string(), v.url()),
+  LOG_LEVEL: v.optional(v.picklist(['debug', 'info', 'warn', 'error']), 'info'),
+});
+
+export const env = loadEnv(Env);                  // { PORT: number; DATABASE_URL: string; LOG_LEVEL: … }
+// DI で使うなら
+export const ENV = createToken<typeof env>('app.env');
+defineModule({ providers: [envProvider(ENV, Env)], ... });
+```
+
+Standard Schema に対応したライブラリ（Valibot / Zod / ArkType）ならそのまま渡せます。それ以外は `{ adapter }` を指定します。`prefix: 'APP_'` を付けると `APP_PORT` を `PORT` として読み、無関係な変数は schema に渡しません。
+
+## 定期実行（`@kivin/schedule`）
+
+```ts
+import { Scheduler } from '@kivin/schedule';
+
+@Injectable({ deps: [ReportService] })
+export class Jobs extends Scheduler {
+  constructor(reports: ReportService) {
+    super({ timeZone: 'Asia/Tokyo' });
+    this.cron('daily-report', '0 9 * * MON-FRI', () => reports.send());
+    this.cron('cleanup', '*/15 * * * *', () => reports.purgeExpired(), { overlap: 'skip' });
+  }
+}
+// providers: [Jobs]
+await app.init();          // onApplicationBootstrap で開始
+app.listen(3000);
+await app.close();         // 停止し、実行中のジョブを待つ（既定 30 秒まで）
+```
+
+- cron 式は 5 フィールド（秒を付けると 6）。`*/15`・`1-5`・`MON-FRI`・`JAN`・`@daily` などに対応し、日と曜日の両方を指定した場合はどちらかに一致すれば実行します（一般的な cron と同じ）。
+- タイムゾーンは IANA 名で指定し、夏時間を考慮します（存在しない時刻の実行は飛ばし、2 回ある時刻は 1 回だけ）。
+- 前回の実行が終わっていなければ、次の回は既定でスキップします（`overlap: 'allow'` で重ねて実行）。
+- 例外はログに出して次回以降も続けます（`onError` で通知先を変更可）。`run(name)` で手動実行、`list()` で次回実行時刻を確認できます。
+- 複数のインスタンスで動かすと、それぞれで実行されます。1 回だけ実行したいジョブはロックなどで排他してください。
+
+## セッション（`@kivin/session`）
+
+```ts
+import { createSessionMiddleware, getSession } from '@kivin/session';
+
+const Sessions = createSessionMiddleware({
+  secret: [process.env.SESSION_SECRET!, process.env.SESSION_SECRET_OLD!].filter(Boolean),
+  cookie: { secure: true },            // 既定は HttpOnly / SameSite=Lax / Path=/
+  ttl: 60 * 60 * 24 * 7,
+  // store: new RedisSessionStore(...)  // SessionStore を実装したもの（既定はメモリ）
+});
+defineApplication({ ..., globals: { middleware: [Sessions] } });
+
+login({ context, body }: RouteInput<{ body: typeof LoginSchema }>) {
+  const session = getSession<{ userId: string }>(context.request);
+  session.regenerate();                // ログイン時は ID を作り直す（セッション固定化攻撃対策）
+  session.set('userId', user.id);
+}
+
+logout({ context }: RouteInput) {
+  getSession(context.request).destroy();
+}
+```
+
+- セッション ID は 32 バイトの乱数で、Cookie には署名付きで入れます。署名が合わない・ストアに無い ID はクライアントの値を使わず、新しい ID にします。
+- 何かを設定するまではセッションを作らず Cookie も出しません（匿名アクセスでストアが膨らまない）。変更があった時だけ保存し、`rolling: true` ならアクセスのたびに期限を延ばします。
+- `MemorySessionStore` は開発・テスト・単一プロセス向けです（再起動で消え、プロセス間で共有されない）。
+
+## GraphQL（`@kivin/graphql`）
+
+GraphQL Yoga をそのまま Bun のネイティブルートに載せます（kivin 側は Yoga に依存しません）。
+
+```ts
+import { createSchema, createYoga } from 'graphql-yoga';
+import { createGraphqlRoutes } from '@kivin/graphql';
+
+const yoga = createYoga<{ users: UserService; userId?: string }>({ schema: createSchema({ typeDefs, resolvers }) });
+await app.init();
+app.listen({
+  port: 3000,
+  routes: createGraphqlRoutes(yoga, {
+    context: async (request) => ({ users: app.get(UserService), userId: await authenticate(request) }),
+  }),
+});
+```
+
+`context` は Yoga がリゾルバのコンテキストに混ぜるサーバーコンテキストです。`HttpError`（`unauthorized()` など）や `Response` を投げるとそのまま応答します。ガードやミドルウェアはコントローラーのルート用なので、GraphQL の認証は `context` か `onRequest` フックで行ってください。
+
 ## 未処理の例外
 
 フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。

@@ -145,6 +145,36 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createServerTimingMiddleware(options?)`, `serverTiming(request)` | function | `Server-Timing` ヘッダ（total とハンドラが記録した計測）。`enabled` で送る条件を絞れる |
 | `createHealthCheck(options?)` | function | `/livez`（常に 200）と `/readyz`（チェックを並列実行、失敗・タイムアウトで 503）。`routes()` で `listen({ routes })` に渡す。`setReady(false)` でドレイン |
 
+## @kivin/config
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `loadEnv(schema, options?)` | function | 環境変数を schema で検証・変換して型付きで返す（Standard Schema なら adapter 不要）。不正な変数をすべて挙げた `EnvValidationError` を投げ、値はメッセージに含めない。`prefix` で `APP_*` だけを読む |
+| `envProvider(token, schema, options?)` | function | 検証済みの環境変数を DI で注入する provider |
+| `EnvValidationError`, `EnvIssue` | class / type | 検証エラー（変数名とメッセージ） |
+
+## @kivin/schedule
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ） |
+| `parseCron(expression, timeZone?)` | function | cron 式（5 / 6 フィールド、範囲・ステップ・リスト・名前・`@daily` などの別名）を解析し、IANA タイムゾーン（夏時間対応）で次回実行時刻を計算する |
+
+## @kivin/session
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createSessionMiddleware(options)` | function | サーバー側セッション。署名付きのセッション ID Cookie、変更時のみ保存、何か設定されるまでセッションを作らない、`rolling` で期限延長 |
+| `getSession(request)` | function | リクエストのセッション（`get` / `set` / `delete` / `has` / `all` / `regenerate()`（固定化攻撃対策）/ `destroy()`） |
+| `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（Redis などを実装できる）とメモリ実装 |
+
+## @kivin/graphql
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createGraphqlRoutes(server, options?)` | function | GraphQL Yoga（または `fetch(request, context)` を持つ GraphQL サーバー）を `listen({ routes })` のネイティブルートとして載せる。`context` で認証済みユーザーや `app.get(...)` のサービスを渡す |
+| `createGraphqlHandler(server, options?)` | function | 同じハンドラを単体で返す |
+
 ## @kivin/static
 
 | Export | 種別 | 概要 |
