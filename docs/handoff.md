@@ -1,13 +1,13 @@
 # 引き継ぎメモ
 
-kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #79 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
+kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #80 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
 
 ## 1. 現状
 
 - **段階**: 全パッケージ `0.1.0`。npm への公開準備は完了しているが未公開（ルートは `private: true`）。公開手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
 - **性能**: CI のペア計測で Hono の 101〜134%、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
 - **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
-- **テスト**: `bun test` で約 720 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
+- **テスト**: `bun test` で約 750 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
 
 ## 2. パッケージ構成
 
@@ -122,7 +122,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |
 | 判断 | [#68](https://github.com/nori-kamiya/kivin/issues/68) | Hono / Elysia との残りの差分（JSX・SSG・Cache・tRPC など）の要否 |
 
-## 8. 最近の変更（#38〜#79）
+## 8. 最近の変更（#38〜#80）
 
 | PR | 内容 |
 | --- | --- |
@@ -150,6 +150,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | #77 | npm 公開の準備（peerDependency 化、リリース基盤、英語 README、パッケージ README） |
 | #78 | `kivin init` |
 | #79 | `0.1.0` への更新と CHANGELOG の整理 |
+| #80 | リリース候補の受け入れ検証で見つかった 20 件の修正（Bun のバージョン確認、インライン schema の警告など） |
 
 それ以前の変更は `CHANGELOG.md` を見てください。
 
