@@ -398,6 +398,75 @@ globals: { middleware: [createRequestIdMiddleware(), RequestLoggerMiddleware] },
 - レスポンスに同じヘッダを付け、ハンドラからは `getRequestId(request)` / `context.get('requestId')` で読めます
 - `header`（既定 `x-request-id`）、`trustIncoming: false`（常に新規発行）、`generate` を変更できます
 
+## 観測（`@kivin/observability`）
+
+### Prometheus メトリクス
+
+```ts
+import { createMetrics } from '@kivin/observability';
+
+const metrics = createMetrics();
+const app = createApp(defineApplication({ ..., globals: { middleware: [metrics.middleware] } }), manifest);
+app.listen({ port: 3000, routes: { '/metrics': metrics.handler } });
+```
+
+- `http_requests_total` / `http_request_duration_seconds{method, route, status}` と `http_requests_in_flight`、プロセスの CPU / メモリ / 起動時刻を出します。
+- `route` はルートのテンプレート（`/users/:id`）なので系列数が増え続けません。ルートに一致しなかったリクエスト（404）は数えません。
+- `status` は最終レスポンスのステータスです。例外フィルタがドメインエラーを 404 に変換した場合も 500 ではなく 404 として数えます（core の `afterResponse` を使用）。
+- 独自メトリクスは `metrics.registry.counter({ name, help, labelNames })` / `gauge` / `histogram` で追加できます。
+- `/metrics` は公開しないでください（`createIpRestriction` を使う、別ポートで listen する、など）。
+
+### OpenTelemetry トレース
+
+依存を持たないので、アプリ側で `@opentelemetry/api` と SDK を入れて tracer を渡します。
+
+```ts
+import { context, propagation, trace } from '@opentelemetry/api';
+import { createTracingMiddleware } from '@kivin/observability';
+
+const Tracing = createTracingMiddleware({ tracer: trace.getTracer('my-app'), propagation, context });
+defineApplication({ ..., globals: { middleware: [Tracing /* 先頭に置く */, ...] } });
+```
+
+- リクエストごとに SERVER スパン（名前は `GET /users/:id`）を作り、`http.request.method` / `http.route` / `url.path` / `server.address` / `client.address` / `user_agent.original` / `http.response.status_code` を付けます。
+- `propagation` と `context` を渡すと受信した `traceparent` からトレースを継続します。ハンドラの実行中はスパンがアクティブなので、計装された fetch や DB ドライバのスパンは子になります。
+- スパンは最終レスポンスで終わり、5xx ならエラーにして元の例外を記録します（フィルタが 4xx にしたものはエラーにしません）。
+
+### Server-Timing
+
+```ts
+import { createServerTimingMiddleware, serverTiming } from '@kivin/observability';
+
+defineApplication({ ..., globals: { middleware: [createServerTimingMiddleware({ enabled: (request) => isInternal(request) })] } });
+
+async show({ context }: RouteInput) {
+  const user = await serverTiming(context.request).measure('db', () => this.users.find(id));
+  ...
+}
+// Server-Timing: db;dur=3.2, total;dur=4.1   （ブラウザの Network パネルに表示）
+```
+
+処理時間はタイミング攻撃の手がかりにもなるので、本番では `enabled` で社内からのリクエストなどに絞ることを勧めます。
+
+### ヘルスチェック
+
+```ts
+import { createHealthCheck } from '@kivin/observability';
+
+const health = createHealthCheck({ checks: { db: () => db.query('select 1'), redis: () => redis.ping() }, timeoutMs: 2000 });
+const server = app.listen({ port: 3000, routes: health.routes() });   // GET /livez, GET /readyz
+
+process.once('SIGTERM', async () => {
+  health.setReady(false);   // ロードバランサが外すまで待ってから停止
+  await Bun.sleep(5000);
+  await app.close();
+  process.exit(0);
+});
+```
+
+- `/livez` はチェックを行わず常に 200 です（依存先の障害でプロセスを再起動させないため）。
+- `/readyz` はチェックを並列に実行し、例外・`false`・タイムアウトのいずれかで 503 と失敗したチェックを返します（`details: false` で名前だけ）。
+
 ## 未処理の例外
 
 フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。
