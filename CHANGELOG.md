@@ -8,6 +8,8 @@
 
 ### Added
 
+- `@kivin/core`: `globals` やルートで指定したガード / ミドルウェア / フィルタのクラスは、モジュールの `providers` に書かなくても自動で登録されるようにした（依存はモジュールから解決）。`globals` の `guards` / `middleware` / `filters` は個別に省略できる
+
 - `@kivin/cli`: `generate` が `contracts.ts` を出力するようになり、ハンドラの入力型と schema、ハンドラの戻り値と 2xx レスポンス schema のズレを `tsc` で検出できるようにした
 - `@kivin/decorators`: `@Injectable({ deps })` を型付けし、deps の並び・型・個数がコンストラクタ引数と合わない場合にコンパイルエラーにした
 - `@kivin/core`: 型付きトークン `createToken<T>()` / `InjectionToken<T>`、`InferSchemaInput` / `InferSchemaOutput` / `RouteContract` 型を追加

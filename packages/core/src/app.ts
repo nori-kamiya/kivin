@@ -8,7 +8,7 @@ import type { AppDefinition } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
 import { Router } from './router';
-import type { HttpMethod, Token } from './types';
+import type { Constructor, HttpMethod, Token } from './types';
 import { compileRouteExecutor } from './runtime/executor';
 import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
@@ -29,6 +29,22 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       if (!container.hasLocalProvider(controller)) {
         container.register(controller);
       }
+    }
+  }
+
+  // Guard / middleware / filter classes named by the app or a route are registered automatically
+  // when no module provides them, so `globals: { middleware: [createCompressMiddleware()] }` or
+  // `@UseGuards(SomeGuard)` works without repeating the class in `providers`. Their `@Injectable`
+  // dependencies still come from the modules.
+  const enhancerTokens = [
+    ...(definition.globals?.guards ?? []),
+    ...(definition.globals?.middleware ?? []),
+    ...(definition.globals?.filters ?? []),
+    ...manifest.routes.flatMap((route) => [...route.guards, ...route.middleware, ...route.filters]),
+  ];
+  for (const token of enhancerTokens) {
+    if (typeof token === 'function' && !container.hasLocalProvider(token)) {
+      container.register(token as Constructor);
     }
   }
 
