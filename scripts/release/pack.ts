@@ -31,5 +31,5 @@ for (const manifest of publishOrder(readWorkspaceManifests(root))) {
 
 writeFileSync(join(releaseDir, 'manifest.json'), `${JSON.stringify({ packages } satisfies ReleaseManifest, null, 2)}\n`);
 // The publish job runs this copy instead of checking the repository out; see the header of publish.ts.
-copyFileSync(join(import.meta.dir, 'publish.ts'), join(releaseDir, 'publish.ts'));
+copyFileSync(join(import.meta.dir, 'publish.ts'), join(releaseDir, 'publish.mts'));
 console.log(`packed ${packages.length} packages into ${releaseDir}`);

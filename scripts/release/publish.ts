@@ -1,4 +1,4 @@
-// Self-contained on purpose: pack.ts copies this file into .release/, and the publish job (the only one holding
+// Self-contained on purpose: pack.ts copies this file into .release/ as publish.mts (so Node treats it as an ES module without a package.json), and the publish job (the only one holding
 // id-token: write) runs that copy with plain Node. It must import nothing from the repository, so the job needs
 // no checkout and no install.
 import { spawnSync } from 'node:child_process';

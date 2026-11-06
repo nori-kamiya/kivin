@@ -1,0 +1,73 @@
+name: Release
+
+# A rerun after a partial publish is `gh workflow run release.yml --ref vX.Y.Z`. There are deliberately no inputs:
+# free text would flow into shell lines of a job that holds an OIDC token. The ref is the tag.
+on:
+  push:
+    tags: ['v[0-9]*']
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build and verify tarballs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun run release:check
+      - run: bun run release:pack
+      - name: Verify tarballs, tag and ancestry
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bun run release:verify --tag "$RELEASE_TAG"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: .release
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    # The environment carries the required reviewer and the optional bootstrap token secret.
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      # No checkout and no install here: this job holds the OIDC token, so the only repository-derived code it runs
+      # is publish.mts from the artifact, which imports nothing but Node built-ins.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24.11.0
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1; the npm bundled with the Node above is older than the pinned one.
+      - run: npm install -g npm@11.6.2 --ignore-scripts
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+      - name: Verify checksums against manifest.json
+        run: node release/publish.mts --dir release --check
+      - name: Publish
+        env:
+          # Only set for the first release, when the packages do not exist yet and trusted publishing cannot apply.
+          # Empty afterwards, and npm falls back to the OIDC token.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
+        run: node release/publish.mts --dir release
