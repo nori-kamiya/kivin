@@ -21,7 +21,12 @@ Bun single-binary deployment を前提にした、軽量な Fetch API ベース�
 - ahead-of-time route executors generated into the manifest (`--no-aot` / `KIVIN_AOT=0` to opt out)
 - CORS, cookies, JWT auth guard with JWKS (`@kivin/jwt`), WebSocket, Server-Sent Events, multipart forms
 - per-route request body limits (`@BodyLimit`, 413)
-- request timeout and in-memory rate limiting middleware
+- request timeout and rate limiting middleware (pluggable counter store)
+- pre-routing `onRequest` hooks: method override, trailing-slash redirects, custom rewrites
+- content negotiation, streaming responses (text / NDJSON), pretty JSON, reverse proxy, auto-escaping HTML templates
+- signed cookies, server-side sessions (`@kivin/session`), IP allow / deny lists
+- observability (`@kivin/observability`): Prometheus metrics, OpenTelemetry spans, Server-Timing, `/livez` / `/readyz`
+- typed environment variables (`@kivin/config`), cron jobs (`@kivin/schedule`), GraphQL Yoga mounting (`@kivin/graphql`)
 - response compression (brotli / gzip) and ETag / 304 middleware
 - static file serving (`serveStatic`: ETag / 304, Range, precompressed, SPA fallback)
 - Basic / Bearer auth guards and CSRF protection (Sec-Fetch-Site / Origin)

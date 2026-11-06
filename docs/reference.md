@@ -107,13 +107,15 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createSecureHeadersMiddleware(options)` | function | secure-headers ミドルウェアを生成する |
 | `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
 | `SecureHeadersOptions` | type | secure-headers 設定 |
-| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのメモリ上レートリミット（429 / Retry-After / RateLimit-* ヘッダ） |
+| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのレートリミット（429 / Retry-After / RateLimit-* ヘッダ）。`store` で共有ストア（Redis など）に差し替え可能 |
+| `RateLimitStore`, `MemoryRateLimitStore` | interface / class | レートリミットのカウンタストア（既定はプロセス内メモリ） |
 | `createBasicAuthGuard(options)` | function | HTTP Basic 認証ガード（定数時間比較、`verify` で独自検証） |
 | `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
 | `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
 | `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
 | `createIpRestrictionGuard(options)` | function | IP の許可 / 拒否リストのガード（拒否優先、許可リスト外は 403、不明なアドレスは既定で拒否）。アドレス・CIDR（IPv4 / IPv6）・`*`・判定関数 |
 | `createIpRestriction(options)`, `createIpMatcher(rules)`, `parseIpAddress(text)` | function | IP 制限の判定関数（`onRequest` フック用）、ルール照合、アドレスのパース（IPv4-mapped は IPv4 扱い） |
+| `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはコンストラクタ依存なし |
 
 ## @kivin/http
 
@@ -134,6 +136,9 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createPrettyJsonMiddleware(options?)` | function | `?pretty` のときだけ JSON レスポンスをインデントする（Hono の `prettyJSON`） |
 | `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
 | `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
+| `proxy(target, request, options?)` | function | リバースプロキシ（Hono の `proxy`）。ホップバイホップヘッダの除去、`X-Forwarded-*`、圧縮されたままの転送、502 / 504、切断時の中断 |
+| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス |
+| `createRequestStorageMiddleware()`, `getCurrentRequest()`, `getRequestValue(key)`, `setRequestValue(key, value)` | function | AsyncLocalStorage で現在のリクエストと値をどこからでも参照する（Hono の `contextStorage`） |
 
 ## @kivin/observability
 

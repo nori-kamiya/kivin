@@ -147,12 +147,24 @@ globals: {
 - 後続（ガード・ハンドラなど）が `ms` 以内に終わらなければ `504 { message: 'Request timed out' }` を返します（Hono と同じ。`status` で変更可）
 - JavaScript ではハンドラを中断できないため、処理自体は裏で続きます。長い処理はクライアント切断を `request.signal` で検知できます
 
-`createRateLimitMiddleware({ limit, windowMs, key?, headers? })`:
+`createRateLimitMiddleware({ limit, windowMs, key?, headers?, store? })`:
 
 - キーごとの固定ウィンドウでメモリ上に数えます。上限を超えると `429 { message: 'Too Many Requests' }` と `Retry-After`
 - レスポンスに `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset`（秒）を付けます（`headers: false` で無効）
 - キーの既定はクライアントのアドレス（`getClientAddress(request)`、Bun の `server.requestIP`）。リバースプロキシの後ろではプロキシのアドレスになるので、信頼できる転送ヘッダから `key` を自分で作ってください。`key` が `undefined` を返したリクエストは制限しません
-- プロセスごとのメモリに持つので、複数インスタンスで共有したい場合はプロキシや共有ストアを使ってください
+- 既定はプロセスごとのメモリ（`MemoryRateLimitStore`）です。複数インスタンスで上限を共有するには `store` に共有ストアを渡します:
+
+  ```ts
+  const redisStore: RateLimitStore = {
+    async increment(key, windowMs, now) {
+      const count = await redis.incr(`rl:${key}`);
+      if (count === 1) await redis.pexpire(`rl:${key}`, windowMs);
+      const ttl = await redis.pttl(`rl:${key}`);
+      return { count, resetAt: now + Math.max(ttl, 0) };
+    },
+  };
+  createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store: redisStore });
+  ```
 ## 圧縮と ETag
 
 ```ts
@@ -246,6 +258,17 @@ export class AdminController { ... }
 - アドレスが分からない・解釈できない場合は既定で拒否します（`unknown: 'allow'` で許可）。`app.fetch` を直接呼ぶテストには接続元が無いので、`getAddress` を差し替えてください。
 - ガードはマッチしたルートにだけ効きます。`listen({ routes })` の静的ファイルなども含め全リクエストを制限するなら、判定関数 `createIpRestriction(options)` を `onRequest` フックで使います: `onRequest: (request) => (passes(request) ? undefined : Response.json({ message: 'Forbidden' }, { status: 403 }))`。
 
+### いずれかの認証を通す（`anyGuard`）
+
+```ts
+import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivin/security';
+
+// API トークンでも Basic 認証でもよい
+@UseGuards(anyGuard(createBearerAuthGuard({ tokens: [process.env.API_TOKEN!] }), createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! } })))
+```
+
+順番に試して最初に通ったもので許可します。すべて拒否した場合は最初の `HttpError`（`WWW-Authenticate` 付きの 401 など）を返し、どれも例外を投げなければ 403 です。合成するガードはコンストラクタ依存を持たないもの（`@kivin/security` / `@kivin/jwt` のファクトリで作るガードなど）に限ります。
+
 ## WebSocket
 
 ```ts
@@ -317,6 +340,64 @@ progress({ context }: RouteInput) {
 - `write` はクライアントが受け取るまで待つ（バックプレッシャー）。切断後の `write` は何もしません。
 - ハンドラが投げた例外は、レスポンス開始後なのでステータスは変えられません。既定ではログに出してストリームを閉じます。`onError(error, writer)` で最後のチャンクを書けます。
 - `signal: context.request.signal` を渡すと、書き込んでいない間の切断も `onAbort` / `aborted` に反映されます。
+
+## リバースプロキシ（`@kivin/http`）
+
+```ts
+import { proxy } from '@kivin/http';
+
+app.listen({
+  port: 3000,
+  routes: {
+    // /api/* をバックエンドへ（パスの /api を外して転送）
+    '/api/*': (request) => {
+      const url = new URL(request.url);
+      return proxy(`http://backend:8080${url.pathname.slice(4)}${url.search}`, request, { timeoutMs: 10_000 });
+    },
+  },
+});
+```
+
+- メソッド・ヘッダ・ボディをそのまま転送し（ボディはストリーミング）、`Connection` などのホップバイホップヘッダは往復とも取り除きます。
+- `X-Forwarded-For`（接続元を追記）/ `X-Forwarded-Host` / `X-Forwarded-Proto` を付けます（`forwarded: false` で無効）。
+- 上流のレスポンスは圧縮されたまま返すので、`Content-Encoding` と中身が食い違いません。
+- 上流に届かなければ 502、`timeoutMs` を超えたら 504。クライアントが切断すると上流へのリクエストも中断します。
+
+## HTML テンプレート（`@kivin/http`）
+
+```ts
+import { html, htmlResponse, raw } from '@kivin/http';
+
+@Get('/users/:id/card')
+card({ params }: RouteInput<{ params: typeof IdSchema }>) {
+  const user = this.users.find(params.id);
+  return htmlResponse(html`
+    <article>
+      <h1>${user.name}</h1>                       <!-- 自動でエスケープ -->
+      <ul>${user.tags.map((tag) => html`<li>${tag}</li>`)}</ul>
+      ${user.admin && html`<span class="badge">admin</span>`}
+      ${raw(trustedSnippet)}                       <!-- 信頼できるマークアップだけ -->
+    </article>`);
+}
+```
+
+埋め込んだ値はすべて HTML エスケープされます（属性値も含む）。`html` で作ったものは二重にエスケープされず、配列は連結、`null` / `undefined` / 真偽値は何も出力しません。
+
+## 現在のリクエストへのアクセス（`@kivin/http`）
+
+```ts
+import { createRequestStorageMiddleware, getCurrentRequest, setRequestValue, getRequestValue } from '@kivin/http';
+
+defineApplication({ ..., globals: { middleware: [createRequestStorageMiddleware() /* 先頭に */] } });
+
+// どこからでも（リクエストを引数で渡さなくても）
+export function audit(event: string) {
+  const request = getCurrentRequest();
+  logger.info({ event, path: request && new URL(request.url).pathname, tenant: getRequestValue('tenant') });
+}
+```
+
+AsyncLocalStorage を使うので、`await` をまたいでも各リクエストで分離されます。ミドルウェアを入れたリクエストにだけコストがかかります。
 
 ## コンテンツネゴシエーション（`@kivin/http`）
 

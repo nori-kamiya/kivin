@@ -7,3 +7,6 @@ export { createTimeoutMiddleware, type TimeoutOptions } from './timeout';
 export { createPrettyJsonMiddleware, type PrettyJsonOptions } from './pretty-json';
 export { createMethodOverride, createTrailingSlash, type MethodOverrideOptions, type TrailingSlashOptions } from './routing-hooks';
 export { stream, streamNdjson, streamText, type NdjsonWriter, type StreamOptions, type StreamWriter } from './stream';
+export { escapeHtml, html, htmlResponse, HtmlString, raw } from './html';
+export { proxy, type ProxyOptions } from './proxy';
+export { createRequestStorageMiddleware, getCurrentRequest, getRequestValue, setRequestValue } from './request-storage';
