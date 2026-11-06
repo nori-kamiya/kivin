@@ -80,14 +80,16 @@ export class Session<TData extends SessionData = SessionData> {
 
   /** @internal */
   constructor(
-    private currentId: string,
+    // `undefined` for a new session until the ID is needed: anonymous requests that never set
+    // anything do not pay for generating one.
+    private currentId: string | undefined,
     private data: Partial<TData>,
     /** Whether the session existed in the store before this request. */
     readonly isNew: boolean,
   ) {}
 
-  get id() {
-    return this.currentId;
+  get id(): string {
+    return (this.currentId ??= newSessionId());
   }
 
   get<K extends keyof TData & string>(key: K): TData[K] | undefined {
@@ -203,7 +205,7 @@ export function createSessionMiddleware(options: SessionOptions) {
       }
     }
     // No cookie, a forged / stale one, or an expired session: a fresh ID (never the client's).
-    return new Session(newSessionId(), {}, true);
+    return new Session(undefined, {}, true);
   };
 
   const save = async (session: Session, originalId: string): Promise<string | undefined> => {
@@ -233,7 +235,8 @@ export function createSessionMiddleware(options: SessionOptions) {
 
   const run = async (request: Request, next: () => Response | PromiseLike<Response>) => {
     const session = await load(request);
-    const originalId = session.id;
+    // Only an existing session has an ID to delete on regenerate / destroy.
+    const originalId = session.isNew ? '' : session.id;
     sessions.set(request, session);
     const response = await next();
     const cookie = await save(session, originalId);
