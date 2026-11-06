@@ -15,7 +15,7 @@ export const manifest: AppManifest = {
       guards: [],
       middleware: [],
       filters: [],
-      docs: { tags: [], security: [], responses: [{ status: 200, description: "Feature A response", schema: SharedSchema }] },
+      docs: { tags: [], staticResponse: true, security: [], responses: [{ status: 200, description: "Feature A response", schema: SharedSchema }] },
       aot: (rt: AotRouteRuntime<FeatureAController>) => {
         const controller = rt.controller;
         const hasGuards = rt.hasGuards;
@@ -49,7 +49,7 @@ export const manifest: AppManifest = {
       guards: [],
       middleware: [],
       filters: [],
-      docs: { tags: [], security: [], responses: [{ status: 200, description: "Feature B response", schema: (__SharedSchema_0) }] },
+      docs: { tags: [], staticResponse: true, security: [], responses: [{ status: 200, description: "Feature B response", schema: (__SharedSchema_0) }] },
       aot: (rt: AotRouteRuntime<FeatureBController>) => {
         const controller = rt.controller;
         const hasGuards = rt.hasGuards;

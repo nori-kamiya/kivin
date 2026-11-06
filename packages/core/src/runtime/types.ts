@@ -138,6 +138,8 @@ export interface ManifestRoute<TSchema = unknown> {
     consumes?: import('../metadata').BodyMediaType;
     headerSchema?: TSchema;
     bodyLimit?: number;
+    /** See `RouteDocsMetadata.staticResponse`. */
+    staticResponse?: boolean;
     querySchema?: TSchema;
     paramSchema?: TSchema;
     security: Array<{ scheme: string; scopes: string[] }>;

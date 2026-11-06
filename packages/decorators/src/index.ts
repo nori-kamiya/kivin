@@ -205,6 +205,16 @@ export function BodyLimit(bytes: number): MethodDecorator {
   return (_value, context) => updateDocs(context, 'BodyLimit', (current) => ({ ...current, bodyLimit: bytes }));
 }
 
+/**
+ * Declares that the handler's result never changes, so a parameterless GET route computes its response
+ * once (served from Bun's native routes when no guard / middleware / filter applies). `kivin generate`
+ * already does this for handlers that only `return` a constant literal; use this for others, e.g. a
+ * version read at startup. Never on handlers that read the time, a store, or anything mutable.
+ */
+export function StaticResponse(): MethodDecorator {
+  return (_value, context) => updateDocs(context, 'StaticResponse', (current) => ({ ...current, staticResponse: true }));
+}
+
 /** Validates the request headers (lower-case names, e.g. `'x-api-version'`) passed as the input's `headers`. */
 export function UseHeaderSchema(schema: unknown): MethodDecorator {
   return (_value, context) => updateDocs(context, 'UseHeaderSchema', (current) => ({ ...current, headerSchema: schema }));

@@ -41,6 +41,11 @@ export interface RouteDocsMetadata {
   headerSchema?: unknown;
   /** `@BodyLimit`: maximum request body size in bytes (413 above it). */
   bodyLimit?: number;
+  /**
+   * The handler's result never changes (`@StaticResponse()`, or set by `kivin generate` for a handler
+   * that only returns a constant literal), so a parameterless GET route may compute it once.
+   */
+  staticResponse?: boolean;
   querySchema?: unknown;
   paramSchema?: unknown;
   security: RouteSecurityRequirement[];

@@ -8,6 +8,7 @@
 
 ### Added
 
+- `@kivin/decorators`: `@StaticResponse()` を追加（ハンドラの結果が変わらないことを宣言し、応答を起動時に 1 回だけ計算する）
 - `@kivin/config` を追加: `loadEnv` / `envProvider`（Standard Schema または schema adapter で環境変数を検証・変換。不正な変数をまとめて報告し値は出さない。`prefix` 対応）
 - `@kivin/schedule` を追加: `Scheduler` / `createScheduler` / `parseCron`（5 / 6 フィールドの cron 式、IANA タイムゾーンと夏時間、重複実行の抑止、手動実行、`app.init()` / `app.close()` に連動し停止時は実行中のジョブを待つ）
 - `@kivin/session` を追加: `createSessionMiddleware` / `getSession` / `MemorySessionStore`（署名付きセッション ID Cookie、変更時のみ保存、`regenerate()` による固定化攻撃対策、`rolling`、ストアは差し替え可能）
@@ -55,6 +56,7 @@
 
 ### Fixed
 
+- `@kivin/core`: 引数を取らない同期の GET ハンドラを起動時に 1 回だけ呼び、その結果を返し続けていたのを修正。`list() { return this.store.all(); }` や `now() { return { now: Date.now() }; }` が起動時の値を返し続けていた。事前計算するのは、定数リテラルを返すだけのハンドラ（`kivin generate` が判定し manifest に `staticResponse: true` を出力）と、新しい `@StaticResponse()` を付けたハンドラだけにした
 - `@kivin/core`: `onRequest` フックが書き換えたリクエストで、ミドルウェアが登録した `afterResponse` コールバックが呼ばれなかったのを修正（メトリクス・トレース・Server-Timing が記録されなかった）。あわせて `afterResponse` の判定をルートのラッパーからルート呼び出し箇所へ移し、ラップ 1 段分のコストをなくした
 - `@kivin/http`: `acceptsEncoding` が `gzip;q=0, *` のように明示的に拒否されたエンコーディングを `*` によって許可していたのを修正。`createCompressMiddleware` は q 値の高いエンコーディングを選ぶようにした（同じ q ならこれまでどおり `encodings` の順）
 - `@kivin/core`（セキュリティ）: ガードが 1 つだけのルートで、そのガードの `canActivateRaw` が `async` 宣言ではない通常のメソッドで Promise を返す場合（`canActivateRaw(req) { return this.auth.check(req); }`）、Promise が真値として扱われて**全リクエストが許可されていた**問題を修正（#38）

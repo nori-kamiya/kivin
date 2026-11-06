@@ -195,7 +195,9 @@ export function toHeadResponse(response: Response) {
 }
 
 export function canPrecomputeNativeStaticResponse<TSchema>(route: ManifestRoute<TSchema>) {
-  if (route.method !== 'GET') {
+  // Only handlers declared constant: calling an arbitrary handler once at startup would freeze
+  // whatever it reads (the time, an in-memory store, configuration that changes).
+  if (route.method !== 'GET' || route.docs.staticResponse !== true) {
     return false;
   }
 

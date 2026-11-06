@@ -746,7 +746,7 @@ app-like suite を `docs` / `create` / `delete` まで広げた `3` sample media
 - JSON response は direct `JSON.stringify(...) + new Response(...)` fast path を使い、queued status/header 付き success response でも余計な helper overhead を避ける
 - 単一 path param route は prefix/suffix match で regex を避ける
 - path param decode は `%` を含む時だけ `decodeURIComponent` を実行する
-- 引数なしで pure に評価できる `GET` route は precomputed native static response として Bun routes に直接載せる
+- 引数なしの `GET` route で、ハンドラが定数リテラルを返すだけのもの（`kivin generate` が判定）と `@StaticResponse()` を付けたものは、応答を起動時に計算して Bun routes に直接載せる（それ以外のハンドラは毎回呼ぶ。時刻やストアを読むハンドラの結果を固定しないため）
 - `context` を使わない route は compile 時に separate executor を生成し、RequestContext の遅延構築自体を消す
 - schema-backed query object は `URLSearchParams` / `Object.fromEntries(...)` を使わず lightweight parser で組み立てる
 - request logger middleware は log level が実際に emit しない場合、request child logger と URL object を eager に作らない
