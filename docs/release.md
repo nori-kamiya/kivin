@@ -73,7 +73,7 @@ Settings → Rules → Rulesets → New ruleset → New tag ruleset。
 ### 6. リリース前の確認
 
 1. 全 16 パッケージの `version` が同じで、公開したいバージョンになっている（バージョンを上げる作業は別。`release:verify --tag` が不一致を検出する）
-2. `CHANGELOG.md` に `## [X.Y.Z] - 日付` の見出しがある
+2. `CHANGELOG.md` の `## [X.Y.Z] - Unreleased` を `## [X.Y.Z] - 公開日` に書き換えて、main へマージしておく（`release:verify --tag` は見出しの有無だけを検査する）
 3. 各パッケージに `README.md` がある。`files` に `README.md` を含めているので、無いと `release:verify` が失敗する
 4. ローカルで通す: `bun install --frozen-lockfile && bun run release:check && bun run release:pack && bun run release:verify && bun run pack:smoke`
 5. 公開したいコミットが `origin/main` に入っている（タグのコミットが `origin/main` の祖先でないと `release:verify --tag` が失敗する。ただしこの検査はタグ側のコードで動く確認用のもので、強制は手順 3・4 の設定が担う）

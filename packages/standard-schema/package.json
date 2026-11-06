@@ -1,6 +1,6 @@
 {
   "name": "@kivin/standard-schema",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Standard Schema adapter for kivin (Zod, ArkType, Valibot, and any Standard Schema validator)",
   "license": "MIT",
   "author": "nori-kamiya",

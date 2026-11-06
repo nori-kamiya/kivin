@@ -1,6 +1,6 @@
 {
   "name": "@kivin/decorators",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Module / Controller / Route / Enhancer / OpenAPI decorators for kivin",
   "license": "MIT",
   "author": "nori-kamiya",

@@ -1,6 +1,6 @@
 {
   "name": "@kivin/observability",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Observability for kivin: OpenTelemetry tracing, Prometheus metrics, Server-Timing and health checks",
   "license": "MIT",
   "author": "nori-kamiya",

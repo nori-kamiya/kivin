@@ -1,17 +1,17 @@
 # 引き継ぎメモ
 
-kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #76 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
+kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #79 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
 
 ## 1. 現状
 
-- **段階**: 全パッケージ `0.0.1`、npm 未公開（ルートは `private: true`）。Bun 専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）。公開準備は [#57](https://github.com/nori-kamiya/kivin/issues/57)、公開の手順（オーナーだけができる作業を含む）は [release.md](release.md)
-- **性能**: CI のペア計測で Hono より約 10〜34% 速く、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
+- **段階**: 全パッケージ `0.1.0`。npm への公開準備は完了しているが未公開（ルートは `private: true`）。公開手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
+- **性能**: CI のペア計測で Hono の 101〜134%、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
 - **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
-- **テスト**: `bun test` で約 620 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
+- **テスト**: `bun test` で約 720 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
 
 ## 2. パッケージ構成
 
-core は実行時の中核だけを持ち、独立した機能は領域ごとのパッケージに分けています（#44）。**core はどのプラグインにも依存しません。** プラグインは core（`@kivin/static` は `@kivin/http` も）にだけ依存します。
+core は実行時の中核だけを持ち、独立した機能は領域ごとのパッケージに分けています（#44）。**core はどのプラグインにも依存しません。** プラグインは core（`@kivin/static` は `@kivin/http` も）にだけ依存します。`@kivin/core` は peerDependency なので、プロセス内で必ず 1 つになります（`instanceof HttpError` や `afterResponse` の状態が壊れないように）。
 
 | パッケージ | 役割 | 依存 |
 | --- | --- | --- |
@@ -117,14 +117,12 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 
 | 優先度 | issue | 内容 |
 | --- | --- | --- |
-| 高 | [#57](https://github.com/nori-kamiya/kivin/issues/57) | npm 公開の準備（特に `@kivin/core` を peerDependency にすること） |
-| 中 | [#58](https://github.com/nori-kamiya/kivin/issues/58) | `kivin init`（#57 の後） |
 | 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
 | 低 | [#62](https://github.com/nori-kamiya/kivin/issues/62), [#63](https://github.com/nori-kamiya/kivin/issues/63) | `anyGuard` の DI 対応、未マッチリクエストのメトリクス |
 | 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |
 | 判断 | [#68](https://github.com/nori-kamiya/kivin/issues/68) | Hono / Elysia との残りの差分（JSX・SSG・Cache・tRPC など）の要否 |
 
-## 8. 最近の変更（#38〜#76）
+## 8. 最近の変更（#38〜#79）
 
 | PR | 内容 |
 | --- | --- |
@@ -149,6 +147,9 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | #74 | 実物の GraphQL Yoga との結合テストと、`createGraphqlRoutes` の型の修正 |
 | #75 | `listen({ onShutdownStart, shutdownDelayMs })` |
 | #76 | `graphql-ws` の結合テストと配線例 |
+| #77 | npm 公開の準備（peerDependency 化、リリース基盤、英語 README、パッケージ README） |
+| #78 | `kivin init` |
+| #79 | `0.1.0` への更新と CHANGELOG の整理 |
 
 それ以前の変更は `CHANGELOG.md` を見てください。
 

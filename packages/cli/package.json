@@ -1,6 +1,6 @@
 {
   "name": "@kivin/cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Manifest and OpenAPI code-generation CLI for kivin",
   "license": "MIT",
   "author": "nori-kamiya",

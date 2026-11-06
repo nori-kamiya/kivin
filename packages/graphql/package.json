@@ -1,6 +1,6 @@
 {
   "name": "@kivin/graphql",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Mount GraphQL Yoga (or any fetch-based GraphQL server) on kivin native routes",
   "license": "MIT",
   "author": "nori-kamiya",
