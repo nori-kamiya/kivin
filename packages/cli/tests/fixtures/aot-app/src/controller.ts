@@ -1,5 +1,5 @@
 import { HttpError, type RouteInput } from '@kivin/core';
-import { ApiResponse, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseHeaderSchema, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
+import { ApiResponse, BodyLimit, Consumes, Controller, Delete, Get, Injectable, Patch, Post, Put, UseBodySchema, UseFilters, UseHeaderSchema, UseGuards, UseMiddleware, UseParamSchema, UseQuerySchema } from '@kivin/decorators';
 import { HeaderMiddleware, ItemMissing, MissingFilter, RawKeyGuard, REQUEST_ID, RoleGuard, Store, TraceMiddleware } from './providers';
 import { ErrorBody, IdParams, Item, ItemInput, ItemPatch, SearchQuery, UploadForm, VersionHeaders } from './schemas';
 
@@ -130,6 +130,12 @@ export class AotController {
   @UseParamSchema(IdParams)
   versioned({ headers, params }: RouteInput<{ headers: typeof VersionHeaders; params: typeof IdParams }>) {
     return { version: headers['x-api-version'], id: params.id };
+  }
+
+  @Post('/limited')
+  @BodyLimit(2 * 32)
+  limited({ body }: RouteInput) {
+    return { body };
   }
 
   @Get('/invalid-response')

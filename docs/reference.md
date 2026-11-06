@@ -140,7 +140,7 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 ### Validation schemas
 
-`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`, `@UseHeaderSchema(schema)`。ヘッダは小文字の名前（`'x-api-version'` など）で検証され、schema にあるキーだけが `headers` に渡ります（schema が無ければ全ヘッダの文字列レコード）。ヘッダの検証はガードやミドルウェアより前に行われ、失敗は `400 headers validation failed` です。クエリで同じキーが繰り返されると（`?tag=a&tag=b`、生成クライアントが配列を送る形）配列になります。`v.array(...)` で受けられ、単一値の schema に繰り返しキーが来た場合は 400 です。OpenAPI には `in: header` のパラメータとして出力されます。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
+`@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`, `@UseHeaderSchema(schema)`。`@BodyLimit(bytes)` はルートのボディ上限（413。アプリ全体の既定は `defineApplication({ bodyLimit })`）。ヘッダは小文字の名前（`'x-api-version'` など）で検証され、schema にあるキーだけが `headers` に渡ります（schema が無ければ全ヘッダの文字列レコード）。ヘッダの検証はガードやミドルウェアより前に行われ、失敗は `400 headers validation failed` です。クエリで同じキーが繰り返されると（`?tag=a&tag=b`、生成クライアントが配列を送る形）配列になります。`v.array(...)` で受けられ、単一値の schema に繰り返しキーが来た場合は 400 です。OpenAPI には `in: header` のパラメータとして出力されます。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
 
 検証に失敗すると `400 { message: '<body|query|params|headers> validation failed', issues: [{ path: ['tags', 1, 'name'], message: '...' }] }` を返します。`issues` は schema ライブラリに関係なく `path` と `message` だけで、リクエストの値そのもの（ライブラリの生 issue に含まれる `input` など）は返しません。ただしライブラリ既定のメッセージには値が含まれることがあるので（valibot の `email` / `regex` など）、パスワード等の機微なフィールドにはメッセージを指定してください。フィルタで独自の形式にする場合は `toValidationIssues(rawIssues)` が使えます。
 
