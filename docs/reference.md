@@ -297,6 +297,8 @@ manifest・contracts・client・OpenAPI を生成する。`client.ts` はサー�
 generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot]
 ```
 
+`modules` / `imports` には `@Module` クラス・`defineModule(...)`・オブジェクトリテラルのほか、`createLoggerModule()` のようなファクトリ呼び出し（直接でも `const` に束縛しても可）を書ける。ファクトリ呼び出しの中身は静的解析できないため、ルートを持たない前提で扱い、`generate` が読み込んだ実行時の定義と突き合わせる。コントローラーを宣言するファクトリが見つかった場合は、ルートが黙って消えないようエラーにする（ルートは `@Module` か `defineModule` で宣言する）。
+
 4 ファイルは all-or-nothing で書かれる。生成に失敗した場合、`--outDir` の以前の成果物は変更されない。
 
 ### `dev`

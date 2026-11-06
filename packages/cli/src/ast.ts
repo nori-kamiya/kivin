@@ -53,6 +53,7 @@ interface AstInlineModuleRef {
   filePath: string;
   controllers: AstSymbolRef[];
   imports: AstModuleRef[];
+  opaque?: string[];
 }
 
 type AstModuleRef = AstNamedModuleRef | AstInlineModuleRef;
@@ -60,6 +61,8 @@ type AstModuleRef = AstNamedModuleRef | AstInlineModuleRef;
 interface AstModuleNode {
   controllers: AstSymbolRef[];
   imports: AstModuleRef[];
+  /** Module expressions the AST cannot look into (factory calls such as `createLoggerModule()`), as source text. */
+  opaque?: string[];
 }
 
 export interface AstControllerNode {
@@ -120,6 +123,10 @@ interface GeneratedManifestResult {
   contractsSource?: string;
   /** Typed HTTP client; present when `clientOutFile` is given. */
   clientSource?: string;
+  /** Factory-call module expressions that were skipped; the caller must check them against the runtime definition. */
+  opaqueModules: string[];
+  /** Names of every controller the manifest was built from. */
+  controllerNames: string[];
 }
 
 interface RenderImportEntry {
@@ -148,7 +155,7 @@ const resolver = new ResolverFactory({
 export async function buildManifestSourceFromAst(input: { entry: string; outFile: string; contractsOutFile?: string; clientOutFile?: string; aot?: boolean }): Promise<GeneratedManifestResult> {
   const entryFile = resolve(input.entry);
   const { modules: moduleRefs, basePath: appBasePath } = await readAppModules(entryFile);
-  const controllerRefs = await collectControllerRefs(moduleRefs);
+  const { controllers: controllerRefs, opaque: opaqueModules } = await collectControllerRefs(moduleRefs);
   // `defineApplication({ basePath })` prefixes every route, so the manifest, OpenAPI document,
   // contracts and client all use the full path.
   const controllers = (await Promise.all(controllerRefs.map((controllerRef) => readController(controllerRef.filePath, controllerRef.name))))
@@ -163,6 +170,8 @@ export async function buildManifestSourceFromAst(input: { entry: string; outFile
     source: `${imports}\nexport const manifest: AppManifest = {\n  routes: [\n${routeEntries.join(',\n')}\n  ],\n};\n\nexport default manifest;\n`,
     ...(input.contractsOutFile ? { contractsSource: renderContracts(controllers, resolve(input.contractsOutFile)) } : {}),
     ...(input.clientOutFile ? { clientSource: renderClient(controllers, resolve(input.clientOutFile)) } : {}),
+    opaqueModules,
+    controllerNames: controllers.map((controller) => controller.className),
   };
 }
 
@@ -261,26 +270,30 @@ async function readAppModules(filePath: string): Promise<{ modules: AstModuleRef
   };
 }
 
-async function collectControllerRefs(moduleRefs: AstModuleRef[]): Promise<AstSymbolRef[]> {
+async function collectControllerRefs(moduleRefs: AstModuleRef[]): Promise<{ controllers: AstSymbolRef[]; opaque: string[] }> {
   const result = new Map<string, AstSymbolRef>();
+  const opaque = new Set<string>();
 
   for (const moduleRef of moduleRefs) {
-    await walkModule(moduleRef, result);
+    await walkModule(moduleRef, result, opaque);
   }
 
-  return [...result.values()];
+  return { controllers: [...result.values()], opaque: [...opaque] };
 }
 
-async function walkModule(moduleRef: AstModuleRef, controllerRefs: Map<string, AstSymbolRef>) {
+async function walkModule(moduleRef: AstModuleRef, controllerRefs: Map<string, AstSymbolRef>, opaque: Set<string>) {
   const moduleNode = moduleRef.kind === 'inline'
-    ? { controllers: moduleRef.controllers, imports: moduleRef.imports }
+    ? { controllers: moduleRef.controllers, imports: moduleRef.imports, opaque: moduleRef.opaque ?? [] }
     : await readModule(moduleRef.filePath, moduleRef.name);
+  for (const expression of moduleNode.opaque ?? []) {
+    opaque.add(expression);
+  }
   for (const controller of moduleNode.controllers) {
     controllerRefs.set(`${controller.filePath}:${controller.name}`, controller);
   }
 
   for (const importedModule of moduleNode.imports) {
-    await walkModule(importedModule, controllerRefs);
+    await walkModule(importedModule, controllerRefs, opaque);
   }
 }
 
@@ -557,6 +570,12 @@ function parseInlineModuleDefinition(context: AstImportContext, source: ParsedSo
 
   if (expression.type === 'ObjectExpression') {
     return parseModuleObjectLiteral(context, source, expression, label);
+  }
+
+  // A factory such as createLoggerModule() cannot be evaluated statically. The caller checks it against the
+  // runtime definition, so a factory that declares controllers fails loudly instead of dropping routes.
+  if (expression.type === 'CallExpression') {
+    return { controllers: [], imports: [], opaque: [`${getText(source, expression)} in ${context.filePath}`] };
   }
 
   throw new Error(`${label} must be a @Module class, defineModule(...) call, or object literal in ${context.filePath}`);

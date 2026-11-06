@@ -88,7 +88,8 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
     await writeFile(staged('contracts.ts'), generated.contractsSource ?? 'export {};\n', 'utf8');
     await writeFile(staged('client.ts'), generated.clientSource ?? 'export {};\n', 'utf8');
 
-    const appDefinition = await loadAppDefinition(input.entry);
+    const { appDefinition, core } = await loadApp(input.entry);
+    assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
     const manifest = await loadManifest(staged('manifest.ts'));
     const openApi = buildOpenApiDocument({
       manifest,
@@ -118,12 +119,13 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
 }
 
 export async function generateOpenApi(input: { entry: string; output: string; title?: string; version?: string }) {
-  const appDefinition = await loadAppDefinition(input.entry);
+  const { appDefinition, core } = await loadApp(input.entry);
   const manifestPath = resolve(dirname(resolve(input.output)), 'manifest.ts');
   const generated = await buildManifestSourceFromAst({
     entry: input.entry,
     outFile: manifestPath,
   });
+  assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
   await mkdir(dirname(manifestPath), { recursive: true });
   await writeFile(manifestPath, generated.source, 'utf8');
   const manifest = await loadManifest(manifestPath);
@@ -144,7 +146,7 @@ export async function generateOpenApi(input: { entry: string; output: string; ti
 
 export async function inspectRoutes(input: { entry: string }) {
   const { appDefinition, core } = await loadApp(input.entry);
-  const manifest = await buildManifestFromEntry(input.entry);
+  const manifest = await buildManifestFromEntry(input.entry, appDefinition, core);
   const inspectionState = buildInspectionState(appDefinition, core);
 
   return manifest.routes.map((route): RouteInspection => ({
@@ -183,6 +185,18 @@ export async function inspectModules(input: { entry: string }) {
   return modules;
 }
 
+/** Factory-call modules are invisible to the AST pass; if one declares controllers, their routes would silently vanish. */
+function assertOpaqueModulesDeclareNoControllers(generated: { opaqueModules: string[]; controllerNames: string[] }, appDefinition: AppDefinition<unknown>, core: CoreRuntime) {
+  if (generated.opaqueModules.length === 0) {
+    return;
+  }
+  const known = new Set(generated.controllerNames);
+  const missing = core.flattenModules(appDefinition.modules).flatMap((module) => module.controllers).filter((controller) => !known.has(controller.name));
+  if (missing.length > 0) {
+    throw new Error(`Module expression(s) ${generated.opaqueModules.join(', ')} declare controllers (${[...new Set(missing.map((controller) => controller.name))].join(', ')}) that kivin generate cannot read; routes must be declared with @Module or defineModule`);
+  }
+}
+
 async function loadManifest(manifestPath: string): Promise<AppManifest<unknown>> {
   const moduleNamespace = await import(`${pathToFileURL(manifestPath).href}?t=${Date.now()}`);
   const candidate = moduleNamespace.default ?? moduleNamespace.manifest;
@@ -192,7 +206,7 @@ async function loadManifest(manifestPath: string): Promise<AppManifest<unknown>>
   return candidate as AppManifest<unknown>;
 }
 
-async function buildManifestFromEntry(entry: string) {
+async function buildManifestFromEntry(entry: string, appDefinition: AppDefinition<unknown>, core: CoreRuntime) {
   const absoluteEntry = resolve(entry);
   const outDir = await mkdtemp(resolve(dirname(absoluteEntry), '.kivin-inspect-'));
   const manifestPath = resolve(outDir, 'manifest.ts');
@@ -202,6 +216,7 @@ async function buildManifestFromEntry(entry: string) {
       entry,
       outFile: manifestPath,
     });
+    assertOpaqueModulesDeclareNoControllers(generated, appDefinition, core);
     await writeFile(manifestPath, generated.source, 'utf8');
     return await loadManifest(manifestPath);
   } finally {
