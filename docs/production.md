@@ -417,6 +417,30 @@ card({ params }: RouteInput<{ params: typeof IdSchema }>) {
 
 埋め込んだ値はすべて HTML エスケープされます（属性値も含む）。`html` で作ったものは二重にエスケープされず、配列は連結、`null` / `undefined` / 真偽値は何も出力しません。
 
+### JSX
+
+Bun は `.tsx` をそのまま実行できるので、kivin は JSX ランタイムを同梱しません。React（`react-dom/server`）などで描画したストリームを `htmlResponse` に渡します。
+
+```tsx
+// pages.controller.tsx（tsconfig: "jsx": "react-jsx"）
+import { renderToReadableStream } from 'react-dom/server';
+import { htmlResponse } from '@kivinjs/http';
+
+function Page({ name }: { name: string }) {
+  return <html><body><h1>Hello, {name}</h1></body></html>;
+}
+
+@Controller('/')
+export class PagesController {
+  @Get('/')
+  async home() {
+    return htmlResponse(await renderToReadableStream(<Page name="kivin" />));
+  }
+}
+```
+
+Hono の `jsxRenderer` のようなレイアウトの共通化は、レイアウト用のコンポーネントで包めば足ります。Preact（`preact-render-to-string`）など文字列を返すレンダラーは `htmlResponse(renderToString(<Page />))` です。
+
 ## 現在のリクエストへのアクセス（`@kivinjs/http`）
 
 ```ts
@@ -734,6 +758,70 @@ app.listen({ port: 3000, routes: createGraphqlRoutes(yoga, { context }), websock
 ```
 
 `context` は Yoga がリゾルバのコンテキストに混ぜるサーバーコンテキストです。`HttpError`（`unauthorized()` など）や `Response` を投げるとそのまま応答します。ガードやミドルウェアはコントローラーのルート用なので、GraphQL の認証は `context` か `onRequest` フックで行ってください。
+
+### Apollo Server
+
+Apollo Server（v4 / v5）には fetch 用の公式インテグレーションが無いので、`executeHTTPGraphQLRequest` を呼ぶ薄い関数で載せます。fetch ネイティブな GraphQL Yoga のほうが手間はかかりません。
+
+```ts
+import { ApolloServer, HeaderMap } from '@apollo/server';
+
+const apollo = new ApolloServer<{ userId?: string }>({ typeDefs, resolvers });
+await apollo.start();
+
+async function apolloFetch(request: Request): Promise<Response> {
+  const headers = new HeaderMap();
+  request.headers.forEach((value, key) => headers.set(key, value));
+  const result = await apollo.executeHTTPGraphQLRequest({
+    httpGraphQLRequest: {
+      method: request.method,
+      headers,
+      search: new URL(request.url).search,
+      body: request.method === 'POST' ? await request.json().catch(() => undefined) : undefined,
+    },
+    context: async () => ({ userId: await authenticate(request) }),
+  });
+  const responseHeaders = new Headers([...result.headers]);
+  if (result.body.kind === 'complete') {
+    return new Response(result.body.string, { status: result.status ?? 200, headers: responseHeaders });
+  }
+  // @defer / @stream（incremental delivery）
+  const chunks = result.body.asyncIterator;
+  const encoder = new TextEncoder();
+  return new Response(new ReadableStream({
+    async pull(controller) {
+      const next = await chunks.next();
+      if (next.done) controller.close();
+      else controller.enqueue(encoder.encode(next.value));
+    },
+  }), { status: result.status ?? 200, headers: responseHeaders });
+}
+
+app.listen({ port: 3000, routes: { '/graphql': { GET: apolloFetch, POST: apolloFetch } } });
+// app.close() の後に apollo.stop()
+```
+
+## tRPC
+
+tRPC の fetch アダプタ（`@trpc/server/adapters/fetch`）をワイルドカードのネイティブルートに載せます。専用のアダプタは不要です。`onRequest` フックは他のネイティブルートと同じく先に動きます。
+
+```ts
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+
+app.listen({
+  port: 3000,
+  routes: {
+    '/trpc/*': (request: Request) => fetchRequestHandler({
+      endpoint: '/trpc',
+      req: request,
+      router: appRouter,
+      createContext: async () => ({ users: app.get(UserService), userId: await authenticate(request) }),
+    }),
+  },
+});
+```
+
+バッチ呼び出し（`/trpc/a,b?batch=1`）もそのまま動きます。GraphQL と同じく、ガードやミドルウェアはかからないので、認証は `createContext` か `onRequest` フックで行ってください。
 
 ## 未処理の例外
 

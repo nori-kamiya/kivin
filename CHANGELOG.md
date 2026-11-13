@@ -11,6 +11,8 @@
 - `@kivinjs/security`: `everyGuard(...guards)`（すべて通れば許可）と `exceptGuard(exempt, ...guards)`（`'/health'` / `'/public/*'` などのルート、または判定関数に一致するルートではガードを実行しない）。Hono の `combine` の `every` / `except` に相当（#62, #68）
 - `@kivinjs/core`: `InjectableMetadata.composesEnhancers`。ガードを合成するクラスに付けると、アプリがその `deps` のガードクラスも自動登録する（#62）
 - `@kivinjs/core`: グローバルミドルウェアの `handleUnmatched(request, response)`。ルートに一致しなかったリクエスト（404 / 405 / 自動の `OPTIONS`・CORS プリフライト）と `onRequest` フックが返した応答で呼ばれる。未使用時のコストは 404 / 405 の経路での配列長の確認だけ（#63）
+- `@kivinjs/http`: `htmlResponse` が `ReadableStream` も受け取る。`react-dom/server` の `renderToReadableStream` などで描画した JSX をそのまま返せる（#68）
+- `docs/production.md`: JSX（React）、Apollo Server、tRPC をネイティブルートに載せる方法。実物のライブラリで動作を確認した（#68）
 - `@kivinjs/observability`: `createMetrics()` がルートに一致しなかったリクエストと `onRequest` フックの応答を `route="(unmatched)"` で `http_requests_total` に数える（ヒストグラムには入れない。未知のメソッドは `_OTHER`）。`unmatchedRoute` でラベルの変更・無効化（#63）
 
 ### Changed

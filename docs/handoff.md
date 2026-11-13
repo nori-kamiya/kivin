@@ -6,7 +6,7 @@ kivin の開発を引き継ぐ人向けに、現状・進め方・壊しては�
 
 - **段階**: 全パッケージ `0.1.0`。npm への公開準備は完了しているが未公開（ルートは `private: true`）。公開手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
 - **性能**: CI のペア計測で Hono の 101〜134%、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
-- **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
+- **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に実装しなかったものと理由は §5.1（#68）
 - **テスト**: `bun test` で約 750 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
 
 ## 2. パッケージ構成
@@ -102,6 +102,20 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 - **エラー**: `HttpError` はそのステータスで応答、それ以外は 500 と 1 回だけのログ（`markErrorReported`）。不正な JSON は 400
 - **JSON の content-type** は `application/json;charset=utf-8`（Bun の `Response.json()` と同じ表記）で統一
 - **安全側の既定**: IP 制限は不明なアドレスを拒否、署名付き Cookie は名前も署名、セッション ID はクライアントの値を使わない、末尾スラッシュのリダイレクトは `//` 始まりにしない
+
+## 5.1 Hono / Elysia との差分の判断（#68）
+
+Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグインのうち、最後まで残っていたものの扱いです。
+
+| 機能 | 判断 | 理由 / 代替 |
+| --- | --- | --- |
+| JSX レンダラー（Hono `jsxRenderer`） | ランタイムは同梱しない。`htmlResponse` が `ReadableStream` を受け取るようにした | Bun は `.tsx` をそのまま実行でき、React / Preact のサーバーレンダラーで足りる。独自の JSX ランタイム（型定義や属性の扱い）を保守するコストに見合わない。使い方は [production.md](production.md)「JSX」 |
+| SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
+| Cache（Hono `cache`） | 実装しない | Bun には Web Cache API が無い。共有のレスポンスキャッシュは Vary・認証付きレスポンス・無効化の設計が要り、誤るとユーザー間で応答が混ざる。ETag（`@kivinjs/http`）と `Cache-Control` + CDN / リバースプロキシで代替する。要望が出たら別 issue にする |
+| `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
+| tRPC（Elysia `@elysiajs/trpc`） | アダプタは作らない | `fetchRequestHandler` を `listen({ routes: { '/trpc/*': … } })` に載せるだけで動く（バッチ呼び出し、`onRequest` フックを実物で確認）。[production.md](production.md)「tRPC」 |
+| Apollo Server（Elysia `@elysiajs/apollo`） | パッケージは作らない | fetch 用の公式インテグレーションが無いが、`executeHTTPGraphQLRequest` を呼ぶ 30 行ほどの関数で載る（v5 で確認）。fetch ネイティブな GraphQL Yoga を推奨。[production.md](production.md)「Apollo Server」 |
+| i18n | 実装しない | 言語の選択は `acceptsLanguage` で足りる。メッセージカタログはアプリ側の関心 |
 
 ## 6. 既知の制約
 

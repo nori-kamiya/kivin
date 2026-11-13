@@ -55,11 +55,14 @@ export function raw(markup: string): HtmlString {
   return new HtmlString(markup);
 }
 
-/** A `text/html; charset=utf-8` response. */
-export function htmlResponse(content: HtmlString | string, init: ResponseInit = {}): Response {
+/**
+ * A `text/html; charset=utf-8` response. Besides `html` output and strings it takes a stream, e.g.
+ * JSX rendered by `react-dom/server`: `htmlResponse(await renderToReadableStream(<Page />))`.
+ */
+export function htmlResponse(content: HtmlString | string | ReadableStream<Uint8Array>, init: ResponseInit = {}): Response {
   const headers = new Headers(init.headers);
   if (!headers.has('content-type')) {
     headers.set('content-type', 'text/html; charset=utf-8');
   }
-  return new Response(typeof content === 'string' ? content : content.value, { ...init, headers });
+  return new Response(content instanceof HtmlString ? content.value : content, { ...init, headers });
 }

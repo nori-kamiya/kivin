@@ -155,7 +155,7 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
 | `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
 | `proxy(target, request, options?)` | function | リバースプロキシ（Hono の `proxy`）。ホップバイホップヘッダの除去、`X-Forwarded-*`、圧縮されたままの転送、502 / 504、切断時の中断 |
-| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス |
+| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス。`htmlResponse` は文字列・`html` の結果・`ReadableStream`（`react-dom/server` の `renderToReadableStream` など JSX の描画結果）を受け取る |
 | `createRequestStorageMiddleware()`, `getCurrentRequest()`, `getRequestValue(key)`, `setRequestValue(key, value)` | function | AsyncLocalStorage で現在のリクエストと値をどこからでも参照する（Hono の `contextStorage`） |
 
 ## @kivinjs/observability
