@@ -21,6 +21,21 @@ describe('html', () => {
     expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
     expect(await response.text()).toBe('<h1>Hi</h1>');
   });
+
+  test('htmlResponse streams a ReadableStream (e.g. JSX rendered by react-dom/server)', async () => {
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(encoder.encode('<!DOCTYPE html><main>'));
+        controller.enqueue(encoder.encode('streamed</main>'));
+        controller.close();
+      },
+    });
+    const response = htmlResponse(stream, { headers: { 'cache-control': 'no-store' } });
+    expect(response.headers.get('content-type')).toBe('text/html; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(await response.text()).toBe('<!DOCTYPE html><main>streamed</main>');
+  });
 });
 
 describe('proxy', () => {

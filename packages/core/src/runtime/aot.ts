@@ -15,7 +15,7 @@ import type { Token } from '../types';
 import { applyFilters, runMiddlewareChain } from './pipeline';
 import { createUnhandledErrorResponse } from './results';
 import type { CompiledRouteExecutor, ManifestRoute, ResponseStateAdapter, RouteFilters, RouteGuards, RouteMiddleware } from './types';
-import { isPromiseLike, rethrowJsonBodyError } from './utils';
+import { isPromiseLike, NOT_SETTLED, rethrowJsonBodyError, settledValue } from './utils';
 
 export interface AotRouteRuntime<TController = unknown> {
   /** Singleton controller instance (AOT executors are only bound when the route is all-singleton). */
@@ -145,7 +145,13 @@ export function createAotRuntime(input: {
           }
         };
         const direct = typeof current.handle === 'function' ? current.handle(context, next, route) : current.use!(context, next, route);
-        return isPromiseLike<unknown>(direct) ? Promise.resolve(direct).then((resolved) => afterMiddleware(resolved, context)) : afterMiddleware(direct, context);
+        if (!isPromiseLike<unknown>(direct)) {
+          return afterMiddleware(direct, context);
+        }
+        // A middleware that returned `next()` hands back an already-fulfilled promise when the handler
+        // was synchronous: finish now instead of returning a pending promise (#65).
+        const settled = settledValue(direct);
+        return settled === NOT_SETTLED ? Promise.resolve(direct).then((resolved) => afterMiddleware(resolved, context)) : afterMiddleware(settled, context);
       }
 
       return runMiddlewareChain({ middleware, context, defaultSuccessStatus: input.defaultSuccessStatus, route, execute }).then((result) => afterMiddleware(result, context));

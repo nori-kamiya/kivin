@@ -66,6 +66,69 @@ PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 
 Hono / Elysia との比較（`bun run perf:check`）は CI で参考値としてペア計測し、結果を job summary に出します。
 
+## HTTP レベルの promise のコスト（#65）
+
+Bun のネイティブルートでハンドラが返すものによって、サーバー側の CPU 時間が変わるかを確かめました。HTTP のスループットは 2 コアの共有 VM では同じコード同士でも ±15% ぶれるので、**サーバーを 1 コアに固定し（`taskset`）、クライアントを別のコアに置いて、サーバープロセスのリクエストあたりの CPU 時間**を比べます（`scripts/perf/http-cpu/`）。計測ブロックを交互に回し、同じ回のブロック同士の比を取ります。
+
+```bash
+PORT=4651 taskset -c 3 bun scripts/perf/http-cpu/promise-server.ts &
+taskset -c 0,1 bun scripts/perf/http-cpu/client.ts --ports 4651 --paths sync,resolved,pending,async
+
+git worktree add --detach /tmp/kivin-base origin/main
+KIVIN_ROOT=/tmp/kivin-base MODE=cors PORT=4701 taskset -c 3 bun scripts/perf/http-cpu/kivin-server.ts &
+MODE=cors PORT=4702 taskset -c 3 bun scripts/perf/http-cpu/kivin-server.ts &
+taskset -c 0,1 bun scripts/perf/http-cpu/client.ts --ports 4701,4702 --paths item
+```
+
+ハンドラの戻り値ごとの差（4 コアのクラウド VM、パイプラインなし・32 接続、2026-11-13）:
+
+| ハンドラが返すもの | CPU / リクエスト（同期の `Response` 比） | 95% CI |
+| --- | ---: | ---: |
+| 同期の `Response` | 100% | — |
+| 解決済みの promise（`Promise.resolve(response)`、await しなかった async 関数） | 104〜105% | 97〜111%（有意差なし） |
+| 返した時点で保留中の promise（`.then(...)` の結果） | 112〜114% | 102〜117% |
+| 1 回 await した async 関数 | 108〜116% | 104〜120% |
+
+HTTP/1.1 のパイプライン（1 接続に 16 件）では差が小さくなります（保留中で +6%）。
+
+**対策**: 同期的に終わる処理なのに `.then` で保留中の promise を作っていた経路で、`Bun.peek` で解決済みかを見て、その場で処理して解決済みの promise を返すようにしました（`runtime/utils.ts` の `thenNow` / `settledValue`）。
+
+- CORS 有効時のルートのラッパーと CORS ミドルウェア（`async` + `await next()` をやめた）
+- `afterResponse` 使用時の `finishAfterResponse`
+- AOT のコンテキストミドルウェア経路（`next()` をそのまま返したミドルウェアの結果）
+- `onRequest` フック（フックが同期、または解決済みの promise を返す間は同期的に進む）
+- raw ミドルウェアが 2 つ以上あるルートの dispatcher（`async` をやめ、`next()` が同期の `Response` を返せるようにした。raw ミドルウェアの `next()` はもともと同期の値を返しうる契約）
+
+コンテキストミドルウェアの `next()` が常に promise を返す契約は変えていません。`app.fetch` も常に promise を返します。
+
+効果（CORS を有効にした `GET /item`、main と比較、同じコアで交互に計測）:
+
+| 構成 | CPU / リクエスト（main 比） | 95% CI |
+| --- | ---: | ---: |
+| CORS | 89〜91% | 78〜97% |
+| CORS + `onRequest` フック | 91% | 84〜95% |
+| どちらも無し（変更なしの経路、対照） | 104% | 98〜114%（有意差なし） |
+
+インプロセスの性能ゲート（`perf:regression`）では全シナリオで有意差なし（幾何平均 −0.2%、CI −0.8〜+0.3%）でした。
+
+## フレームワーク自体のオーバーヘッドの削減（#66）
+
+- **ミドルウェアの無い raw ルートは状態オブジェクトを作らない**: raw ガードや例外フィルタはあるがミドルウェアの無いルートは、これまで raw パイプラインで毎リクエスト実行状態と `ResponseState` を作っていました。ヘッダを積む者がいないので、共有の空の `ResponseState` で結果を確定し、状態はエラーがフィルタに届いたときだけ作る専用の executor にしました（読み込み済みのボディはそのときに渡す）。
+- **raw の実行状態と `ResponseState` を 1 つのオブジェクトに**: raw ミドルウェアが受け取る `ResponseState` は実行状態そのものになり、ミドルウェアのあるルートも 1 リクエスト 1 オブジェクトになりました。
+- **複数の raw ミドルウェアの dispatcher から async をなくした**（#65）
+
+効果（`perf:regression`、in-process、main 比）:
+
+| scenario | 変化 | 95% CI |
+| --- | ---: | ---: |
+| get-param（raw ガードなし・フィルタ） | +9.0% | +5.5 … +10.8% |
+| patch-body-guard（raw ガード・フィルタ・ボディ） | +8.5% | +3.9 … +12.9% |
+| get-filtered-404 | +5.7% | +3.6 … +7.4% |
+| health-global-mw（状態の統合のみ、直前のコミット比） | +2.8% | +0.7 … +5.5% |
+| 幾何平均（14 シナリオ） | +2.1% | +1.4 … +2.7% |
+
+**raw ルートの AOT 化は見送り**: raw ガード / raw ミドルウェア付きのルートを `kivin generate` の生成コードで直線化する案は、効果の上限を先に測りました。Stack アプリの `DELETE /users/:id` と `PATCH /users/:id` を、状態 1 つ・直接呼び出し・共有の層なしで手書きした「理想の生成コード」と、現在の特化 executor を同じプロセスで交互に計測すると、理想側が 9%（delete）・7%（patch）速い程度でした（Request の生成を含む 1 リクエストあたり、30 ペアの中央値）。HTTP 経由では Bun 自身の処理が加わるので 2〜4% 相当です。実際の生成コードはフィルタ・既定ステータス・ヘッダの確定などを同じ部品に任せる必要があり、この上限の一部しか取れません。生成器・実行時・同一性テスト（`packages/cli/tests/aot.test.ts`）にまたがる変更に見合わないため、今回は見送りました。再検討するときはこの上限の計測から始めてください。
+
 ## Commands
 
 ```bash

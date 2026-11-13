@@ -79,3 +79,54 @@ describe('enhancer classes without a provider entry', () => {
     expect(shared.get(Stamp)).toBe(shared.get(Stamp));
   });
 });
+
+describe('enhancers that compose other enhancers (composesEnhancers)', () => {
+  /** A minimal "all of" guard that receives the composed guards from the container. */
+  const allOf = (...guards: Array<new (...args: never[]) => CanActivate>) => {
+    class AllOf implements CanActivate {
+      private readonly guards: CanActivate[];
+      constructor(...instances: CanActivate[]) {
+        this.guards = instances;
+      }
+      async canActivate(context: RequestContext, route: AppManifest['routes'][number]) {
+        for (const guard of this.guards) {
+          if (!(await guard.canActivate(context, route))) {
+            return false;
+          }
+        }
+        return true;
+      }
+    }
+    setInjectableMetadata(AllOf, { deps: guards, composesEnhancers: true });
+    return AllOf;
+  };
+  class Open implements CanActivate {
+    canActivate() {
+      return true;
+    }
+  }
+
+  test('the composed classes are registered too, with their own dependencies from the modules', async () => {
+    const app = createApp(defineApplication({
+      modules: [defineModule({ providers: [Config], controllers: [Routes], imports: [] })],
+      schemaAdapter: createValibotAdapter(),
+    }), { routes: [route('guarded', { guards: [allOf(KeyGuard, allOf(Open, KeyGuard))] })] });
+    expect((await app.fetch(new Request('http://x/guarded'))).status).toBe(403);
+    expect((await app.fetch(new Request('http://x/guarded', { headers: { 'x-key': 'secret' } }))).status).toBe(200);
+    expect(app.get(KeyGuard)).toBe(app.get(KeyGuard));
+  });
+
+  test('ordinary deps of an enhancer are not registered automatically', () => {
+    class Unprovided {}
+    class NeedsUnprovided implements CanActivate {
+      canActivate() {
+        return true;
+      }
+    }
+    setInjectableMetadata(NeedsUnprovided, { deps: [Unprovided] });
+    expect(() => createApp(defineApplication({
+      modules: [defineModule({ providers: [], controllers: [Routes], imports: [] })],
+      schemaAdapter: createValibotAdapter(),
+    }), { routes: [route('guarded', { guards: [NeedsUnprovided] })] })).toThrow(/Provider not found: Unprovided/);
+  });
+});

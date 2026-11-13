@@ -1,13 +1,13 @@
 # 引き継ぎメモ
 
-kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-06 時点、`main` = #81 まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
+kivin の開発を引き継ぐ人向けに、現状・進め方・壊してはいけない設計上の決まりごと・残課題をまとめます（2026-11-13 時点、#81 と issue #61〜#68 の対応まで）。API の詳細は [reference.md](reference.md)、使い方は [production.md](production.md)、性能の記録は [performance.md](performance.md) を見てください。
 
 ## 1. 現状
 
 - **段階**: 全パッケージ `0.1.0`。npm への公開準備は完了しているが未公開（ルートは `private: true`）。公開手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
 - **性能**: CI のペア計測で Hono の 101〜134%、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
-- **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に未実装のものと要否は [#68](https://github.com/nori-kamiya/kivin/issues/68)
-- **テスト**: `bun test` で約 750 件。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認）、同じ内容の macOS ジョブ、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
+- **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に実装しなかったものと理由は §5.1（#68）
+- **テスト**: `bun test` で約 800 件（Redis の結合テストは `REDIS_URL` があるときだけ動く）。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認。Redis のサービスコンテナ付き）、同じ内容の macOS ジョブ（Redis の結合テストはスキップ）、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
 
 ## 2. パッケージ構成
 
@@ -70,12 +70,13 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | どこに時間を使っているか | `scripts/perf/profile.ts` + `scripts/perf/summarize-profile.ts` | `ONLY=<シナリオ> bun --cpu-prof --cpu-prof-dir=/tmp/prof scripts/perf/profile.ts` → `bun scripts/perf/summarize-profile.ts /tmp/prof`。自己時間と、TS ソースの包含時間を出す |
 | フレームワーク自体のオーバーヘッド | `scripts/perf/floor.ts` | Hono / Elysia 比較用の Stack アプリを、Bun のネイティブルートが呼ぶハンドラとして直接実行し、手書きの最小実装との差（ns）を出す。先に `bun run bench:stack:generate` |
 | Hono / Elysia との比較 | `bun run perf:check` | 3 つのバイナリを同時に起動して Latin square で交互に計測。CI では参考値 |
+| HTTP レベルのサーバー CPU 時間 | `scripts/perf/http-cpu/` | サーバーを `taskset` で 1 コアに固定し、リクエストあたりの CPU 時間を交互に計測して比を取る。スループットより安定する（[performance.md](performance.md)「HTTP レベルの promise のコスト」） |
 
 注意:
 
 - 性能ゲートのシナリオ（`scripts/perf/bench-app.ts`）は current 側のものが base 側にも使われます。シナリオを足すのは自由ですが、ベンチアプリが base の `@kivinjs/*` に無い export を import すると base 側のビルドが壊れます
-- 2 コアの共有 VM（CI ランナーや作業用コンテナ）では、HTTP 経由の計測は同じコード同士でも ±10〜20% ぶれます。数 % の差を HTTP で判断しないこと（[#65](https://github.com/nori-kamiya/kivin/issues/65)）。インプロセスのペア計測を正とする
-- 現在の残りのオーバーヘッドと削り方の案は [#66](https://github.com/nori-kamiya/kivin/issues/66)
+- 2 コアの共有 VM（CI ランナーや作業用コンテナ）では、HTTP 経由のスループットは同じコード同士でも ±10〜20% ぶれます。数 % の差を HTTP のスループットで判断しないこと。インプロセスのペア計測を正とし、HTTP レベルで確かめたいときは `scripts/perf/http-cpu/` で CPU 時間を比べる（#65）
+- 残りのオーバーヘッドと、見送った案（raw ルートの AOT 化）の計測は [performance.md](performance.md)「フレームワーク自体のオーバーヘッドの削減」（#66）
 
 ## 5. 設計上の決まりごと（壊さないこと）
 
@@ -94,6 +95,7 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 ### 守っている性質
 
 - **promise の段数を増やさない**: 値が promise の時だけ `await` する（`await` は同期値でも microtask を消費する）。body は `request.json().then(validate, rethrowJsonBodyError)` の 1 段で読む（#45）
+- **同期的に終わったルートの結果を保留中の promise にしない**: Bun はネイティブルートの戻り値が保留中の promise だと CPU を約 10% 多く使う。解決済みの promise を `.then` でつなぐ所は `thenNow`、promise かもしれない値は `settledValue`（どちらも `Bun.peek`）を使う（#65）
 - **使わない機能はコストゼロ**: `onRequest` フックは未設定なら一切ラップしない。`afterResponse` は使われるまで真偽値の確認 1 回だけ（#51）。プラグインは core のホットパスに手を入れない
 - **ハンドラの結果を勝手に固定しない**: 起動時に 1 回だけ計算するのは、定数リテラルを返すだけのハンドラ（CLI が判定）と `@StaticResponse()` だけ（#52）
 - **コンテキストミドルウェアの `next()` は常に promise を返す**（契約）。raw ミドルウェアの `next()` は同期の `Response` を返すことがある
@@ -103,26 +105,39 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 - **JSON の content-type** は `application/json;charset=utf-8`（Bun の `Response.json()` と同じ表記）で統一
 - **安全側の既定**: IP 制限は不明なアドレスを拒否、署名付き Cookie は名前も署名、セッション ID はクライアントの値を使わない、末尾スラッシュのリダイレクトは `//` 始まりにしない
 
+## 5.1 Hono / Elysia との差分の判断（#68）
+
+Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグインのうち、最後まで残っていたものの扱いです。
+
+| 機能 | 判断 | 理由 / 代替 |
+| --- | --- | --- |
+| JSX レンダラー（Hono `jsxRenderer`） | ランタイムは同梱しない。`htmlResponse` が `ReadableStream` を受け取るようにした | Bun は `.tsx` をそのまま実行でき、React / Preact のサーバーレンダラーで足りる。独自の JSX ランタイム（型定義や属性の扱い）を保守するコストに見合わない。使い方は [production.md](production.md)「JSX」 |
+| SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
+| Cache（Hono `cache`） | 実装しない | Bun には Web Cache API が無い。共有のレスポンスキャッシュは Vary・認証付きレスポンス・無効化の設計が要り、誤るとユーザー間で応答が混ざる。ETag（`@kivinjs/http`）と `Cache-Control` + CDN / リバースプロキシで代替する。要望が出たら別 issue にする |
+| `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
+| tRPC（Elysia `@elysiajs/trpc`） | アダプタは作らない | `fetchRequestHandler` を `listen({ routes: { '/trpc/*': … } })` に載せるだけで動く（バッチ呼び出し、`onRequest` フックを実物で確認）。[production.md](production.md)「tRPC」 |
+| Apollo Server（Elysia `@elysiajs/apollo`） | パッケージは作らない | fetch 用の公式インテグレーションが無いが、`executeHTTPGraphQLRequest` を呼ぶ 30 行ほどの関数で載る（v5 で確認）。fetch ネイティブな GraphQL Yoga を推奨。[production.md](production.md)「Apollo Server」 |
+| i18n | 実装しない | 言語の選択は `acceptsLanguage` で足りる。メッセージカタログはアプリ側の関心 |
+
 ## 6. 既知の制約
 
-| 内容 | issue |
+| 内容 | 参照 |
 | --- | --- |
-| セッション・レートリミットはメモリストアのみ同梱。cron は全インスタンスで実行される | [#61](https://github.com/nori-kamiya/kivin/issues/61) |
-| `anyGuard` はコンストラクタ依存を持つガードを合成できない | [#62](https://github.com/nori-kamiya/kivin/issues/62) |
-| メトリクスはルートに一致しなかったリクエストを数えない | [#63](https://github.com/nori-kamiya/kivin/issues/63) |
+| 共有ストアは Redis（Bun 組み込みのクライアント）のみ同梱。cron の分散ロックは「1 tick を 1 回」で、インスタンスをまたいだ重複実行（長いジョブの次の tick）は防がない | [production.md](production.md)「定期実行」（#61） |
+| raw ガード / raw ミドルウェア付きのルートは AOT の生成コードを使わない（特化 executor のまま）。効果の上限を測って見送った | [performance.md](performance.md)「フレームワーク自体のオーバーヘッドの削減」（#66） |
+| `kivin generate` はエントリとその import 先を実行する（プロバイダとフックは実行しない）。DB クライアントは DI で作る | [production.md](production.md)「データベース接続」 |
 
-## 7. 残課題（issue）
+## 7. 残課題
 
-優先度は目安です。
+2026-11-13 時点でオープンな issue はありません。次に手を付ける候補（優先度は目安）:
 
-| 優先度 | issue | 内容 |
-| --- | --- | --- |
-| 中 | [#61](https://github.com/nori-kamiya/kivin/issues/61) | Redis ストアと cron の分散ロック |
-| 低 | [#62](https://github.com/nori-kamiya/kivin/issues/62), [#63](https://github.com/nori-kamiya/kivin/issues/63) | `anyGuard` の DI 対応、未マッチリクエストのメトリクス |
-| 低 | [#65](https://github.com/nori-kamiya/kivin/issues/65), [#66](https://github.com/nori-kamiya/kivin/issues/66) | さらなる性能改善（計測環境の用意から） |
-| 判断 | [#68](https://github.com/nori-kamiya/kivin/issues/68) | Hono / Elysia との残りの差分（JSX・SSG・Cache・tRPC など）の要否 |
+| 優先度 | 内容 |
+| --- | --- |
+| 低 | raw ルートの AOT 化（§6。再検討するなら performance.md の上限の計測から） |
+| 低 | `docs/reference.md` の目次とパッケージ README のアンカー（`#kivincore` など）が `@kivinjs` への改名後のものになっていない |
+| 判断 | Cache ミドルウェアなど、§5.1 で見送ったものの要望が出たとき |
 
-## 8. 最近の変更（#38〜#81）
+## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 
 | PR | 内容 |
 | --- | --- |
@@ -152,6 +167,13 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | #79 | `0.1.0` への更新と CHANGELOG の整理 |
 | #80 | リリース候補の受け入れ検証で見つかった 20 件の修正（Bun のバージョン確認、インライン schema の警告など） |
 | #81 | スコープを `@kivinjs` に変更（npm で `kivin` を取得できなかったため） |
+| #61 | `RedisSessionStore` / `RedisRateLimitStore`、cron の分散ロック（`SchedulerOptions.lock`、`createRedisJobLock`）、CI の Redis サービスコンテナ |
+| #62 | `anyGuard` の DI 対応（`composesEnhancers`）、`everyGuard` / `exceptGuard` |
+| #63 | `handleUnmatched` と、メトリクスの `route="(unmatched)"` |
+| #65 | 保留中の promise のコストの計測（`scripts/perf/http-cpu/`）と、`Bun.peek` による同期化（CORS のルートで CPU −9〜11%） |
+| #66 | ミドルウェアの無い raw ルートで状態を作らない、raw の状態と `ResponseState` の統合（in-process 幾何平均 +2.1%） |
+| #68 | 残りの差分の判断（§5.1）、`htmlResponse` のストリーム対応、JSX / tRPC / Apollo の載せ方 |
+| — | `kivin generate` などがトップレベルで開かれたハンドルのせいで終了しない不具合の修正、DB 接続の設計の指針 |
 
 それ以前の変更は `CHANGELOG.md` を見てください。
 

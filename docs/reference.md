@@ -104,9 +104,12 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 
 `CanActivate`（guard）, `ExceptionFilter`, `NestLikeMiddleware`, `HonoLikeMiddleware`,
 `SchemaAdapter`, `HttpMethod`, `Token`, `Constructor`,
+`InjectableMetadata`（`deps`、ガードを合成するクラス用の `composesEnhancers`）,
 `ParseResult` / `ParseSuccess` / `ParseFailure`,
 および metadata 系の型（`ModuleDefinition`, `ControllerMetadata`, `RouteMetadata`,
 `ProviderScope`, `ParameterMetadata` ほか）。
+
+グローバルミドルウェア（`globals.middleware` の singleton）が `handleUnmatched(request, response)` を持つと、ルートに一致しなかったリクエスト（404、405、自動の `OPTIONS` / CORS プリフライト）と `onRequest` フックが返した応答で呼ばれます。`Response` を返すと差し替え、例外はログに出して無視します。使わなければ 404 / 405 の経路で配列の長さを見るだけです。
 
 ---
 
@@ -119,15 +122,20 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createSecureHeadersMiddleware(options)` | function | secure-headers ミドルウェアを生成する |
 | `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
 | `SecureHeadersOptions` | type | secure-headers 設定 |
-| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのレートリミット（429 / Retry-After / RateLimit-* ヘッダ）。`store` で共有ストア（Redis など）に差し替え可能 |
+| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのレートリミット（429 / Retry-After / RateLimit-* ヘッダ）。`store` で共有ストア（`RedisRateLimitStore` など）に差し替え可能 |
 | `RateLimitStore`, `MemoryRateLimitStore` | interface / class | レートリミットのカウンタストア（既定はプロセス内メモリ） |
+| `RedisRateLimitStore(client, { prefix? })` | class | Redis のカウンタストア（複数インスタンスで上限を共有）。`INCR` と `PEXPIRE` を Lua スクリプト 1 回（`EVAL`）で原子的に行い、ウィンドウの終わりは Redis の `PTTL` から求める。既定の prefix は `kivin:rl:` |
+| `RedisCommandClient` | interface | `RedisRateLimitStore` が受け取るクライアントの型（`send(command, args)`）。Bun の `RedisClient` / `Bun.redis` がそのまま当てはまる |
 | `createBasicAuthGuard(options)` | function | HTTP Basic 認証ガード（定数時間比較、`verify` で独自検証） |
 | `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
 | `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
 | `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
 | `createIpRestrictionGuard(options)` | function | IP の許可 / 拒否リストのガード（拒否優先、許可リスト外は 403、不明なアドレスは既定で拒否）。アドレス・CIDR（IPv4 / IPv6）・`*`・判定関数 |
 | `createIpRestriction(options)`, `createIpMatcher(rules)`, `parseIpAddress(text)` | function | IP 制限の判定関数（`onRequest` フック用）、ルール照合、アドレスのパース（IPv4-mapped は IPv4 扱い） |
-| `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはコンストラクタ依存なし |
+| `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはアプリのコンテナが作る（コンストラクタ依存可、`providers` への記載不要） |
+| `everyGuard(...guards)` | function | すべてのガードが通れば許可（最初の拒否で停止）。`anyGuard` の中での組み合わせ用 |
+| `exceptGuard(exempt, ...guards)` | function | `exempt`（ルートのテンプレート `'/health'` / `'/public/*'`、その配列、または `(request, route) => boolean`）に一致するルートではガードを実行しない。パスの判定はルートごとに 1 回 |
+| `GuardClass`, `ComposedGuardClass`, `GuardExemption` | type | 合成するガードクラス、合成したガードクラス、`exceptGuard` の除外条件 |
 
 ## @kivinjs/http
 
@@ -149,14 +157,14 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
 | `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
 | `proxy(target, request, options?)` | function | リバースプロキシ（Hono の `proxy`）。ホップバイホップヘッダの除去、`X-Forwarded-*`、圧縮されたままの転送、502 / 504、切断時の中断 |
-| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス |
+| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス。`htmlResponse` は文字列・`html` の結果・`ReadableStream`（`react-dom/server` の `renderToReadableStream` など JSX の描画結果）を受け取る |
 | `createRequestStorageMiddleware()`, `getCurrentRequest()`, `getRequestValue(key)`, `setRequestValue(key, value)` | function | AsyncLocalStorage で現在のリクエストと値をどこからでも参照する（Hono の `contextStorage`） |
 
 ## @kivinjs/observability
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `createMetrics(options?)` | function | Prometheus メトリクス。`middleware`（`globals.middleware` 用）、`handler`（`/metrics` のネイティブルート用）、`registry` を返す。`http_requests_total` / `http_request_duration_seconds`（`method` / `route` テンプレート / `status`）、`http_requests_in_flight`、プロセスメトリクス |
+| `createMetrics(options?)` | function | Prometheus メトリクス。`middleware`（`globals.middleware` 用）、`handler`（`/metrics` のネイティブルート用）、`registry` を返す。`http_requests_total` / `http_request_duration_seconds`（`method` / `route` テンプレート / `status`）、`http_requests_in_flight`、プロセスメトリクス。ルートに一致しなかったリクエストと `onRequest` フックの応答は `route="(unmatched)"` で `http_requests_total` にだけ数える（`unmatchedRoute` でラベル変更、`false` で無効） |
 | `MetricsRegistry`, `Counter`, `Gauge`, `Histogram` | class | 依存なしのメトリクスレジストリ（ラベル付き、テキスト形式 0.0.4 で出力） |
 | `createTracingMiddleware(options)` | function | OpenTelemetry の SERVER スパン（`@opentelemetry/api` の `tracer` / `propagation` / `context` を渡す。依存なし）。HTTP セマンティック規約の属性、`traceparent` からの継続、5xx は ERROR + 例外記録 |
 | `createServerTimingMiddleware(options?)`, `serverTiming(request)` | function | `Server-Timing` ヘッダ（total とハンドラが記録した計測）。`enabled` で送る条件を絞れる |
@@ -174,7 +182,10 @@ HTTP レベルのミドルウェアとヘルパー。
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ） |
+| `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart, lock, lockTtlMs })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ）。options は `{ timeZone, onError, shutdownTimeoutMs, unref, lock, lockTtlMs }` |
+| `JobLock` | interface | `SchedulerOptions.lock` に渡す分散ロック（`acquire(key, ttlMs)`）。スケジュールどおりの各回で `<ジョブ名>:<予定時刻のミリ秒>` を取れたインスタンスだけが実行する。ロックは解放せず `lockTtlMs`（既定 60 秒。インスタンス間の時計のずれより長くする）で期限切れになる。`run(name)` / `runOnStart` / `lock: false` のジョブは対象外 |
+| `createRedisJobLock(client, { prefix? })` | function | Redis の `JobLock`（`SET key token NX PX ttl`）。既定の prefix は `kivin:job:`。`client` は Bun の `RedisClient` / `Bun.redis` など `send(command, args)` を持つもの（`RedisCommandClient`） |
+| `JobLockError` | class | ロックの取得に失敗した（例外・reject）ときに `onError` へ渡すエラー。その回はそのインスタンスでは実行しない（`cause` が元のエラー、`job` がジョブ名） |
 | `parseCron(expression, timeZone?)` | function | cron 式（5 / 6 フィールド、範囲・ステップ・リスト・名前・`@daily` などの別名）を解析し、IANA タイムゾーン（夏時間対応）で次回実行時刻を計算する |
 
 ## @kivinjs/session
@@ -183,7 +194,9 @@ HTTP レベルのミドルウェアとヘルパー。
 | --- | --- | --- |
 | `createSessionMiddleware(options)` | function | サーバー側セッション。署名付きのセッション ID Cookie、変更時のみ保存、何か設定されるまでセッションを作らない、`rolling` で期限延長 |
 | `getSession(request)` | function | リクエストのセッション（`get` / `set` / `delete` / `has` / `all` / `regenerate()`（固定化攻撃対策）/ `destroy()`） |
-| `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（Redis などを実装できる）とメモリ実装 |
+| `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（DB などを実装できる）とメモリ実装（開発・単一プロセス向け） |
+| `RedisSessionStore(client, { prefix? })` | class | Redis のセッションストア（複数インスタンスで共有）。セッションごとに JSON を `SET … PX` で保存し、`rolling` の延長は `PEXPIRE`、削除は `DEL`。既定の prefix は `kivin:sess:` |
+| `RedisCommandClient` | interface | `RedisSessionStore` が受け取るクライアントの型（`send(command, args)`）。Bun の `RedisClient` / `Bun.redis` がそのまま当てはまる |
 
 ## @kivinjs/graphql
 
@@ -328,7 +341,7 @@ generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot
 
 公開型定義と生成クライアントは DOM ライブラリに依存しないため、`bun init` の既定（`lib: ["ESNext"]`）の tsconfig でそのまま型検査できる。
 
-**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。ただし schema は `export` してください。式として直接書いた（インラインの）schema は実行時には検証されますが、`generate` は警告を出して contracts の検査を省き、型付きクライアントの入力型もゆるくなります。
+**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。DI のプロバイダ（`useFactory`・コンストラクタ）とライフサイクルフックは実行しないので、DB クライアントなどはそこで作ります（[production.md](production.md#データベース接続kysely-など)）。`generate` / `openapi` / `inspect` は完了後に明示的に終了するので、トップレベルで開かれたハンドルが残っていてもビルドは止まりません。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。ただし schema は `export` してください。式として直接書いた（インラインの）schema は実行時には検証されますが、`generate` は警告を出して contracts の検査を省き、型付きクライアントの入力型もゆるくなります。
 
 **エントリは生成ファイル（`.kivin/generated/*`）を実行時に import してはいけません。** `generate` はエントリを実行するため、まだ存在しない生成ファイルを import すると、クリーンチェックアウトでは失敗します。生成物の import は `main.ts` など、エントリから辿れない場所で行ってください。
 

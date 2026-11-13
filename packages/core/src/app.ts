@@ -5,7 +5,7 @@ import type { Server } from 'bun';
 import { assertSupportedBun } from './bun-version';
 import { Container } from './container';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
-import type { AppDefinition, RequestHook } from './metadata';
+import { getInjectableMetadata, type AppDefinition, type RequestHook } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
 import { Router } from './router';
@@ -18,10 +18,14 @@ import { afterResponseInUse, finishAfterResponse } from './after-response';
 import { linkDerivedRequest, trackServer } from './client-address';
 import { HttpError } from './http';
 import { createUnhandledErrorResponse } from './runtime/results';
-import { isPromiseLike } from './runtime/utils';
+import { isPromiseLike, NOT_SETTLED, settledValue, thenNow } from './runtime/utils';
 import { compileWebSocketRoutes } from './websocket';
 
 const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
+
+interface UnmatchedObserver {
+  handleUnmatched(request: Request, response: Response): Response | void;
+}
 
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
   assertSupportedBun();
@@ -51,10 +55,28 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     ...(definition.globals?.filters ?? []),
     ...manifest.routes.flatMap((route) => [...route.guards, ...route.middleware, ...route.filters]),
   ];
-  for (const token of enhancerTokens) {
-    if (typeof token === 'function' && !container.hasLocalProvider(token)) {
-      container.register(token as Constructor);
+  const visitedEnhancers = new Set<Token>();
+  const registerEnhancer = (token: Token) => {
+    if (typeof token !== 'function' || visitedEnhancers.has(token)) {
+      return;
     }
+    visitedEnhancers.add(token);
+    // A composing enhancer (`anyGuard(A, B)`) receives the composed classes from the container, so
+    // they are registered first; it becomes request-scoped when one of them is.
+    const metadata = getInjectableMetadata(token);
+    const composes = metadata.composesEnhancers === true;
+    if (composes) {
+      for (const dependency of metadata.deps) {
+        registerEnhancer(dependency);
+      }
+    }
+    if (!container.hasLocalProvider(token)) {
+      const requestScoped = composes && metadata.deps.some((dependency) => container.getProviderScope(dependency) === 'request');
+      container.register(requestScoped ? { provide: token, useClass: token as Constructor, scope: 'request' } : token as Constructor);
+    }
+  };
+  for (const token of enhancerTokens) {
+    registerEnhancer(token);
   }
 
   // CORS runs as the outermost global middleware so every route response gets the headers;
@@ -96,8 +118,54 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     router.register(route.method, route.fullPath, servedRoute);
   }
 
+  // Global middleware that observes requests no route handled (`handleUnmatched`, e.g. metrics
+  // counting 404s). Request-scoped middleware cannot be resolved outside a request and is skipped.
+  const unmatchedObservers: UnmatchedObserver[] = [];
+  for (const token of globalMiddlewareTokens) {
+    if ((container.getProviderScope(token) ?? 'singleton') !== 'singleton') {
+      continue;
+    }
+    const instance = container.resolve(token) as Partial<UnmatchedObserver> | null;
+    if (typeof instance?.handleUnmatched === 'function') {
+      unmatchedObservers.push(instance as UnmatchedObserver);
+    }
+  }
+  /** The response of a request no route handled, after the observers saw (and maybe replaced) it. */
+  const answerUnmatched = (request: Request, response: Response): Response => {
+    if (unmatchedObservers.length === 0) {
+      return response;
+    }
+    let current = response;
+    for (const observer of unmatchedObservers) {
+      try {
+        const replaced = observer.handleUnmatched(request, current);
+        if (replaced instanceof Response) {
+          current = replaced;
+        }
+      } catch (error) {
+        console.error('[kivin] handleUnmatched failed', error);
+      }
+    }
+    return current;
+  };
+
   const exactRoutes = createExactRouteLookup(compiledRoutes);
   const staticAllowedMethods = createStaticAllowedMethodsLookup(compiledRoutes);
+
+  /** A path that has routes, but none for this method: CORS preflight, automatic OPTIONS or 405. */
+  const answerOtherMethod = (request: Request, allowedMethods: string[], isHeadRequest: boolean): Response => {
+    if (cors) {
+      const preflight = cors.preflight(request, allowedMethods);
+      if (preflight) {
+        return preflight;
+      }
+    }
+    const response = request.method === 'OPTIONS'
+      ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
+      : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
+    cors?.apply(request, response.headers);
+    return isHeadRequest ? toHeadResponse(response) : response;
+  };
 
   const routeFetch = async (request: Request): Promise<Response> => {
     const isHeadRequest = request.method === 'HEAD';
@@ -121,19 +189,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
 
     const staticAllowed = staticAllowedMethods.get(path);
     if (staticAllowed && staticAllowed.length > 0) {
-      const allowedMethods = getAllowedMethodsForList(staticAllowed);
-      if (cors) {
-        const preflight = cors.preflight(request, allowedMethods);
-        if (preflight) {
-          return preflight;
-        }
-      }
-      const response = request.method === 'OPTIONS'
-        ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-        : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
-      cors?.apply(request, response.headers);
-
-      return isHeadRequest ? toHeadResponse(response) : response;
+      return answerUnmatched(request, answerOtherMethod(request, getAllowedMethodsForList(staticAllowed), isHeadRequest));
     }
 
     const matched = isHeadRequest
@@ -143,22 +199,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     if (!matched) {
       const allowedMethods = getAllowedMethods(router, path);
       if (allowedMethods.length > 0) {
-        if (cors) {
-          const preflight = cors.preflight(request, allowedMethods);
-          if (preflight) {
-            return preflight;
-          }
-        }
-        const response = request.method === 'OPTIONS'
-          ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-          : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
-        cors?.apply(request, response.headers);
-        return isHeadRequest ? toHeadResponse(response) : response;
+        return answerUnmatched(request, answerOtherMethod(request, allowedMethods, isHeadRequest));
       }
 
       const notFoundResponse = Response.json({ message: 'Not Found' }, { status: 404 });
       cors?.apply(request, notFoundResponse.headers);
-      return notFoundResponse;
+      return answerUnmatched(request, notFoundResponse);
     }
 
     const execution = matched.data.execute(request, matched.params);
@@ -173,30 +219,62 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     ? []
     : typeof definition.onRequest === 'function' ? [definition.onRequest] : definition.onRequest;
 
-  /** Runs the hooks; a rewritten request is routed by kivin's router, the original by `proceed`. */
-  const runRequestHooks = async (request: Request, proceed: (request: Request) => Response | Promise<Response>): Promise<Response> => {
+  const answerHookError = (request: Request, error: unknown): Response => {
+    if (error instanceof Response) {
+      return answerUnmatched(request, error);
+    }
+    return answerUnmatched(request, error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error));
+  };
+
+  type HookResult = Request | Response | undefined | void;
+  type Proceed = (request: Request) => Response | Promise<Response>;
+
+  /**
+   * Runs the hooks from `index`; a rewritten request is routed by kivin's router, the original by
+   * `proceed`. Stays synchronous while the hooks do (an already-fulfilled promise counts), so the
+   * route's own result reaches Bun without a pending promise around it (#65).
+   */
+  const runRequestHooksFrom = (index: number, original: Request, request: Request, proceed: Proceed): Response | Promise<Response> => {
     let current = request;
     try {
-      for (const hook of requestHooks) {
-        const pending = hook(current);
-        const result = isPromiseLike<Request | Response | undefined | void>(pending) ? await pending : pending;
+      for (; index < requestHooks.length; index += 1) {
+        let result = requestHooks[index]!(current);
+        if (isPromiseLike<HookResult>(result)) {
+          const settled = settledValue(result);
+          if (settled === NOT_SETTLED) {
+            const resumeAt = index + 1;
+            const at = current;
+            return Promise.resolve(result).then(
+              (resolved) => continueRequestHooks(resolved, resumeAt, original, at, proceed),
+              (error: unknown) => answerHookError(at, error),
+            );
+          }
+          result = settled;
+        }
         if (result instanceof Response) {
-          return result;
+          return answerUnmatched(current, result);
         }
         if (result instanceof Request) {
           current = linkDerivedRequest(result, current);
         }
       }
     } catch (error) {
-      if (error instanceof Response) {
-        return error;
-      }
-      return error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error);
+      return answerHookError(current, error);
     }
-    return current === request ? proceed(request) : routeFetch(current);
+    return current === original ? proceed(original) : routeFetch(current);
   };
 
-  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request) => runRequestHooks(request, routeFetch);
+  const continueRequestHooks = (result: HookResult, index: number, original: Request, current: Request, proceed: Proceed): Response | Promise<Response> => {
+    if (result instanceof Response) {
+      return answerUnmatched(current, result);
+    }
+    return runRequestHooksFrom(index, original, result instanceof Request ? linkDerivedRequest(result, current) : current, proceed);
+  };
+
+  const runRequestHooks = (request: Request, proceed: Proceed) => runRequestHooksFrom(0, request, request, proceed);
+
+  // `app.fetch` always returns a promise (an already-resolved one when everything ran synchronously).
+  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request): Promise<Response> => Promise.resolve(runRequestHooks(request, routeFetch));
 
   /** Puts the hooks in front of a native route value (handler, static Response or method map). */
   const withRequestHooks = (definition: unknown): unknown => {
@@ -395,6 +473,7 @@ function withCorsOnEveryResponse<TSchema>(compiled: CompiledRoute<TSchema>, cors
   const execute = compiled.execute;
   return {
     ...compiled,
-    execute: (request, params) => execute(request, params).then((response) => cors.ensure(request, response)),
+    // `thenNow`: a route that finished synchronously stays a resolved promise (#65).
+    execute: (request, params) => thenNow(execute(request, params), (response) => cors.ensure(request, response)),
   };
 }

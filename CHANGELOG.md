@@ -6,6 +6,31 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@kivinjs/security`: `everyGuard(...guards)`（すべて通れば許可）と `exceptGuard(exempt, ...guards)`（`'/health'` / `'/public/*'` などのルート、または判定関数に一致するルートではガードを実行しない）。Hono の `combine` の `every` / `except` に相当（#62, #68）
+- `@kivinjs/core`: `InjectableMetadata.composesEnhancers`。ガードを合成するクラスに付けると、アプリがその `deps` のガードクラスも自動登録する（#62）
+- `@kivinjs/core`: グローバルミドルウェアの `handleUnmatched(request, response)`。ルートに一致しなかったリクエスト（404 / 405 / 自動の `OPTIONS`・CORS プリフライト）と `onRequest` フックが返した応答で呼ばれる。未使用時のコストは 404 / 405 の経路での配列長の確認だけ（#63）
+- `@kivinjs/http`: `htmlResponse` が `ReadableStream` も受け取る。`react-dom/server` の `renderToReadableStream` などで描画した JSX をそのまま返せる（#68）
+- `docs/production.md`: JSX（React）、Apollo Server、tRPC をネイティブルートに載せる方法。実物のライブラリで動作を確認した（#68）
+- `docs/production.md`: 「データベース接続」。`kivin generate` はトップレベルのコードを実行するがプロバイダとライフサイクルフックは実行しないので、DB クライアントは `useFactory` で作り、接続の確認と切断は `onModuleInit` / `onApplicationShutdown` で行う
+- `@kivinjs/observability`: `createMetrics()` がルートに一致しなかったリクエストと `onRequest` フックの応答を `route="(unmatched)"` で `http_requests_total` に数える（ヒストグラムには入れない。未知のメソッドは `_OTHER`）。`unmatchedRoute` でラベルの変更・無効化（#63）
+- `@kivinjs/session`: Redis のセッションストア `RedisSessionStore`。複数インスタンスでセッションを共有できる。Bun 組み込みの Redis クライアント（`RedisClient` / `Bun.redis`）をそのまま渡せ、npm の依存は増えない（#61）
+- `@kivinjs/security`: Redis のレートリミットストア `RedisRateLimitStore`。`INCR` と `PEXPIRE` を Lua スクリプト 1 回で原子的に行い、ウィンドウの終わりは Redis の `PTTL` から求める（#61）
+- `@kivinjs/schedule`: 複数インスタンスでスケジュール実行を 1 回だけにする分散ロック `SchedulerOptions.lock`（`JobLock`）と、その Redis 実装 `createRedisJobLock`（`SET NX PX`）。`lockTtlMs`、ジョブ単位の `lock: false` / `lockTtlMs`、ロックの取得に失敗した回をスキップして `onError` に渡す `JobLockError`（#61）
+- CI の Linux ジョブで Redis のサービスコンテナを起動し、上記の Redis 結合テストを実行する（`REDIS_URL` が無い環境ではスキップ）
+
+### Fixed
+
+- `@kivinjs/cli`: `generate` / `openapi` / `inspect` が、`app.ts` から辿れるモジュールがトップレベルで開いたハンドル（DB のプール、キープアライブのタイマーなど）のせいで、書き出し後も終了せず CI / Docker のビルドを止めていた。単発のコマンドは完了後に明示的に終了する
+- `@kivinjs/cli`: `inspect routes` が、どのモジュールも提供していないガード（アプリが自動登録するもの）を raw 対応と判定できず、実行経路を誤って表示していた
+
+### Changed
+
+- `@kivinjs/core`: raw ガードや例外フィルタはあるがミドルウェアの無いルートで、リクエスト毎の実行状態を作らないようにした。raw の実行状態と `ResponseState` を 1 つのオブジェクトにまとめた。in-process で get-param +9.0%、patch-body-guard +8.5%、幾何平均 +2.1%（#66）
+- `@kivinjs/core`: 同期的に終わったルートの結果を、保留中の promise ではなく同期の値か解決済みの promise で Bun に返すようにした（CORS のラッパーとミドルウェア、`afterResponse`、AOT のコンテキストミドルウェア、`onRequest` フック、複数の raw ミドルウェア）。保留中の promise はサーバーの CPU 時間が 1 リクエストあたり約 10% 多く、CORS を有効にしたルートで約 10% 減った。計測方法と結果は `docs/performance.md`（#65）
+- `@kivinjs/security`: `anyGuard` で合成するガードをアプリのコンテナが作るようにした。コンストラクタ依存（`@Injectable({ deps })`）を持つガードも合成でき、`providers` に書く必要はない。全ガードが同期的に答える間は判定も同期的になった。raw 対応の判定はクラスのプロトタイプではなくインスタンスの `canActivateRaw` で行う（#62）
+
 ## [0.1.0] - 2026-11-06
 
 npm への最初の公開です。v0.0.1 はソースのみのタグで、npm には公開していません。Bun 1.4.0 以上が必要で、Node では動きません。
