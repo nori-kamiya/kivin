@@ -23,6 +23,10 @@ import { compileWebSocketRoutes } from './websocket';
 
 const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
+interface UnmatchedObserver {
+  handleUnmatched(request: Request, response: Response): Response | void;
+}
+
 export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest: AppManifest<TSchema>) {
   assertSupportedBun();
   const container = new Container();
@@ -114,8 +118,54 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     router.register(route.method, route.fullPath, servedRoute);
   }
 
+  // Global middleware that observes requests no route handled (`handleUnmatched`, e.g. metrics
+  // counting 404s). Request-scoped middleware cannot be resolved outside a request and is skipped.
+  const unmatchedObservers: UnmatchedObserver[] = [];
+  for (const token of globalMiddlewareTokens) {
+    if ((container.getProviderScope(token) ?? 'singleton') !== 'singleton') {
+      continue;
+    }
+    const instance = container.resolve(token) as Partial<UnmatchedObserver> | null;
+    if (typeof instance?.handleUnmatched === 'function') {
+      unmatchedObservers.push(instance as UnmatchedObserver);
+    }
+  }
+  /** The response of a request no route handled, after the observers saw (and maybe replaced) it. */
+  const answerUnmatched = (request: Request, response: Response): Response => {
+    if (unmatchedObservers.length === 0) {
+      return response;
+    }
+    let current = response;
+    for (const observer of unmatchedObservers) {
+      try {
+        const replaced = observer.handleUnmatched(request, current);
+        if (replaced instanceof Response) {
+          current = replaced;
+        }
+      } catch (error) {
+        console.error('[kivin] handleUnmatched failed', error);
+      }
+    }
+    return current;
+  };
+
   const exactRoutes = createExactRouteLookup(compiledRoutes);
   const staticAllowedMethods = createStaticAllowedMethodsLookup(compiledRoutes);
+
+  /** A path that has routes, but none for this method: CORS preflight, automatic OPTIONS or 405. */
+  const answerOtherMethod = (request: Request, allowedMethods: string[], isHeadRequest: boolean): Response => {
+    if (cors) {
+      const preflight = cors.preflight(request, allowedMethods);
+      if (preflight) {
+        return preflight;
+      }
+    }
+    const response = request.method === 'OPTIONS'
+      ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
+      : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
+    cors?.apply(request, response.headers);
+    return isHeadRequest ? toHeadResponse(response) : response;
+  };
 
   const routeFetch = async (request: Request): Promise<Response> => {
     const isHeadRequest = request.method === 'HEAD';
@@ -139,19 +189,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
 
     const staticAllowed = staticAllowedMethods.get(path);
     if (staticAllowed && staticAllowed.length > 0) {
-      const allowedMethods = getAllowedMethodsForList(staticAllowed);
-      if (cors) {
-        const preflight = cors.preflight(request, allowedMethods);
-        if (preflight) {
-          return preflight;
-        }
-      }
-      const response = request.method === 'OPTIONS'
-        ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-        : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
-      cors?.apply(request, response.headers);
-
-      return isHeadRequest ? toHeadResponse(response) : response;
+      return answerUnmatched(request, answerOtherMethod(request, getAllowedMethodsForList(staticAllowed), isHeadRequest));
     }
 
     const matched = isHeadRequest
@@ -161,22 +199,12 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     if (!matched) {
       const allowedMethods = getAllowedMethods(router, path);
       if (allowedMethods.length > 0) {
-        if (cors) {
-          const preflight = cors.preflight(request, allowedMethods);
-          if (preflight) {
-            return preflight;
-          }
-        }
-        const response = request.method === 'OPTIONS'
-          ? new Response(null, { status: 204, headers: { allow: allowedMethods.join(', ') } })
-          : Response.json({ message: 'Method Not Allowed' }, { status: 405, headers: { allow: allowedMethods.join(', ') } });
-        cors?.apply(request, response.headers);
-        return isHeadRequest ? toHeadResponse(response) : response;
+        return answerUnmatched(request, answerOtherMethod(request, allowedMethods, isHeadRequest));
       }
 
       const notFoundResponse = Response.json({ message: 'Not Found' }, { status: 404 });
       cors?.apply(request, notFoundResponse.headers);
-      return notFoundResponse;
+      return answerUnmatched(request, notFoundResponse);
     }
 
     const execution = matched.data.execute(request, matched.params);
@@ -199,7 +227,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         const pending = hook(current);
         const result = isPromiseLike<Request | Response | undefined | void>(pending) ? await pending : pending;
         if (result instanceof Response) {
-          return result;
+          return answerUnmatched(current, result);
         }
         if (result instanceof Request) {
           current = linkDerivedRequest(result, current);
@@ -207,9 +235,9 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       }
     } catch (error) {
       if (error instanceof Response) {
-        return error;
+        return answerUnmatched(current, error);
       }
-      return error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error);
+      return answerUnmatched(current, error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error));
     }
     return current === request ? proceed(request) : routeFetch(current);
   };

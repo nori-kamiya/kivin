@@ -104,9 +104,12 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 
 `CanActivate`（guard）, `ExceptionFilter`, `NestLikeMiddleware`, `HonoLikeMiddleware`,
 `SchemaAdapter`, `HttpMethod`, `Token`, `Constructor`,
+`InjectableMetadata`（`deps`、ガードを合成するクラス用の `composesEnhancers`）,
 `ParseResult` / `ParseSuccess` / `ParseFailure`,
 および metadata 系の型（`ModuleDefinition`, `ControllerMetadata`, `RouteMetadata`,
 `ProviderScope`, `ParameterMetadata` ほか）。
+
+グローバルミドルウェア（`globals.middleware` の singleton）が `handleUnmatched(request, response)` を持つと、ルートに一致しなかったリクエスト（404、405、自動の `OPTIONS` / CORS プリフライト）と `onRequest` フックが返した応答で呼ばれます。`Response` を返すと差し替え、例外はログに出して無視します。使わなければ 404 / 405 の経路で配列の長さを見るだけです。
 
 ---
 
@@ -159,7 +162,7 @@ HTTP レベルのミドルウェアとヘルパー。
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `createMetrics(options?)` | function | Prometheus メトリクス。`middleware`（`globals.middleware` 用）、`handler`（`/metrics` のネイティブルート用）、`registry` を返す。`http_requests_total` / `http_request_duration_seconds`（`method` / `route` テンプレート / `status`）、`http_requests_in_flight`、プロセスメトリクス |
+| `createMetrics(options?)` | function | Prometheus メトリクス。`middleware`（`globals.middleware` 用）、`handler`（`/metrics` のネイティブルート用）、`registry` を返す。`http_requests_total` / `http_request_duration_seconds`（`method` / `route` テンプレート / `status`）、`http_requests_in_flight`、プロセスメトリクス。ルートに一致しなかったリクエストと `onRequest` フックの応答は `route="(unmatched)"` で `http_requests_total` にだけ数える（`unmatchedRoute` でラベル変更、`false` で無効） |
 | `MetricsRegistry`, `Counter`, `Gauge`, `Histogram` | class | 依存なしのメトリクスレジストリ（ラベル付き、テキスト形式 0.0.4 で出力） |
 | `createTracingMiddleware(options)` | function | OpenTelemetry の SERVER スパン（`@opentelemetry/api` の `tracer` / `propagation` / `context` を渡す。依存なし）。HTTP セマンティック規約の属性、`traceparent` からの継続、5xx は ERROR + 例外記録 |
 | `createServerTimingMiddleware(options?)`, `serverTiming(request)` | function | `Server-Timing` ヘッダ（total とハンドラが記録した計測）。`enabled` で送る条件を絞れる |

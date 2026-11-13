@@ -243,7 +243,18 @@ export interface MetricsOptions {
    * of series stays bounded.
    */
   routeLabel?: (route: ManifestRoute<unknown>, request: Request) => string;
+  /**
+   * The `route` label of requests that reached no route (404, 405, automatic `OPTIONS` / CORS
+   * preflight) or that an `onRequest` hook answered, counted in `http_requests_total` only (their
+   * near-zero durations would skew the latency histogram). Default `'(unmatched)'`; `false` does not
+   * count them. Needs `middleware` in `globals.middleware`.
+   */
+  unmatchedRoute?: string | false;
 }
+
+// Unmatched requests can carry any method token; anything else is folded into one label value so a
+// scanner cannot create unbounded series (as OpenTelemetry's `_OTHER`).
+const KNOWN_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'CONNECT', 'TRACE']);
 
 export const CONTENT_TYPE_PROMETHEUS = 'text/plain; version=0.0.4; charset=utf-8';
 
@@ -270,8 +281,9 @@ function registerProcessMetrics(registry: MetricsRegistry) {
  * - `http_requests_in_flight` (gauge)
  *
  * Put `middleware` in `globals.middleware` (it counts requests that matched a route, with the status
- * of the final response, after exception filters) and serve
- * `handler` from a native route, ideally not exposed publicly:
+ * of the final response, after exception filters; requests no route handled are counted under
+ * `route="(unmatched)"`, see `unmatchedRoute`) and serve `handler` from a native route, ideally not
+ * exposed publicly:
  *
  * ```ts
  * const metrics = createMetrics();
@@ -306,6 +318,8 @@ export function createMetrics(options: MetricsOptions = {}) {
     return next();
   };
 
+  const unmatchedRoute = options.unmatchedRoute ?? '(unmatched)';
+
   class MetricsMiddleware implements NestLikeMiddleware {
     handle(context: RequestContext, next: () => Response | PromiseLike<Response>, route: ManifestRoute<unknown>) {
       return run(context.request, route, next);
@@ -313,6 +327,12 @@ export function createMetrics(options: MetricsOptions = {}) {
 
     handleRaw(request: Request, _params: Record<string, string>, _state: unknown, next: () => Response | PromiseLike<Response>, route: ManifestRoute<unknown>) {
       return run(request, route, next);
+    }
+
+    handleUnmatched(request: Request, response: Response) {
+      if (unmatchedRoute !== false) {
+        requests.inc({ method: KNOWN_METHODS.has(request.method) ? request.method : '_OTHER', route: unmatchedRoute, status: response.status });
+      }
     }
   }
 

@@ -113,11 +113,61 @@ describe('Prometheus metrics', () => {
     // The filter's 410, not the 500 the thrown error would suggest.
     expect(text).toContain('http_requests_total{method="GET",route="/users/:id",status="410"} 1\n');
     expect(text).not.toContain('/nope');
+    // A request that reached no route is counted, under one label value and without a duration.
+    expect(text).toContain('http_requests_total{method="GET",route="(unmatched)",status="404"} 1\n');
+    expect(text).not.toContain('http_request_duration_seconds_count{method="GET",route="(unmatched)"');
     expect(text).toContain('# TYPE http_request_duration_seconds histogram\n');
     expect(text).toContain('http_request_duration_seconds_bucket{method="GET",route="/users/:id",status="200",le="1"} 2\n');
     expect(text).toContain('http_request_duration_seconds_bucket{method="GET",route="/users/:id",status="200",le="+Inf"} 2\n');
     expect(text).toContain('http_request_duration_seconds_count{method="GET",route="/users/:id",status="200"} 2\n');
     expect(text).toContain('http_requests_in_flight 0\n');
+  });
+
+  test('requests no route handled: 404 / 405 / OPTIONS / onRequest answers, over native routes too', async () => {
+    const metrics = createMetrics({ processMetrics: false });
+    const app = createApp(defineApplication({
+      modules: [defineModule({ providers: [], controllers: [Routes], imports: [] })],
+      globals: { middleware: [metrics.middleware] },
+      onRequest: (request) => (new URL(request.url).pathname === '/old' ? Response.redirect('http://localhost/plain', 301) : undefined),
+    }), { routes });
+    await app.fetch(new Request('http://localhost/missing'));
+    await app.fetch(new Request('http://localhost/plain', { method: 'DELETE' }));
+    await app.fetch(new Request('http://localhost/users/1', { method: 'POST' }));
+    await app.fetch(new Request('http://localhost/plain', { method: 'OPTIONS' }));
+    await app.fetch(new Request('http://localhost/old'));
+    await app.fetch(new Request('http://localhost/missing', { method: 'PROPFIND' }));
+    await app.fetch(new Request('http://localhost/plain'));
+
+    const server = app.listen({ port: 0 });
+    try {
+      expect((await fetch(new URL('/nope', server.url))).status).toBe(404);
+      expect((await fetch(new URL('/plain', server.url), { method: 'PUT' })).status).toBe(405);
+      expect((await fetch(new URL('/plain', server.url))).status).toBe(200);
+    } finally {
+      await server.stop(true);
+    }
+
+    const text = await metrics.handler().text();
+    expect(text).toContain('http_requests_total{method="GET",route="(unmatched)",status="404"} 2\n');
+    expect(text).toContain('http_requests_total{method="DELETE",route="(unmatched)",status="405"} 1\n');
+    expect(text).toContain('http_requests_total{method="POST",route="(unmatched)",status="405"} 1\n');
+    expect(text).toContain('http_requests_total{method="PUT",route="(unmatched)",status="405"} 1\n');
+    expect(text).toContain('http_requests_total{method="OPTIONS",route="(unmatched)",status="204"} 1\n');
+    expect(text).toContain('http_requests_total{method="GET",route="(unmatched)",status="301"} 1\n');
+    // Unknown method tokens share one label value.
+    expect(text).toContain('http_requests_total{method="_OTHER",route="(unmatched)",status="404"} 1\n');
+    expect(text).toContain('http_requests_total{method="GET",route="/plain",status="200"} 2\n');
+    expect(text).toContain('http_requests_in_flight 0\n');
+  });
+
+  test('unmatchedRoute renames the label or turns the count off', async () => {
+    const renamed = createMetrics({ processMetrics: false, unmatchedRoute: 'other' });
+    await appWith([renamed.middleware]).fetch(new Request('http://localhost/nope'));
+    expect(await renamed.handler().text()).toContain('http_requests_total{method="GET",route="other",status="404"} 1\n');
+
+    const off = createMetrics({ processMetrics: false, unmatchedRoute: false });
+    await appWith([off.middleware]).fetch(new Request('http://localhost/nope'));
+    expect(await off.handler().text()).not.toContain('status="404"');
   });
 
   test('process metrics, custom metrics, escaping and validation', async () => {

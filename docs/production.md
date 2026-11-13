@@ -526,7 +526,8 @@ app.listen({ port: 3000, routes: { '/metrics': metrics.handler } });
 ```
 
 - `http_requests_total` / `http_request_duration_seconds{method, route, status}` と `http_requests_in_flight`、プロセスの CPU / メモリ / 起動時刻を出します。
-- `route` はルートのテンプレート（`/users/:id`）なので系列数が増え続けません。ルートに一致しなかったリクエスト（404）は数えません。
+- `route` はルートのテンプレート（`/users/:id`）なので系列数が増え続けません。
+- ルートに一致しなかったリクエスト（404、405、自動の `OPTIONS` / CORS プリフライト）と、`onRequest` フックが返した応答（末尾スラッシュのリダイレクトなど）は `route="(unmatched)"` で `http_requests_total` にだけ数えます。スキャンや誤ったクライアントの検知に使えます。処理時間はほぼゼロでレイテンシの分布をゆがめるため、ヒストグラムには入れません。`method` は既知のメソッド以外を `_OTHER` にまとめます。`createMetrics({ unmatchedRoute: 'other' })` でラベルを変え、`false` で数えません。`metrics.middleware` を `globals.middleware` に入れたときだけ有効です（ルート単位のミドルウェアでは数えません）。
 - `status` は最終レスポンスのステータスです。例外フィルタがドメインエラーを 404 に変換した場合も 500 ではなく 404 として数えます（core の `afterResponse` を使用）。
 - 独自メトリクスは `metrics.registry.counter({ name, help, labelNames })` / `gauge` / `histogram` で追加できます。
 - `/metrics` は公開しないでください（`createIpRestriction` を使う、別ポートで listen する、など）。
