@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@kivinjs/security`: `everyGuard(...guards)`（すべて通れば許可）と `exceptGuard(exempt, ...guards)`（`'/health'` / `'/public/*'` などのルート、または判定関数に一致するルートではガードを実行しない）。Hono の `combine` の `every` / `except` に相当（#62, #68）
+- `@kivinjs/core`: `InjectableMetadata.composesEnhancers`。ガードを合成するクラスに付けると、アプリがその `deps` のガードクラスも自動登録する（#62）
+
+### Changed
+
+- `@kivinjs/security`: `anyGuard` で合成するガードをアプリのコンテナが作るようにした。コンストラクタ依存（`@Injectable({ deps })`）を持つガードも合成でき、`providers` に書く必要はない。全ガードが同期的に答える間は判定も同期的になった。raw 対応の判定はクラスのプロトタイプではなくインスタンスの `canActivateRaw` で行う（#62）
+
 ## [0.1.0] - 2026-11-06
 
 npm への最初の公開です。v0.0.1 はソースのみのタグで、npm には公開していません。Bun 1.4.0 以上が必要で、Node では動きません。

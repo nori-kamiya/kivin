@@ -127,7 +127,10 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `readBasicCredentials(request)` / `readBearerToken(request)` | function | 認証ヘッダの読み取り |
 | `createIpRestrictionGuard(options)` | function | IP の許可 / 拒否リストのガード（拒否優先、許可リスト外は 403、不明なアドレスは既定で拒否）。アドレス・CIDR（IPv4 / IPv6）・`*`・判定関数 |
 | `createIpRestriction(options)`, `createIpMatcher(rules)`, `parseIpAddress(text)` | function | IP 制限の判定関数（`onRequest` フック用）、ルール照合、アドレスのパース（IPv4-mapped は IPv4 扱い） |
-| `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはコンストラクタ依存なし |
+| `anyGuard(...guards)` | function | いずれかのガードが通れば許可（Bearer または Basic など）。全拒否なら最初の `HttpError`、なければ 403。合成するガードはアプリのコンテナが作る（コンストラクタ依存可、`providers` への記載不要） |
+| `everyGuard(...guards)` | function | すべてのガードが通れば許可（最初の拒否で停止）。`anyGuard` の中での組み合わせ用 |
+| `exceptGuard(exempt, ...guards)` | function | `exempt`（ルートのテンプレート `'/health'` / `'/public/*'`、その配列、または `(request, route) => boolean`）に一致するルートではガードを実行しない。パスの判定はルートごとに 1 回 |
+| `GuardClass`, `ComposedGuardClass`, `GuardExemption` | type | 合成するガードクラス、合成したガードクラス、`exceptGuard` の除外条件 |
 
 ## @kivinjs/http
 

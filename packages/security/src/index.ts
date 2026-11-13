@@ -3,4 +3,4 @@ export { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, read
 export { createRateLimitMiddleware, MemoryRateLimitStore, type RateLimitHit, type RateLimitOptions, type RateLimitStore } from './rate-limit';
 export { createSecureHeadersMiddleware, SecureHeadersMiddleware, type SecureHeadersOptions } from './secure-headers';
 export { createIpMatcher, createIpRestriction, createIpRestrictionGuard, parseIpAddress, type IpRestrictionOptions, type IpRule } from './ip-restriction';
-export { anyGuard } from './combine';
+export { anyGuard, everyGuard, exceptGuard, type ComposedGuardClass, type GuardClass, type GuardExemption } from './combine';

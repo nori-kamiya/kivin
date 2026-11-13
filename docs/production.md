@@ -269,7 +269,39 @@ import { anyGuard, createBasicAuthGuard, createBearerAuthGuard } from '@kivinjs/
 @UseGuards(anyGuard(createBearerAuthGuard({ tokens: [process.env.API_TOKEN!] }), createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! } })))
 ```
 
-順番に試して最初に通ったもので許可します。すべて拒否した場合は最初の `HttpError`（`WWW-Authenticate` 付きの 401 など）を返し、どれも例外を投げなければ 403 です。合成するガードはコンストラクタ依存を持たないもの（`@kivinjs/security` / `@kivinjs/jwt` のファクトリで作るガードなど）に限ります。
+順番に試して最初に通ったもので許可します。すべて拒否した場合は最初の `HttpError`（`WWW-Authenticate` 付きの 401 など）を返し、どれも例外を投げなければ 403 です。
+
+合成するガードはアプリのコンテナが作るので、コンストラクタ依存（`@Injectable({ deps })`）を持つガードもそのまま使えます。合成されるガードをモジュールの `providers` に書く必要はありません（依存先のサービスはモジュールが提供します）。モジュールが提供しているガードはその単一のインスタンスを共有し、request-scoped のガードを含む場合は合成したガードも request-scoped になります。
+
+```ts
+@Injectable({ deps: [ApiKeyRepository] })
+class ApiKeyGuard implements CanActivate {
+  constructor(private readonly keys: ApiKeyRepository) {}
+  async canActivate(context: RequestContext) {
+    return this.keys.isValid(context.request.headers.get('x-api-key'));
+  }
+}
+
+@UseGuards(anyGuard(ApiKeyGuard, createBasicAuthGuard({ users: { admin: process.env.ADMIN_PASSWORD! } })))
+```
+
+### すべて通す / 一部のルートで外す（`everyGuard` / `exceptGuard`）
+
+Hono の `combine` の `every` / `except` に相当します。
+
+```ts
+import { anyGuard, everyGuard, exceptGuard } from '@kivinjs/security';
+
+// セッション + CSRF の両方、または API トークン
+@UseGuards(anyGuard(everyGuard(SessionGuard, CsrfGuard), ApiTokenGuard))
+
+// アプリ全体に認証を掛け、ヘルスチェックと公開ページだけ外す
+defineApplication({ ..., globals: { guards: [exceptGuard(['/health', '/public/*'], ApiKeyGuard)] } });
+```
+
+- `everyGuard(...guards)` は順番にすべて通れば許可し、最初の拒否で止まります。`@UseGuards(A, B)` と同じ意味なので、`anyGuard` の中で組み合わせるときに使います。
+- `exceptGuard(exempt, ...guards)` は `exempt` に一致するルートではガードを実行せずに許可します。パスはルートのテンプレート（`route.fullPath`。`basePath` を含む）と比較し、`'/health'` は完全一致、`'/public/*'` は `/public` とその配下に一致します。判定はルートごとに 1 回だけで、リクエスト毎のコストはありません。`(request, route) => boolean` を渡すとリクエスト毎に判定します。
+- どちらも、合成したガードがすべて raw 対応（`canActivateRaw`）ならコンテキストを作らない速い経路のままで、ガードが同期的に答える間は判定も同期的です。
 
 ## WebSocket
 

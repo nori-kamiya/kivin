@@ -2,6 +2,12 @@ import type { Constructor, HttpMethod, Token } from './types';
 
 export interface InjectableMetadata {
   deps: Token[];
+  /**
+   * Marks an enhancer that composes other enhancers (e.g. `anyGuard(A, B)`): when the app registers
+   * it automatically, it also registers the class tokens in `deps` that no module provides, so the
+   * composed guards get their own `@Injectable` dependencies from the container.
+   */
+  composesEnhancers?: boolean;
 }
 
 export interface ModuleDecoratorMetadata {

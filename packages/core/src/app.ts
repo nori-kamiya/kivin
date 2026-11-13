@@ -5,7 +5,7 @@ import type { Server } from 'bun';
 import { assertSupportedBun } from './bun-version';
 import { Container } from './container';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
-import type { AppDefinition, RequestHook } from './metadata';
+import { getInjectableMetadata, type AppDefinition, type RequestHook } from './metadata';
 import { flattenModules } from './module';
 import { readPathname } from './request-url';
 import { Router } from './router';
@@ -51,10 +51,28 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     ...(definition.globals?.filters ?? []),
     ...manifest.routes.flatMap((route) => [...route.guards, ...route.middleware, ...route.filters]),
   ];
-  for (const token of enhancerTokens) {
-    if (typeof token === 'function' && !container.hasLocalProvider(token)) {
-      container.register(token as Constructor);
+  const visitedEnhancers = new Set<Token>();
+  const registerEnhancer = (token: Token) => {
+    if (typeof token !== 'function' || visitedEnhancers.has(token)) {
+      return;
     }
+    visitedEnhancers.add(token);
+    // A composing enhancer (`anyGuard(A, B)`) receives the composed classes from the container, so
+    // they are registered first; it becomes request-scoped when one of them is.
+    const metadata = getInjectableMetadata(token);
+    const composes = metadata.composesEnhancers === true;
+    if (composes) {
+      for (const dependency of metadata.deps) {
+        registerEnhancer(dependency);
+      }
+    }
+    if (!container.hasLocalProvider(token)) {
+      const requestScoped = composes && metadata.deps.some((dependency) => container.getProviderScope(dependency) === 'request');
+      container.register(requestScoped ? { provide: token, useClass: token as Constructor, scope: 'request' } : token as Constructor);
+    }
+  };
+  for (const token of enhancerTokens) {
+    registerEnhancer(token);
   }
 
   // CORS runs as the outermost global middleware so every route response gets the headers;
