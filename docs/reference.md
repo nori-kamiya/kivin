@@ -119,8 +119,10 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `createSecureHeadersMiddleware(options)` | function | secure-headers ミドルウェアを生成する |
 | `SecureHeadersMiddleware` | class | デフォルト設定の secure-headers ミドルウェア |
 | `SecureHeadersOptions` | type | secure-headers 設定 |
-| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのレートリミット（429 / Retry-After / RateLimit-* ヘッダ）。`store` で共有ストア（Redis など）に差し替え可能 |
+| `createRateLimitMiddleware(options)` | function | 固定ウィンドウのレートリミット（429 / Retry-After / RateLimit-* ヘッダ）。`store` で共有ストア（`RedisRateLimitStore` など）に差し替え可能 |
 | `RateLimitStore`, `MemoryRateLimitStore` | interface / class | レートリミットのカウンタストア（既定はプロセス内メモリ） |
+| `RedisRateLimitStore(client, { prefix? })` | class | Redis のカウンタストア（複数インスタンスで上限を共有）。`INCR` と `PEXPIRE` を Lua スクリプト 1 回（`EVAL`）で原子的に行い、ウィンドウの終わりは Redis の `PTTL` から求める。既定の prefix は `kivin:rl:` |
+| `RedisCommandClient` | interface | `RedisRateLimitStore` が受け取るクライアントの型（`send(command, args)`）。Bun の `RedisClient` / `Bun.redis` がそのまま当てはまる |
 | `createBasicAuthGuard(options)` | function | HTTP Basic 認証ガード（定数時間比較、`verify` で独自検証） |
 | `createBearerAuthGuard(options)` | function | `Authorization: Bearer` の静的トークン / 独自検証ガード |
 | `createCsrfMiddleware(options)` | function | Sec-Fetch-Site / Origin によるクロスサイトリクエスト拒否（403） |
@@ -174,7 +176,10 @@ HTTP レベルのミドルウェアとヘルパー。
 
 | Export | 種別 | 概要 |
 | --- | --- | --- |
-| `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ） |
+| `Scheduler`, `createScheduler(options?)` | class / function | cron ジョブ。`cron(name, expression, handler, { timeZone, overlap, runOnStart, lock, lockTtlMs })`、`run(name)`、`list()`、`remove(name)`。provider にすると `app.init()` で開始し、`app.close()` で停止（実行中のジョブを待つ）。options は `{ timeZone, onError, shutdownTimeoutMs, unref, lock, lockTtlMs }` |
+| `JobLock` | interface | `SchedulerOptions.lock` に渡す分散ロック（`acquire(key, ttlMs)`）。スケジュールどおりの各回で `<ジョブ名>:<予定時刻のミリ秒>` を取れたインスタンスだけが実行する。ロックは解放せず `lockTtlMs`（既定 60 秒。インスタンス間の時計のずれより長くする）で期限切れになる。`run(name)` / `runOnStart` / `lock: false` のジョブは対象外 |
+| `createRedisJobLock(client, { prefix? })` | function | Redis の `JobLock`（`SET key token NX PX ttl`）。既定の prefix は `kivin:job:`。`client` は Bun の `RedisClient` / `Bun.redis` など `send(command, args)` を持つもの（`RedisCommandClient`） |
+| `JobLockError` | class | ロックの取得に失敗した（例外・reject）ときに `onError` へ渡すエラー。その回はそのインスタンスでは実行しない（`cause` が元のエラー、`job` がジョブ名） |
 | `parseCron(expression, timeZone?)` | function | cron 式（5 / 6 フィールド、範囲・ステップ・リスト・名前・`@daily` などの別名）を解析し、IANA タイムゾーン（夏時間対応）で次回実行時刻を計算する |
 
 ## @kivinjs/session
@@ -183,7 +188,9 @@ HTTP レベルのミドルウェアとヘルパー。
 | --- | --- | --- |
 | `createSessionMiddleware(options)` | function | サーバー側セッション。署名付きのセッション ID Cookie、変更時のみ保存、何か設定されるまでセッションを作らない、`rolling` で期限延長 |
 | `getSession(request)` | function | リクエストのセッション（`get` / `set` / `delete` / `has` / `all` / `regenerate()`（固定化攻撃対策）/ `destroy()`） |
-| `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（Redis などを実装できる）とメモリ実装 |
+| `SessionStore`, `MemorySessionStore` | interface / class | ストアのインターフェース（DB などを実装できる）とメモリ実装（開発・単一プロセス向け） |
+| `RedisSessionStore(client, { prefix? })` | class | Redis のセッションストア（複数インスタンスで共有）。セッションごとに JSON を `SET … PX` で保存し、`rolling` の延長は `PEXPIRE`、削除は `DEL`。既定の prefix は `kivin:sess:` |
+| `RedisCommandClient` | interface | `RedisSessionStore` が受け取るクライアントの型（`send(command, args)`）。Bun の `RedisClient` / `Bun.redis` がそのまま当てはまる |
 
 ## @kivinjs/graphql
 

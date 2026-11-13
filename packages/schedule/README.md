@@ -17,7 +17,7 @@ kivin's type declarations need `"moduleResolution": "bundler"` in your `tsconfig
 
 This package has no dependencies of its own; it is used inside a kivin application, so install `@kivinjs/core` as well (the command above includes it). Use `@kivinjs/cli` (`bun add -d @kivinjs/cli`) to generate the route manifest.
 
-With several instances every instance runs the jobs; use a lock for run-once jobs.
+With several instances every instance runs the jobs unless the scheduler has a `lock` (below).
 
 ## Usage
 
@@ -34,6 +34,30 @@ export class Jobs extends Scheduler {
 }
 // Register Jobs in a module's providers; jobs start on app.init() and stop on app.close()
 ```
+
+## Several instances: run once with a lock
+
+With `lock`, each scheduled run happens on one instance only: every instance tries to take the key `<job name>:<scheduled time in ms>`, and only the one that gets it runs the job. `createRedisJobLock` takes it in Redis with `SET … NX PX`, using Bun's built-in client (`RedisClient` from `bun`, or `Bun.redis`); the package itself stays dependency-free.
+
+```ts
+import { RedisClient } from 'bun';
+import { Injectable } from '@kivinjs/decorators';
+import { createRedisJobLock, Scheduler } from '@kivinjs/schedule';
+
+@Injectable({ deps: [] })
+export class Jobs extends Scheduler {
+  constructor() {
+    super({ timeZone: 'Asia/Tokyo', lock: createRedisJobLock(new RedisClient(process.env.REDIS_URL), { prefix: 'myapp:job:' }) });
+    this.cron('daily-report', '0 9 * * MON-FRI', () => console.log('report')); // one instance
+    this.cron('refresh-cache', '*/5 * * * *', () => console.log('refresh'), { lock: false }); // every instance
+  }
+}
+```
+
+- The lock is not released after the run; it expires after `lockTtlMs` (default 60000, also settable per job). Keep it longer than the clock difference between instances, or a lagging instance could run the same scheduled time again.
+- Only scheduled runs are coordinated: `run(name)`, `runOnStart` and `lock: false` jobs run on the instance that starts them.
+- When taking the lock fails (Redis is down, …), the run is skipped on that instance and `onError` receives a `JobLockError`.
+- Runs are not kept from overlapping across instances: an instance still busy with the previous run does not compete, so another may start the next one.
 
 ## Documentation
 
@@ -59,7 +83,7 @@ kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前
 
 このパッケージ自体に依存はなく、kivin アプリケーションの中で使うため `@kivinjs/core` も入れてください（上のコマンドに含めています）。 ルートマニフェストの生成には `@kivinjs/cli`（`bun add -d @kivinjs/cli`）を使います。
 
-複数インスタンスで動かすと、それぞれがジョブを実行します。1 回だけ実行したいジョブにはロックを使ってください。
+複数インスタンスで動かすと、スケジューラに `lock`（下記）が無い限り、それぞれがジョブを実行します。
 
 ### 使い方
 
@@ -76,6 +100,30 @@ export class Jobs extends Scheduler {
 }
 // Register Jobs in a module's providers; jobs start on app.init() and stop on app.close()
 ```
+
+### 複数インスタンス: ロックで 1 回だけ実行する
+
+`lock` を渡すと、スケジュールどおりの各回を 1 つのインスタンスだけが実行します。各インスタンスは `<ジョブ名>:<予定時刻のミリ秒>` というキーを取りにいき、取れたインスタンスだけがジョブを実行します。`createRedisJobLock` は Bun 組み込みのクライアント（`bun` の `RedisClient`、または `Bun.redis`）で、Redis に `SET … NX PX` してロックを取ります。パッケージ自体は依存なしのままです。
+
+```ts
+import { RedisClient } from 'bun';
+import { Injectable } from '@kivinjs/decorators';
+import { createRedisJobLock, Scheduler } from '@kivinjs/schedule';
+
+@Injectable({ deps: [] })
+export class Jobs extends Scheduler {
+  constructor() {
+    super({ timeZone: 'Asia/Tokyo', lock: createRedisJobLock(new RedisClient(process.env.REDIS_URL), { prefix: 'myapp:job:' }) });
+    this.cron('daily-report', '0 9 * * MON-FRI', () => console.log('report')); // one instance
+    this.cron('refresh-cache', '*/5 * * * *', () => console.log('refresh'), { lock: false }); // every instance
+  }
+}
+```
+
+- ロックは実行後も解放せず、`lockTtlMs`（既定 60000。ジョブ単位でも指定可）で期限切れになります。インスタンス間の時計のずれより長くしてください。短いと、時計の遅れたインスタンスが同じ回をもう一度実行することがあります。
+- 調整するのはスケジュールどおりの実行だけです。`run(name)`、`runOnStart`、`lock: false` のジョブは、それを起動したインスタンスで実行します。
+- ロックの取得に失敗した場合（Redis が落ちているなど）は、そのインスタンスではその回をスキップし、`onError` に `JobLockError` を渡します。
+- インスタンスをまたいだ重複は防ぎません。前回の実行がまだ続いているインスタンスは次の回を取りにいかないので、別のインスタンスが次の回を始めることがあります。
 
 ### ドキュメント
 

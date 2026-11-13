@@ -6,6 +6,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- `@kivinjs/session`: Redis のセッションストア `RedisSessionStore`。複数インスタンスでセッションを共有できる。Bun 組み込みの Redis クライアント（`RedisClient` / `Bun.redis`）をそのまま渡せ、npm の依存は増えない（#61）
+- `@kivinjs/security`: Redis のレートリミットストア `RedisRateLimitStore`。`INCR` と `PEXPIRE` を Lua スクリプト 1 回で原子的に行い、ウィンドウの終わりは Redis の `PTTL` から求める（#61）
+- `@kivinjs/schedule`: 複数インスタンスでスケジュール実行を 1 回だけにする分散ロック `SchedulerOptions.lock`（`JobLock`）と、その Redis 実装 `createRedisJobLock`（`SET NX PX`）。`lockTtlMs`、ジョブ単位の `lock: false` / `lockTtlMs`、ロックの取得に失敗した回をスキップして `onError` に渡す `JobLockError`（#61）
+- CI の Linux ジョブで Redis のサービスコンテナを起動し、上記の Redis 結合テストを実行する（`REDIS_URL` が無い環境ではスキップ）
+
 ## [0.1.0] - 2026-11-06
 
 npm への最初の公開です。v0.0.1 はソースのみのタグで、npm には公開していません。Bun 1.4.0 以上が必要で、Node では動きません。

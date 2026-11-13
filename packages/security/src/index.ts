@@ -1,6 +1,7 @@
 // @kivinjs/security: authentication guards, CSRF protection, security headers, rate limiting and IP restriction.
 export { createBasicAuthGuard, createBearerAuthGuard, createCsrfMiddleware, readBasicCredentials, readBearerToken, safeCompare, type BasicAuthOptions, type BasicCredentials, type BearerAuthOptions, type CsrfOptions } from './auth';
 export { createRateLimitMiddleware, MemoryRateLimitStore, type RateLimitHit, type RateLimitOptions, type RateLimitStore } from './rate-limit';
+export { RedisRateLimitStore, type RedisCommandClient, type RedisRateLimitStoreOptions } from './rate-limit-redis';
 export { createSecureHeadersMiddleware, SecureHeadersMiddleware, type SecureHeadersOptions } from './secure-headers';
 export { createIpMatcher, createIpRestriction, createIpRestrictionGuard, parseIpAddress, type IpRestrictionOptions, type IpRule } from './ip-restriction';
 export { anyGuard } from './combine';

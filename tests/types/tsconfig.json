@@ -10,7 +10,10 @@
   "references": [
     { "path": "../../packages/core" },
     { "path": "../../packages/decorators" },
-    { "path": "../../packages/logger" }
+    { "path": "../../packages/logger" },
+    { "path": "../../packages/security" },
+    { "path": "../../packages/session" },
+    { "path": "../../packages/schedule" }
   ],
   "include": ["*.ts"]
 }
