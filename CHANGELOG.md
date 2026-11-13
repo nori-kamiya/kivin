@@ -27,6 +27,7 @@
 
 ### Changed
 
+- `@kivinjs/core`: raw ガードや例外フィルタはあるがミドルウェアの無いルートで、リクエスト毎の実行状態を作らないようにした。raw の実行状態と `ResponseState` を 1 つのオブジェクトにまとめた。in-process で get-param +9.0%、patch-body-guard +8.5%、幾何平均 +2.1%（#66）
 - `@kivinjs/core`: 同期的に終わったルートの結果を、保留中の promise ではなく同期の値か解決済みの promise で Bun に返すようにした（CORS のラッパーとミドルウェア、`afterResponse`、AOT のコンテキストミドルウェア、`onRequest` フック、複数の raw ミドルウェア）。保留中の promise はサーバーの CPU 時間が 1 リクエストあたり約 10% 多く、CORS を有効にしたルートで約 10% 減った。計測方法と結果は `docs/performance.md`（#65）
 - `@kivinjs/security`: `anyGuard` で合成するガードをアプリのコンテナが作るようにした。コンストラクタ依存（`@Injectable({ deps })`）を持つガードも合成でき、`providers` に書く必要はない。全ガードが同期的に答える間は判定も同期的になった。raw 対応の判定はクラスのプロトタイプではなくインスタンスの `canActivateRaw` で行う（#62）
 
