@@ -4,7 +4,7 @@
 
 CLI は decorator metadata を runtime で実行せず、TypeScript source を AST 解析して route manifest を生成します。
 
-ただし `kivin generate` / `openapi` / `inspect` は、AST 解析に加えてエントリ（`app.ts`）を `import()` して `defineApplication` の実体（`schemaAdapter` など）を読み込みます。**エントリとその import 先のトップレベルのコードは、`generate` の間に実際に実行されます。** 環境変数の検証（`loadEnv`）・DB 接続・ネットワークアクセスをモジュールの先頭で行うと、シークレットの無いビルド環境や CI で `generate` が失敗します。そうした処理は DI（`envProvider` など）か `main.ts` に置いてください（[production.md](production.md#環境変数kivinconfig)）。
+ただし `kivin generate` / `openapi` / `inspect` は、AST 解析に加えてエントリ（`app.ts`）を `import()` して `defineApplication` の実体（`schemaAdapter` など）を読み込みます。**エントリとその import 先のトップレベルのコードは、`generate` の間に実際に実行されます。** 環境変数の検証（`loadEnv`）・DB 接続・ネットワークアクセスをモジュールの先頭で行うと、シークレットの無いビルド環境や CI で `generate` が失敗します。そうした処理は DI（`envProvider` などのプロバイダとライフサイクルフック。`generate` はプロバイダを生成せず、フックも呼びません）か `main.ts` に置いてください（[production.md](production.md#データベース接続kysely-など)）。
 
 構文解析は [oxc-parser](https://www.npmjs.com/package/oxc-parser)、module 解決は [oxc-resolver](https://www.npmjs.com/package/oxc-resolver) で行い、`typescript` パッケージには依存しません(利用者の TypeScript のバージョンに左右されない)。
 

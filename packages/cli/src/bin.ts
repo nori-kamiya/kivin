@@ -209,7 +209,14 @@ function renderModules(modules: ModuleInspection[]) {
   ].join('\n')).join('\n\n');
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+// One-shot commands exit once they are done. `generate` / `openapi` / `inspect` import the entry, and a
+// module that opens a handle at its top level (a DB pool, a client with a keep-alive timer) would
+// otherwise keep the process — and a CI or Docker build — waiting forever after the files are written.
+// `dev` never resolves, so it keeps running.
+main().then(
+  () => process.exit(),
+  (error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exit(1);
+  },
+);

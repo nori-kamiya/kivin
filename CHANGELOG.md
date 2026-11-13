@@ -13,7 +13,13 @@
 - `@kivinjs/core`: グローバルミドルウェアの `handleUnmatched(request, response)`。ルートに一致しなかったリクエスト（404 / 405 / 自動の `OPTIONS`・CORS プリフライト）と `onRequest` フックが返した応答で呼ばれる。未使用時のコストは 404 / 405 の経路での配列長の確認だけ（#63）
 - `@kivinjs/http`: `htmlResponse` が `ReadableStream` も受け取る。`react-dom/server` の `renderToReadableStream` などで描画した JSX をそのまま返せる（#68）
 - `docs/production.md`: JSX（React）、Apollo Server、tRPC をネイティブルートに載せる方法。実物のライブラリで動作を確認した（#68）
+- `docs/production.md`: 「データベース接続」。`kivin generate` はトップレベルのコードを実行するがプロバイダとライフサイクルフックは実行しないので、DB クライアントは `useFactory` で作り、接続の確認と切断は `onModuleInit` / `onApplicationShutdown` で行う
 - `@kivinjs/observability`: `createMetrics()` がルートに一致しなかったリクエストと `onRequest` フックの応答を `route="(unmatched)"` で `http_requests_total` に数える（ヒストグラムには入れない。未知のメソッドは `_OTHER`）。`unmatchedRoute` でラベルの変更・無効化（#63）
+
+### Fixed
+
+- `@kivinjs/cli`: `generate` / `openapi` / `inspect` が、`app.ts` から辿れるモジュールがトップレベルで開いたハンドル（DB のプール、キープアライブのタイマーなど）のせいで、書き出し後も終了せず CI / Docker のビルドを止めていた。単発のコマンドは完了後に明示的に終了する
+- `@kivinjs/cli`: `inspect routes` が、どのモジュールも提供していないガード（アプリが自動登録するもの）を raw 対応と判定できず、実行経路を誤って表示していた
 
 ### Changed
 

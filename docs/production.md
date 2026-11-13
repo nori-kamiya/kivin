@@ -633,6 +633,65 @@ defineModule({ providers: [envProvider(ENV, Env)], ... });
 
 Standard Schema に対応したライブラリ（Valibot / Zod / ArkType）ならそのまま渡せます。それ以外は `{ adapter }` を指定します。`prefix: 'APP_'` を付けると `APP_PORT` を `PORT` として読み、無関係な変数は schema に渡しません。
 
+## データベース接続（Kysely など）
+
+`kivin generate` / `openapi` / `inspect` は `app.ts` とその import 先を読み込むので、**モジュールのトップレベルのコードはビルド時にも実行されます**。一方、DI のプロバイダ（`useFactory` やコンストラクタ）とライフサイクルフック（`onModuleInit` など）は `generate` / `openapi` では実行されません（`inspect routes` だけは、ガードの判定のためにガードとその依存のコンストラクタ・ファクトリを呼ぶことがあります。フックは呼びません）。そこで DB は次のように分けます。
+
+- **トップレベル**: 型・トークン・プロバイダの定義だけ。クライアントの生成・接続・クエリ・環境変数の読み込みはしない
+- **`useFactory`**: クライアントを作る（接続はまだ張らない。Kysely + `pg` や `Bun.SQL` は最初のクエリまで接続しない）
+- **`onModuleInit`**: 接続を確認する（失敗したら `app.init()` が reject して起動しない）
+- **`onApplicationShutdown`**: プールを閉じる
+
+```ts
+// db.ts
+import { createToken, type ContainerLike } from '@kivinjs/core';
+import { Injectable } from '@kivinjs/decorators';
+import { Kysely, PostgresDialect, sql } from 'kysely';
+import { Pool } from 'pg';
+import { ENV } from './env';                       // envProvider(ENV, Env) で登録した型付き環境変数
+
+export const DB = createToken<Kysely<Database>>('app.db');
+
+@Injectable({ deps: [DB] })
+export class DatabaseLifecycle {
+  constructor(private readonly db: Kysely<Database>) {}
+
+  async onModuleInit() {
+    await sql`select 1`.execute(this.db);           // 起動時に接続を確認
+  }
+
+  async onApplicationShutdown() {
+    await this.db.destroy();                        // app.close()（shutdownSignals）でプールを閉じる
+  }
+}
+
+export const databaseProviders = [
+  {
+    provide: DB,
+    useFactory: (container: ContainerLike) => new Kysely<Database>({
+      dialect: new PostgresDialect({ pool: new Pool({ connectionString: container.resolve(ENV).DATABASE_URL, max: 10 }) }),
+    }),
+  },
+  DatabaseLifecycle,
+];
+```
+
+```ts
+// main.ts
+const app = createApp(definition, manifest);
+await app.init();                                  // ENV の検証 → DB の生成 → 接続確認
+app.listen({ port: 3000, shutdownSignals: true });
+```
+
+リポジトリやサービスは `@Injectable({ deps: [DB] })` で受け取ります。テストでは `createTestingApp(definition, { overrides: [{ provide: DB, useValue: testDb }] })` で差し替えられます。
+
+避けるもの:
+
+- `export const db = new Kysely({ ... process.env.DATABASE_URL! ... })` をモジュールの先頭に書く。生成自体は接続しないことが多いものの、環境変数の検証やテストでの差し替えができず、ドライバによっては生成時に接続やタイマーを開きます
+- トップレベルの `await db.connect()` や `await sql\`select 1\``。DB の無いビルド環境では `generate` が失敗するか、接続のタイムアウトまで待たされます
+
+`kivin generate` などの単発のコマンドは、書き出しが終わると明示的に終了します。トップレベルでプールやタイマーを開くモジュールがあっても、ビルドが止まったままにはなりません（以前は終了しませんでした）。
+
 ## 定期実行（`@kivinjs/schedule`）
 
 ```ts

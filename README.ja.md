@@ -134,7 +134,7 @@ single binary にするには、生成 manifest を静的 import したまま `b
 
 ### `generate` がすること・しないこと
 
-- `kivin generate` はデコレータをソースの AST から解析しますが、**エントリファイルとその import 先も実際に import します**。つまり、`app.ts` から辿れるモジュールのトップレベルの副作用はビルド時に実行されます。必須の環境変数の読み込みや接続の確立などをそこに書くと、シークレットの無い CI / Docker ビルドで失敗します。環境変数の検証は DI（`@kivinjs/config` の `envProvider`）か `main.ts` で行ってください（[docs/production.md](docs/production.md)）。
+- `kivin generate` はデコレータをソースの AST から解析しますが、**エントリファイルとその import 先も実際に import します**。つまり、`app.ts` から辿れるモジュールのトップレベルの副作用はビルド時に実行されます。必須の環境変数の読み込みや接続の確立などをそこに書くと、シークレットの無い CI / Docker ビルドで失敗します。環境変数の検証は DI（`@kivinjs/config` の `envProvider`）か `main.ts` で行い、DB クライアントは DI の `useFactory` で作って接続の確認と切断はライフサイクルフック（`onModuleInit` / `onApplicationShutdown`）で行ってください（[docs/production.md](docs/production.md) の「データベース接続」）。
 - decorator に渡す guard・middleware は **`export` する**か、その場で式として書く必要があります。schema も **`export` してください**。契約チェックと型付きクライアントは `export` された schema を読みます。その場で書いた schema（`@UseQuerySchema(v.object({ ... }))`）は実行時には検証されますが、`kivin generate` は警告を出して契約チェックを省き、型付きクライアントの入力型はゆるい型になります。`export` していない `const IdSchema = ...` を渡すと生成に失敗します。
 - 生成に失敗した場合、`--outDir` の以前の成果物は変更されません。
 

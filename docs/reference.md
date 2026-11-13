@@ -334,7 +334,7 @@ generate --entry <app.ts> --outDir <dir> [--title <t>] [--version <v>] [--no-aot
 
 公開型定義と生成クライアントは DOM ライブラリに依存しないため、`bun init` の既定（`lib: ["ESNext"]`）の tsconfig でそのまま型検査できる。
 
-**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。ただし schema は `export` してください。式として直接書いた（インラインの）schema は実行時には検証されますが、`generate` は警告を出して contracts の検査を省き、型付きクライアントの入力型もゆるくなります。
+**`generate` はエントリ（`--entry`）とその import 先を実際に実行します。** モジュールのトップレベルで `loadEnv()` など環境変数やネットワークに依存する処理を呼ぶと、シークレットの無いビルド環境で `generate` が失敗します（[production.md](production.md#環境変数kivinconfig)）。DI のプロバイダ（`useFactory`・コンストラクタ）とライフサイクルフックは実行しないので、DB クライアントなどはそこで作ります（[production.md](production.md#データベース接続kysely-など)）。`generate` / `openapi` / `inspect` は完了後に明示的に終了するので、トップレベルで開かれたハンドルが残っていてもビルドは止まりません。また、decorator に渡す schema・guard・middleware は `export` するか式として直接書く必要があります（`export` していないローカル変数は参照できません）。ただし schema は `export` してください。式として直接書いた（インラインの）schema は実行時には検証されますが、`generate` は警告を出して contracts の検査を省き、型付きクライアントの入力型もゆるくなります。
 
 **エントリは生成ファイル（`.kivin/generated/*`）を実行時に import してはいけません。** `generate` はエントリを実行するため、まだ存在しない生成ファイルを import すると、クリーンチェックアウトでは失敗します。生成物の import は `main.ts` など、エントリから辿れない場所で行ってください。
 
