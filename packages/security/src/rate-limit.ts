@@ -17,7 +17,7 @@ export interface RateLimitOptions {
   now?: () => number;
   /**
    * Where the counters live. Default: a `MemoryRateLimitStore` (per process). With several instances
-   * behind a load balancer, use a shared store (e.g. Redis `INCR` + `PEXPIRE`) so the limit is global.
+   * behind a load balancer, use a shared store (`RedisRateLimitStore`) so the limit is global.
    */
   store?: RateLimitStore;
 }

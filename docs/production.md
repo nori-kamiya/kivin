@@ -150,23 +150,27 @@ globals: {
 
 `createRateLimitMiddleware({ limit, windowMs, key?, headers?, store? })`:
 
-- **ガードより後に実行されます。** ガードが拒否したリクエスト（認証失敗など）はこのミドルウェアに届かないため数えられず、パスワードやトークンの総当たりは制限されません。認証の試行回数を制限するには、リバースプロキシ / WAF で制限するか、認証ガードの前に `RateLimitStore`（`MemoryRateLimitStore` など）の `increment` を呼ぶ独自ガードを置いてください
-- キーごとの固定ウィンドウでメモリ上に数えます。上限を超えると `429 { message: 'Too Many Requests' }` と `Retry-After`
+- **ガードより後に実行されます。** ガードが拒否したリクエスト（認証失敗など）はこのミドルウェアに届かないため数えられず、パスワードやトークンの総当たりは制限されません。認証の試行回数を制限するには、リバースプロキシ / WAF で制限するか、認証ガードの前に `RateLimitStore`（`MemoryRateLimitStore` / `RedisRateLimitStore` など）の `increment` を呼ぶ独自ガードを置いてください
+- キーごとの固定ウィンドウで数えます。上限を超えると `429 { message: 'Too Many Requests' }` と `Retry-After`
 - レスポンスに `RateLimit-Limit` / `RateLimit-Remaining` / `RateLimit-Reset`（秒）を付けます（`headers: false` で無効）
 - キーの既定はクライアントのアドレス（`getClientAddress(request)`、Bun の `server.requestIP`）。リバースプロキシの後ろではプロキシのアドレスになるので、信頼できる転送ヘッダから `key` を自分で作ってください。`key` が `undefined` を返したリクエストは制限しません
-- 既定はプロセスごとのメモリ（`MemoryRateLimitStore`）です。複数インスタンスで上限を共有するには `store` に共有ストアを渡します:
+- 既定はプロセスごとのメモリ（`MemoryRateLimitStore`）です。複数インスタンスで上限を共有するには `store` に `RedisRateLimitStore` を渡します（下記）。独自のストアは `RateLimitStore` を実装します
 
-  ```ts
-  const redisStore: RateLimitStore = {
-    async increment(key, windowMs, now) {
-      const count = await redis.incr(`rl:${key}`);
-      if (count === 1) await redis.pexpire(`rl:${key}`, windowMs);
-      const ttl = await redis.pttl(`rl:${key}`);
-      return { count, resetAt: now + Math.max(ttl, 0) };
-    },
-  };
-  createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store: redisStore });
-  ```
+### Redis で共有する（`RedisRateLimitStore`）
+
+```ts
+import { RedisClient } from 'bun';
+import { createRateLimitMiddleware, RedisRateLimitStore } from '@kivinjs/security';
+
+const redis = new RedisClient(process.env.REDIS_URL);   // Bun.redis でもよい（REDIS_URL / VALKEY_URL を読む）
+createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store: new RedisRateLimitStore(redis, { prefix: 'myapp:rl:' }) });
+```
+
+- Bun 組み込みの Redis クライアント（`RedisClient` / `Bun.redis`）をそのまま渡せます。npm の依存は要りません。受け取るのは `send(command, args)` を持つオブジェクトなので、他のクライアントも小さなアダプタで使えます。`@kivinjs/session` の `RedisSessionStore` と `@kivinjs/schedule` の `createRedisJobLock` も同じです
+- キー `<prefix><key>`（既定の prefix は `kivin:rl:`）を 1 つのカウンタにし、Lua スクリプト 1 回（`EVAL`）で `INCR` と、ウィンドウ最初のリクエストでの `PEXPIRE` を行います。2 つのコマンドの間で失敗して期限の無いカウンタが残ることはありません
+- ウィンドウの終わり（`RateLimit-Reset` / `Retry-After`）は Redis の `PTTL` から求めるので、インスタンス間の時計のずれに影響されません
+- Redis に届かないと `increment` が失敗し、そのリクエストは 500 になります（制限せずに通すことはしません）。Bun の `RedisClient` は既定で再接続を待つため、失敗するまで数十秒かかることがあります。すぐに失敗させるには `new RedisClient(url, { enableOfflineQueue: false })` とし、起動時に `await redis.connect()` してください（オフラインキューが無いと、接続前のコマンドも失敗します）。セッションと cron のロックも同じです
+
 ## 圧縮と ETag
 
 ```ts
@@ -715,7 +719,35 @@ await app.close();         // 停止し、実行中のジョブを待つ（既�
 - タイムゾーンは IANA 名で指定し、夏時間を考慮します（存在しない時刻の実行は飛ばし、2 回ある時刻は 1 回だけ）。
 - 前回の実行が終わっていなければ、次の回は既定でスキップします（`overlap: 'allow'` で重ねて実行）。
 - 例外はログに出して次回以降も続けます（`onError` で通知先を変更可）。`run(name)` で手動実行、`list()` で次回実行時刻を確認できます。
-- 複数のインスタンスで動かすと、それぞれで実行されます。1 回だけ実行したいジョブはロックなどで排他してください。
+- 複数のインスタンスで動かすと、既定ではそれぞれで実行されます。1 回だけ実行したいジョブは `lock`（下記）を使います。
+
+### 複数インスタンスで 1 回だけ実行する（`lock`）
+
+```ts
+import { RedisClient } from 'bun';
+import { createRedisJobLock, Scheduler } from '@kivinjs/schedule';
+
+@Injectable({ deps: [ReportService] })
+export class Jobs extends Scheduler {
+  constructor(reports: ReportService) {
+    super({
+      timeZone: 'Asia/Tokyo',
+      lock: createRedisJobLock(new RedisClient(process.env.REDIS_URL), { prefix: 'myapp:job:' }),
+      lockTtlMs: 60_000,                                  // 既定 60 秒
+    });
+    this.cron('daily-report', '0 9 * * MON-FRI', () => reports.send());              // どれか 1 つのインスタンスで実行
+    this.cron('refresh-cache', '*/5 * * * *', () => reports.refreshLocalCache(), { lock: false });   // 全インスタンスで実行
+  }
+}
+```
+
+- スケジュールどおりの各回で、各インスタンスは `<ジョブ名>:<予定時刻のミリ秒>` というキーのロックを取りにいき、取れたインスタンスだけが実行します。取れなかったインスタンスはその回を黙ってスキップします（`list()` の `lastRun` はそのインスタンスで実行した時刻なので、スキップした回では変わりません）。
+- `createRedisJobLock(client, { prefix })` は `SET <prefix><キー> <乱数> NX PX <lockTtlMs>` で取ります（既定の prefix は `kivin:job:`）。`JobLock`（`acquire(key, ttlMs)` が true を返したインスタンスだけが実行）を実装すれば、DB などで代用できます。
+- ロックは実行後も解放せず、`lockTtlMs` で期限切れになるのを待ちます。時計が遅れているインスタンスが同じ予定時刻に遅れて到達しても、ロックが残っていれば再実行しません。そのため **`lockTtlMs` はインスタンス間の時計のずれ（とタイマーの遅れ）より長く**してください。キーは予定時刻ごとに別なので、ジョブの間隔より長くても構いません（ジョブ単位の `lockTtlMs` でも指定可）。
+- 調整するのはスケジュールどおりの実行だけです。`run(name)` の手動実行と `runOnStart` は、そのインスタンスで必ず実行します。`lock: false` のジョブは全インスタンスで実行します。
+- ロックの取得に失敗した場合（Redis が落ちているなど）は、そのインスタンスでは実行せず（他のインスタンスが実行しているか分からないため）、`onError` に `JobLockError`（`cause` が元のエラー）を渡します。どのインスタンスも Redis に届かなければ、その回はどこでも実行されません。
+- インスタンスをまたいだ重複は防ぎません。前回の実行がまだ続いているインスタンスは（`overlap: 'skip'` なら）次の回のロックを取りにいかないので、別のインスタンスが次の回を実行することがあります。長いジョブを重ねたくない場合は、ジョブの中で別途ロックを取ってください。
+- 同じ Redis を複数のアプリで使う場合や、同じジョブ名を持つ別の `Scheduler` がある場合は、`prefix` を分けてください（ジョブ名と予定時刻が同じだとキーが衝突します）。
 
 ## セッション（`@kivinjs/session`）
 
@@ -726,7 +758,7 @@ const Sessions = createSessionMiddleware({
   secret: [process.env.SESSION_SECRET!, process.env.SESSION_SECRET_OLD!].filter(Boolean),
   cookie: { secure: true },            // 既定は HttpOnly / SameSite=Lax / Path=/
   ttl: 60 * 60 * 24 * 7,
-  // store: new RedisSessionStore(...)  // SessionStore を実装したもの（既定はメモリ）
+  // store: new RedisSessionStore(redis), // 複数インスタンスで共有する場合（既定はメモリ。下記）
 });
 defineApplication({ ..., globals: { middleware: [Sessions] } });
 
@@ -743,7 +775,25 @@ logout({ context }: RouteInput) {
 
 - セッション ID は 32 バイトの乱数で、Cookie には署名付きで入れます。署名が合わない・ストアに無い ID はクライアントの値を使わず、新しい ID にします。
 - 何かを設定するまではセッションを作らず Cookie も出しません（匿名アクセスでストアが膨らまない）。変更があった時だけ保存し、`rolling: true` ならアクセスのたびに期限を延ばします。
-- `MemorySessionStore` は開発・テスト・単一プロセス向けです（再起動で消え、プロセス間で共有されない）。
+- `MemorySessionStore` は開発・テスト・単一プロセス向けです（再起動で消え、プロセス間で共有されない）。複数インスタンスでは `RedisSessionStore`（下記）を使うか、`SessionStore` を実装します。
+
+### Redis に保存する（`RedisSessionStore`）
+
+```ts
+import { RedisClient } from 'bun';
+import { createSessionMiddleware, RedisSessionStore } from '@kivinjs/session';
+
+const redis = new RedisClient(process.env.REDIS_URL);   // Bun.redis でもよい
+const Sessions = createSessionMiddleware({
+  secret: process.env.SESSION_SECRET!,
+  cookie: { secure: true },
+  store: new RedisSessionStore(redis, { prefix: 'myapp:sess:' }),   // 既定の prefix は kivin:sess:
+});
+```
+
+- セッション 1 つを文字列キー `<prefix><セッション ID>` に JSON で保存し、`ttl` をキーの期限にします（`SET … PX`）。期限切れのセッションは Redis が消すので、掃除は要りません。`rolling: true` の延長は `PEXPIRE`、`destroy()` / `regenerate()` の削除は `DEL` です。
+- データは JSON で保存するので、`Date` などは文字列になります（`MemorySessionStore` も同じ）。
+- Redis に届かないとセッションを読めず、そのリクエストは 500 になります。クライアントの設定は[レートリミットの Redis の項](#redis-で共有するredisratelimitstore)を参照してください。
 
 ## GraphQL（`@kivinjs/graphql`）
 
