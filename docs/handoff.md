@@ -70,11 +70,12 @@ bun run perf:check     # Hono / Elysia との比較（参考値）
 | どこに時間を使っているか | `scripts/perf/profile.ts` + `scripts/perf/summarize-profile.ts` | `ONLY=<シナリオ> bun --cpu-prof --cpu-prof-dir=/tmp/prof scripts/perf/profile.ts` → `bun scripts/perf/summarize-profile.ts /tmp/prof`。自己時間と、TS ソースの包含時間を出す |
 | フレームワーク自体のオーバーヘッド | `scripts/perf/floor.ts` | Hono / Elysia 比較用の Stack アプリを、Bun のネイティブルートが呼ぶハンドラとして直接実行し、手書きの最小実装との差（ns）を出す。先に `bun run bench:stack:generate` |
 | Hono / Elysia との比較 | `bun run perf:check` | 3 つのバイナリを同時に起動して Latin square で交互に計測。CI では参考値 |
+| HTTP レベルのサーバー CPU 時間 | `scripts/perf/http-cpu/` | サーバーを `taskset` で 1 コアに固定し、リクエストあたりの CPU 時間を交互に計測して比を取る。スループットより安定する（[performance.md](performance.md)「HTTP レベルの promise のコスト」） |
 
 注意:
 
 - 性能ゲートのシナリオ（`scripts/perf/bench-app.ts`）は current 側のものが base 側にも使われます。シナリオを足すのは自由ですが、ベンチアプリが base の `@kivinjs/*` に無い export を import すると base 側のビルドが壊れます
-- 2 コアの共有 VM（CI ランナーや作業用コンテナ）では、HTTP 経由の計測は同じコード同士でも ±10〜20% ぶれます。数 % の差を HTTP で判断しないこと（[#65](https://github.com/nori-kamiya/kivin/issues/65)）。インプロセスのペア計測を正とする
+- 2 コアの共有 VM（CI ランナーや作業用コンテナ）では、HTTP 経由のスループットは同じコード同士でも ±10〜20% ぶれます。数 % の差を HTTP のスループットで判断しないこと。インプロセスのペア計測を正とし、HTTP レベルで確かめたいときは `scripts/perf/http-cpu/` で CPU 時間を比べる（#65）
 - 現在の残りのオーバーヘッドと削り方の案は [#66](https://github.com/nori-kamiya/kivin/issues/66)
 
 ## 5. 設計上の決まりごと（壊さないこと）

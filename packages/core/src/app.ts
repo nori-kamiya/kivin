@@ -18,7 +18,7 @@ import { afterResponseInUse, finishAfterResponse } from './after-response';
 import { linkDerivedRequest, trackServer } from './client-address';
 import { HttpError } from './http';
 import { createUnhandledErrorResponse } from './runtime/results';
-import { isPromiseLike } from './runtime/utils';
+import { isPromiseLike, NOT_SETTLED, settledValue, thenNow } from './runtime/utils';
 import { compileWebSocketRoutes } from './websocket';
 
 const HTTP_METHOD_KEYS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
@@ -219,13 +219,38 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     ? []
     : typeof definition.onRequest === 'function' ? [definition.onRequest] : definition.onRequest;
 
-  /** Runs the hooks; a rewritten request is routed by kivin's router, the original by `proceed`. */
-  const runRequestHooks = async (request: Request, proceed: (request: Request) => Response | Promise<Response>): Promise<Response> => {
+  const answerHookError = (request: Request, error: unknown): Response => {
+    if (error instanceof Response) {
+      return answerUnmatched(request, error);
+    }
+    return answerUnmatched(request, error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error));
+  };
+
+  type HookResult = Request | Response | undefined | void;
+  type Proceed = (request: Request) => Response | Promise<Response>;
+
+  /**
+   * Runs the hooks from `index`; a rewritten request is routed by kivin's router, the original by
+   * `proceed`. Stays synchronous while the hooks do (an already-fulfilled promise counts), so the
+   * route's own result reaches Bun without a pending promise around it (#65).
+   */
+  const runRequestHooksFrom = (index: number, original: Request, request: Request, proceed: Proceed): Response | Promise<Response> => {
     let current = request;
     try {
-      for (const hook of requestHooks) {
-        const pending = hook(current);
-        const result = isPromiseLike<Request | Response | undefined | void>(pending) ? await pending : pending;
+      for (; index < requestHooks.length; index += 1) {
+        let result = requestHooks[index]!(current);
+        if (isPromiseLike<HookResult>(result)) {
+          const settled = settledValue(result);
+          if (settled === NOT_SETTLED) {
+            const resumeAt = index + 1;
+            const at = current;
+            return Promise.resolve(result).then(
+              (resolved) => continueRequestHooks(resolved, resumeAt, original, at, proceed),
+              (error: unknown) => answerHookError(at, error),
+            );
+          }
+          result = settled;
+        }
         if (result instanceof Response) {
           return answerUnmatched(current, result);
         }
@@ -234,15 +259,22 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
         }
       }
     } catch (error) {
-      if (error instanceof Response) {
-        return answerUnmatched(current, error);
-      }
-      return answerUnmatched(current, error instanceof HttpError ? error.toResponse() : createUnhandledErrorResponse(error));
+      return answerHookError(current, error);
     }
-    return current === request ? proceed(request) : routeFetch(current);
+    return current === original ? proceed(original) : routeFetch(current);
   };
 
-  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request) => runRequestHooks(request, routeFetch);
+  const continueRequestHooks = (result: HookResult, index: number, original: Request, current: Request, proceed: Proceed): Response | Promise<Response> => {
+    if (result instanceof Response) {
+      return answerUnmatched(current, result);
+    }
+    return runRequestHooksFrom(index, original, result instanceof Request ? linkDerivedRequest(result, current) : current, proceed);
+  };
+
+  const runRequestHooks = (request: Request, proceed: Proceed) => runRequestHooksFrom(0, request, request, proceed);
+
+  // `app.fetch` always returns a promise (an already-resolved one when everything ran synchronously).
+  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request): Promise<Response> => Promise.resolve(runRequestHooks(request, routeFetch));
 
   /** Puts the hooks in front of a native route value (handler, static Response or method map). */
   const withRequestHooks = (definition: unknown): unknown => {
@@ -441,6 +473,7 @@ function withCorsOnEveryResponse<TSchema>(compiled: CompiledRoute<TSchema>, cors
   const execute = compiled.execute;
   return {
     ...compiled,
-    execute: (request, params) => execute(request, params).then((response) => cors.ensure(request, response)),
+    // `thenNow`: a route that finished synchronously stays a resolved promise (#65).
+    execute: (request, params) => thenNow(execute(request, params), (response) => cors.ensure(request, response)),
   };
 }

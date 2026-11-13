@@ -368,14 +368,14 @@ export function createRawMiddlewareDispatcher(
     return (_request: Request, _params: Record<string, string>, _responseState: ResponseState, next: NextResponseFactory) => next();
   }
 
-  return async (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => {
-    async function dispatch(index: number): Promise<Response> {
+  // No async frames: a raw middleware's `next()` may return a synchronous `Response` (the raw
+  // contract), so a chain of middleware that only pass through stays synchronous end to end and the
+  // route reaches Bun as a resolved promise instead of a pending one (#65).
+  return (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => {
+    const dispatch = (index: number): Response | PromiseLike<Response> => {
       const current = middleware[index];
       if (!current) {
-        const result = next();
-        return isPromiseLike<Response>(result)
-          ? await result
-          : result;
+        return next();
       }
 
       const invokeNext = () => dispatch(index + 1);
@@ -385,7 +385,7 @@ export function createRawMiddlewareDispatcher(
       }
 
       return current.useRaw!(request, params, responseState, invokeNext, route);
-    }
+    };
 
     return dispatch(0);
   };

@@ -66,6 +66,51 @@ PERF_SKIP_NETWORK=1 bun run perf:regression  # in-process だけ（速い）
 
 Hono / Elysia との比較（`bun run perf:check`）は CI で参考値としてペア計測し、結果を job summary に出します。
 
+## HTTP レベルの promise のコスト（#65）
+
+Bun のネイティブルートでハンドラが返すものによって、サーバー側の CPU 時間が変わるかを確かめました。HTTP のスループットは 2 コアの共有 VM では同じコード同士でも ±15% ぶれるので、**サーバーを 1 コアに固定し（`taskset`）、クライアントを別のコアに置いて、サーバープロセスのリクエストあたりの CPU 時間**を比べます（`scripts/perf/http-cpu/`）。計測ブロックを交互に回し、同じ回のブロック同士の比を取ります。
+
+```bash
+PORT=4651 taskset -c 3 bun scripts/perf/http-cpu/promise-server.ts &
+taskset -c 0,1 bun scripts/perf/http-cpu/client.ts --ports 4651 --paths sync,resolved,pending,async
+
+git worktree add --detach /tmp/kivin-base origin/main
+KIVIN_ROOT=/tmp/kivin-base MODE=cors PORT=4701 taskset -c 3 bun scripts/perf/http-cpu/kivin-server.ts &
+MODE=cors PORT=4702 taskset -c 3 bun scripts/perf/http-cpu/kivin-server.ts &
+taskset -c 0,1 bun scripts/perf/http-cpu/client.ts --ports 4701,4702 --paths item
+```
+
+ハンドラの戻り値ごとの差（4 コアのクラウド VM、パイプラインなし・32 接続、2026-11-13）:
+
+| ハンドラが返すもの | CPU / リクエスト（同期の `Response` 比） | 95% CI |
+| --- | ---: | ---: |
+| 同期の `Response` | 100% | — |
+| 解決済みの promise（`Promise.resolve(response)`、await しなかった async 関数） | 104〜105% | 97〜111%（有意差なし） |
+| 返した時点で保留中の promise（`.then(...)` の結果） | 112〜114% | 102〜117% |
+| 1 回 await した async 関数 | 108〜116% | 104〜120% |
+
+HTTP/1.1 のパイプライン（1 接続に 16 件）では差が小さくなります（保留中で +6%）。
+
+**対策**: 同期的に終わる処理なのに `.then` で保留中の promise を作っていた経路で、`Bun.peek` で解決済みかを見て、その場で処理して解決済みの promise を返すようにしました（`runtime/utils.ts` の `thenNow` / `settledValue`）。
+
+- CORS 有効時のルートのラッパーと CORS ミドルウェア（`async` + `await next()` をやめた）
+- `afterResponse` 使用時の `finishAfterResponse`
+- AOT のコンテキストミドルウェア経路（`next()` をそのまま返したミドルウェアの結果）
+- `onRequest` フック（フックが同期、または解決済みの promise を返す間は同期的に進む）
+- raw ミドルウェアが 2 つ以上あるルートの dispatcher（`async` をやめ、`next()` が同期の `Response` を返せるようにした。raw ミドルウェアの `next()` はもともと同期の値を返しうる契約）
+
+コンテキストミドルウェアの `next()` が常に promise を返す契約は変えていません。`app.fetch` も常に promise を返します。
+
+効果（CORS を有効にした `GET /item`、main と比較、同じコアで交互に計測）:
+
+| 構成 | CPU / リクエスト（main 比） | 95% CI |
+| --- | ---: | ---: |
+| CORS | 89〜91% | 78〜97% |
+| CORS + `onRequest` フック | 91% | 84〜95% |
+| どちらも無し（変更なしの経路、対照） | 104% | 98〜114%（有意差なし） |
+
+インプロセスの性能ゲート（`perf:regression`）では全シナリオで有意差なし（幾何平均 −0.2%、CI −0.8〜+0.3%）でした。
+
 ## Commands
 
 ```bash
