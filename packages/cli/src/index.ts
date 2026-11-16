@@ -1,4 +1,4 @@
-import type { AppDefinition, AppManifest, CanActivate, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivinjs/core';
+import type { AppDefinition, AppManifest, CanActivate, Constructor, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivinjs/core';
 import type * as KivinCore from '@kivinjs/core';
 import { buildOpenApiDocument } from '@kivinjs/openapi';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
@@ -342,7 +342,9 @@ function resolveSingletonToken<T>(appDefinition: AppDefinition<unknown>, token: 
       return singletonCache.get(currentToken);
     }
 
-    const provider = providerMap.get(currentToken);
+    // Guard classes no module provides are registered by the app itself (as are the guards an
+    // `anyGuard(...)` composes), so they resolve here too.
+    const provider = providerMap.get(currentToken) ?? (typeof currentToken === 'function' ? currentToken as Constructor : undefined);
     if (!provider) {
       return undefined;
     }

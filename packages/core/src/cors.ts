@@ -1,5 +1,6 @@
 // CORS: response headers for app routes plus automatic preflight handling.
 import type { NestLikeMiddleware } from './runtime-types';
+import { isPromiseLike, thenNow } from './runtime/utils';
 
 export interface CorsOptions {
   /**
@@ -110,13 +111,17 @@ export function createCorsHandler(options: CorsOptions): CorsHandler {
  * route-level wrapper in `createApp`.
  */
 export function createCorsMiddleware(handler: CorsHandler) {
+  // Not `async`: a route that finished synchronously stays synchronous / an already-resolved promise
+  // instead of a pending one (#65).
+  const ensureAfter = (request: Request, result: Response | PromiseLike<Response>): Response | Promise<Response> =>
+    isPromiseLike<Response>(result) ? thenNow(Promise.resolve(result), (response) => handler.ensure(request, response)) : handler.ensure(request, result);
   return class CorsMiddleware implements NestLikeMiddleware {
-    async handleRaw(request: Request, _params: Record<string, string>, _state: unknown, next: () => Response | PromiseLike<Response>) {
-      return handler.ensure(request, await next());
+    handleRaw(request: Request, _params: Record<string, string>, _state: unknown, next: () => Response | PromiseLike<Response>) {
+      return ensureAfter(request, next());
     }
 
-    async handle(context: import('./context').RequestContext, next: () => Response | PromiseLike<Response>) {
-      return handler.ensure(context.request, await next());
+    handle(context: import('./context').RequestContext, next: () => Response | PromiseLike<Response>) {
+      return ensureAfter(context.request, next());
     }
   };
 }

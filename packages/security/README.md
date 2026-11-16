@@ -60,6 +60,20 @@ export default defineApplication({
 
 **Order matters.** Guards run before middleware, so `createRateLimitMiddleware` runs after the guards: a request a guard rejects (a wrong token, a failed login) never reaches it and is not counted, so guessing credentials is not rate limited. To limit authentication attempts, rate limit in front of kivin (reverse proxy or WAF), or put a guard of your own before the auth guard that calls `RateLimitStore.increment` (`MemoryRateLimitStore` is exported) for the client address. The same goes for `createSecureHeadersMiddleware`: it does not add headers to guard rejections.
 
+## Rate limiting across instances: Redis
+
+The default `MemoryRateLimitStore` counts per process. `RedisRateLimitStore` shares the counters through Redis, so the limit holds across instances. It takes Bun's built-in client (`RedisClient` from `bun`, or `Bun.redis`) as is, so no npm dependency is added; any object with `send(command, args)` works.
+
+```ts
+import { RedisClient } from 'bun';
+import { createRateLimitMiddleware, RedisRateLimitStore } from '@kivinjs/security';
+
+const store = new RedisRateLimitStore(new RedisClient(process.env.REDIS_URL), { prefix: 'myapp:rl:' }); // default prefix: kivin:rl:
+createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store });
+```
+
+Each request runs one Lua script (`INCR`, plus `PEXPIRE` on the first request of a window), so a counter can never be left without an expiry, and the window end comes from Redis's `PTTL`, not the instance's clock. When Redis cannot be reached, rate-limited requests fail with 500 (they are not let through).
+
 ## Documentation
 
 - [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinsecurity) (Japanese)
@@ -126,6 +140,20 @@ export default defineApplication({
 ```
 
 **順序に注意してください。** ガードはミドルウェアより前に実行されるため、`createRateLimitMiddleware` はガードの後に動きます。ガードが拒否したリクエスト（誤ったトークン、失敗したログインなど）はこのミドルウェアに届かず、数えられません。つまり認証情報の総当たりは制限されません。認証の試行回数を制限するには、kivin の手前（リバースプロキシや WAF）で制限するか、認証ガードの前に、クライアントアドレスに対して `RateLimitStore.increment`（`MemoryRateLimitStore` が export されています）を呼ぶ独自ガードを置いてください。`createSecureHeadersMiddleware` も同様で、ガードの拒否レスポンスにはヘッダを付けません。
+
+### 複数インスタンスのレートリミット: Redis
+
+既定の `MemoryRateLimitStore` はプロセスごとに数えます。`RedisRateLimitStore` はカウンタを Redis で共有し、複数インスタンス全体で上限を守ります。Bun 組み込みのクライアント（`bun` の `RedisClient`、または `Bun.redis`）をそのまま渡せるので、npm の依存は増えません（`send(command, args)` を持つオブジェクトなら何でも使えます）。
+
+```ts
+import { RedisClient } from 'bun';
+import { createRateLimitMiddleware, RedisRateLimitStore } from '@kivinjs/security';
+
+const store = new RedisRateLimitStore(new RedisClient(process.env.REDIS_URL), { prefix: 'myapp:rl:' }); // default prefix: kivin:rl:
+createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store });
+```
+
+リクエストごとに Lua スクリプトを 1 回実行し（`INCR` と、ウィンドウ最初のリクエストでの `PEXPIRE`）、期限の無いカウンタが残ることはありません。ウィンドウの終わりはインスタンスの時計ではなく Redis の `PTTL` から求めます。Redis に届かないと、レートリミット対象のリクエストは 500 になります（制限せずに通すことはしません）。
 
 ### ドキュメント
 

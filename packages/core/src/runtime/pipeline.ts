@@ -169,27 +169,29 @@ export async function runMiddlewareChain(input: {
 }
 
 /**
- * Per-request state for the raw (context-free) executors. A class with prototype methods: the body
- * readers are only materialised (as bound functions) for routes that use the deferred loaders, so a
- * route allocates just this object and its `ResponseState`.
+ * Per-request state for the raw (context-free) executors. It is itself the `ResponseState` raw
+ * middleware queue headers on, so a route allocates one object per request (#66). A class with
+ * prototype methods: the body readers are only materialised (as bound functions) for routes that use
+ * the deferred loaders.
  */
-class RawResponseExecution implements RawResponseExecutionState {
-  protected responseState = new ResponseState();
+class RawResponseExecution extends ResponseState implements RawResponseExecutionState {
   protected parsedBody: unknown;
   protected parsedBodyLoaded = false;
   private boundGetJsonBody: (() => Promise<unknown>) | undefined;
   private boundSetBodyPayload: ((value: unknown) => void) | undefined;
 
-  constructor(protected readonly request: Request) {}
+  constructor(protected readonly request: Request) {
+    super();
+  }
 
   applyQueuedState(response: Response) {
-    return this.responseState.hasQueuedResponseState()
-      ? this.responseState.applyResponseHeaders(response)
+    return this.hasQueuedResponseState()
+      ? this.applyResponseHeaders(response)
       : response;
   }
 
-  getResponseState() {
-    return this.responseState;
+  getResponseState(): ResponseState {
+    return this;
   }
 
   primeBody(value: unknown) {
@@ -253,10 +255,10 @@ class RawExecution extends RawResponseExecution implements RawExecutionState {
         context.primeJsonBody(this.parsedBody);
       }
 
-      // Headers queued by raw middleware move to the context, which finalises the response from now on.
-      if (this.responseState.hasQueuedResponseState()) {
-        this.responseState.copyResponseStateTo(context);
-        this.responseState = new ResponseState();
+      // Headers queued by raw middleware are copied to the context, which finalises a filter's response.
+      // They stay queued here too: an error no filter handles is answered with them, as before.
+      if (this.hasQueuedResponseState()) {
+        this.copyResponseStateTo(context);
       }
     }
 
@@ -368,14 +370,14 @@ export function createRawMiddlewareDispatcher(
     return (_request: Request, _params: Record<string, string>, _responseState: ResponseState, next: NextResponseFactory) => next();
   }
 
-  return async (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => {
-    async function dispatch(index: number): Promise<Response> {
+  // No async frames: a raw middleware's `next()` may return a synchronous `Response` (the raw
+  // contract), so a chain of middleware that only pass through stays synchronous end to end and the
+  // route reaches Bun as a resolved promise instead of a pending one (#65).
+  return (request: Request, params: Record<string, string>, responseState: ResponseState, next: NextResponseFactory) => {
+    const dispatch = (index: number): Response | PromiseLike<Response> => {
       const current = middleware[index];
       if (!current) {
-        const result = next();
-        return isPromiseLike<Response>(result)
-          ? await result
-          : result;
+        return next();
       }
 
       const invokeNext = () => dispatch(index + 1);
@@ -385,7 +387,7 @@ export function createRawMiddlewareDispatcher(
       }
 
       return current.useRaw!(request, params, responseState, invokeNext, route);
-    }
+    };
 
     return dispatch(0);
   };

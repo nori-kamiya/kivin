@@ -70,6 +70,10 @@ function finish(request: Request, response: Response): Response {
  * `afterResponseInUse` first.
  */
 export function finishAfterResponse(request: Request, result: Promise<Response>): Promise<Response> {
+  // An already-settled route result is finished now: a resolved promise, not a pending one (#65).
+  if (Bun.peek.status(result) === 'fulfilled') {
+    return Promise.resolve(finish(request, Bun.peek(result) as Response));
+  }
   return result.then((response) => finish(request, response), (error: unknown) => {
     finish(request, new Response(null, { status: 500 }));
     throw error;

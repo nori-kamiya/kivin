@@ -1,9 +1,14 @@
 // @kivinjs/session: server-side sessions with a signed session-ID cookie and pluggable stores.
 import { parseCookies, serializeCookie, serializeDeletedCookie, signCookieValue, verifyCookieValue, type CookieOptions, type CookieSecrets, type NestLikeMiddleware, type RequestContext } from '@kivinjs/core';
 
+export { RedisSessionStore, type RedisCommandClient, type RedisSessionStoreOptions } from './redis-store';
+
 export type SessionData = Record<string, unknown>;
 
-/** Where sessions live. Implement it for Redis, a database, … (methods may be sync or async). */
+/**
+ * Where sessions live: `MemorySessionStore`, `RedisSessionStore`, or your own for a database, …
+ * (methods may be sync or async).
+ */
 export interface SessionStore {
   get(id: string): SessionData | undefined | Promise<SessionData | undefined>;
   /** Saves `data` for `ttlSeconds`. */
@@ -142,7 +147,7 @@ export class Session<TData extends SessionData = SessionData> {
 export interface SessionOptions {
   /** Secret(s) signing the session-ID cookie; an array rotates keys (sign with the first). */
   secret: CookieSecrets;
-  /** Default: a `MemorySessionStore`. */
+  /** Default: a `MemorySessionStore` (per process). Use `RedisSessionStore` to share sessions between instances. */
   store?: SessionStore;
   /** Cookie name. Default `sid`. */
   name?: string;

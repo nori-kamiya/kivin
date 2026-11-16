@@ -1,6 +1,6 @@
 // Selects and builds the specialised executor for each compiled route.
 import type { Container } from '../container';
-import { RequestContext, type ResponseState } from '../context';
+import { RequestContext, ResponseState } from '../context';
 import { HttpError } from '../http';
 import type { AppDefinition } from '../metadata';
 import { readNamedQueryParam } from '../request-url';
@@ -16,6 +16,12 @@ import { applyFilters, compileFilters, compileGuards, compileMiddleware, createR
 import { createNativeStaticResponse, createResponseBodyMapper, createUnhandledErrorResponse, finalizeContextResult, finalizeDefaultCreatedContextResult, finalizeDefaultCreatedPlainResult, finalizeDefaultCreatedRawResult, finalizeDefaultOkRawResult, finalizeRawResult, finalizeResultWithoutContext, getDefaultSuccessResponseInit, getDefaultSuccessStatus, handlePlainExecutionError, mapUnknownToResponse } from './results';
 import { type CompiledArgumentInput, type CompiledRoute, type CompiledRouteExecutor, type DeferredPayloadLoader, type DeferredPayloadLoaderFactory, type ManifestRoute, type NextResponseFactory, type RawExecutionState, type RawResponseExecutionState, RESPONSE_INIT_204, type ResponseStateAdapter, type RouteFilters } from './types';
 import { isAsyncFunction, isPromiseLike, rethrowJsonBodyError } from './utils';
+
+/**
+ * Finalises results of routes without middleware: nothing can queue headers or a status on it, so one
+ * shared instance serves every request (its methods only read, or clear fields that are already empty).
+ */
+const UNQUEUED_RESPONSE_STATE = new ResponseState();
 
 export function createCompiledRouteWithExecutor<TSchema>(
   route: ManifestRoute<TSchema>,
@@ -770,6 +776,42 @@ function compileRouteExecutorFor<TSchema>(input: {
           }))
     : undefined;
 
+  /**
+   * Raw guards and / or exception filters but no middleware (#66): nothing can queue response headers,
+   * so the success path allocates no execution state; it is created only when an error reaches the
+   * filters (with the body already read, so their context sees it).
+   */
+  const executeWithoutMiddlewareRaw = async (request: Request, params: Record<string, string>) => {
+    const requestUrl = requiresRequestUrl ? request.url : '';
+    let bodyPayload: unknown;
+    let bodyLoaded = false;
+
+    try {
+      const paramPayload = resolveParamPayload(params);
+      const queryPayload = resolveQueryPayload(requestUrl);
+
+      const guarded = ensureRawGuardsAllowed?.(request, params);
+      if (guarded) {
+        await guarded;
+      }
+
+      if (requiresBody) {
+        bodyPayload = await readBodyPayload(request);
+        bodyLoaded = true;
+      }
+
+      const pending = executeSingletonHandler!(bodyPayload, undefined, paramPayload, params, queryPayload, requestUrl);
+      const result = isPromiseLike<unknown>(pending) ? await pending : pending;
+      return result instanceof Response ? result : finalizeCompiledContextResult(result, UNQUEUED_RESPONSE_STATE);
+    } catch (error) {
+      const state = createRawState(request, params);
+      if (bodyLoaded) {
+        state.primeBody(bodyPayload);
+      }
+      return handleRawExecutionError(error, state, state.getResponseState());
+    }
+  };
+
   const executeWithRawPipeline = async (request: Request, params: Record<string, string>) => {
     const requestUrl = requiresRequestUrl ? request.url : '';
     const state = createRawState(request, params);
@@ -834,6 +876,9 @@ function compileRouteExecutorFor<TSchema>(input: {
     canUseSpecializedRawExecutor && hasNoSingletonGuards ? executeWithSingleRawMiddlewarePathBodyNoQuery : undefined,
     canUseSpecializedRawExecutor && hasNoSingletonGuards ? executeWithSingleRawMiddlewareNoQuery : undefined,
     canUseSpecializedRawExecutor && hasNoSingletonGuards ? executeWithSingleRawMiddleware : undefined,
+    executeSingletonHandler && canUseSpecializedRawExecutor && singletonGuardsUseRawOnly && middleware.entries.length === 0
+      ? executeWithoutMiddlewareRaw
+      : undefined,
     executeSingletonHandler && canUseSpecializedRawExecutor && singletonGuardsUseRawOnly && singletonMiddlewareUseRawOnly
       ? executeWithRawPipeline
       : undefined,
