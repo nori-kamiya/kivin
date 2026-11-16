@@ -10,6 +10,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - [@kivinjs/schedule](#kivinjsschedule)
 - [@kivinjs/session](#kivinjssession)
 - [@kivinjs/graphql](#kivinjsgraphql)
+- [@kivinjs/trpc](#kivinjstrpc)
 - [@kivinjs/static](#kivinjsstatic)
 - [@kivinjs/decorators](#kivinjsdecorators)
 - [@kivinjs/valibot](#kivinjsvalibot)
@@ -43,6 +44,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `enableAfterResponse()` | function | `afterResponse` を最初のリクエストから有効にする。ガード（同期・非同期を問わない）などの `await` の後ろで走るミドルウェアが `afterResponse` を使うなら、最初のリクエストより前に 1 回呼ぶ（`@kivinjs/observability` のミドルウェアは生成時に呼ぶ） |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
 | `app.get(token)` | method | root container から provider を取り出す |
+| `app.createRequestContext(request, params?)` | method | コントローラのルート以外（ネイティブルート、tRPC / GraphQL のコンテキストなど）で使う `RequestContext` を、専用の request container 付きで作る。`inject(...)` で request-scoped の provider を呼び出しごとに 1 つ解決でき、`RequestContext` を注入する provider もこのコンテキストを受け取る。設定したレスポンスヘッダはネイティブルートの応答には反映されない |
 | `createTestingApp(definition, { manifest?, overrides? })` | function | provider を差し替えたアプリを作る。`request(path, { json })` でポートを開かずに呼べる |
 
 ### Web features
@@ -204,6 +206,22 @@ HTTP レベルのミドルウェアとヘルパー。
 | --- | --- | --- |
 | `createGraphqlRoutes(server, options?)` | function | GraphQL Yoga（または `fetch(request, context)` を持つ GraphQL サーバー）を `listen({ routes })` のネイティブルートとして載せる。`context` で認証済みユーザーや `app.get(...)` のサービスを渡す |
 | `createGraphqlHandler(server, options?)` | function | 同じハンドラを単体で返す |
+
+## @kivinjs/trpc
+
+`@trpc/server` 11 を peer dependency に持ちます。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createTrpcRoutes(router, options?)` | function | tRPC のルーターを `listen({ routes })` のネイティブルート（`<endpoint>/*` の GET / POST）として載せる。`endpoint` の既定は `/trpc`。`fetchRequestHandler` の他のオプション（`responseMeta`、`allowBatching` など）はそのまま渡る |
+| `options.app` / `options.createContext({ req, resHeaders, info, requestContext })` | option | `createContext` は HTTP リクエストごとに 1 回呼ばれる（バッチ内の手続きは同じコンテキストを共有）。`requestContext()` は `app.createRequestContext(req)` の結果（初回呼び出し時に作る。`app` が必要）。`HttpError` を投げると対応する tRPC のエラー、`Response` を投げるとその応答をそのまま返す |
+| `options.cors` | option | このルートの CORS（プリフライトと応答ヘッダ）。アプリの `cors` 設定はコントローラのルートにだけ効き、ネイティブルートには効かない |
+| `options.onError` | option | tRPC の `onError`。これとは別に、`INTERNAL_SERVER_ERROR` の原因は `[kivin] Unhandled error` として 1 回だけ出力する（`HttpError` と `markErrorReported` 済みのものは出さない。`createContext` が `Response` を投げたときは `onError` も呼ばない） |
+| `httpErrors` | tRPC middleware | `t.procedure.use(httpErrors)`。手続きが投げた `HttpError` を対応する tRPC のエラーにし、想定外の例外はメッセージを `Internal Server Error` に置き換えてクライアントに返す（使わないと、`HttpError` は `INTERNAL_SERVER_ERROR` になり、想定外の例外のメッセージはそのまま返る） |
+| `toTRPCError(error)` | function | `HttpError` を同じステータスの tRPC のエラーに変換する。tRPC にコードが無いステータスは 4xx → `BAD_REQUEST`、5xx → `INTERNAL_SERVER_ERROR` |
+| `createTrpcHandler(router, options?)` | function | 同じハンドラを単体で返す |
+
+サブスクリプション（SSE、`Accept: text/event-stream`）の要求は、`listen({ idleTimeout })` で切られないように、その接続だけ Bun のアイドルタイムアウトを外します。
 
 ## @kivinjs/static
 

@@ -30,6 +30,7 @@ core は実行時の中核だけを持ち、独立した機能は領域ごとの
 | `@kivinjs/schedule` | cron ジョブ | なし |
 | `@kivinjs/session` | サーバー側セッション | core |
 | `@kivinjs/graphql` | GraphQL Yoga のマウント | core |
+| `@kivinjs/trpc` | tRPC ルーターのマウント、`HttpError` → tRPC エラーの変換 | core、`@trpc/server`（peer。#85 で合意した外部 peer） |
 
 新しいパッケージを足すときは、`packages/<name>/{package.json,tsconfig.json}`、`tsconfig.base.json` の `paths`、`tsconfig.build.json` の `references`、`bun.lock` の workspace エントリ（`bun install` で更新されるが、手で足す場合は既存の形に合わせる）を揃えます（#49 / #50 が例）。
 
@@ -115,7 +116,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 | SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
 | Cache（Hono `cache`） | 実装しない | Bun には Web Cache API が無い。共有のレスポンスキャッシュは Vary・認証付きレスポンス・無効化の設計が要り、誤るとユーザー間で応答が混ざる。ETag（`@kivinjs/http`）と `Cache-Control` + CDN / リバースプロキシで代替する。要望が出たら別 issue にする |
 | `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
-| tRPC（Elysia `@elysiajs/trpc`） | アダプタは作らない | `fetchRequestHandler` を `listen({ routes: { '/trpc/*': … } })` に載せるだけで動く（バッチ呼び出し、`onRequest` フックを実物で確認）。[production.md](production.md)「tRPC」 |
+| tRPC（Elysia `@elysiajs/trpc`） | `@kivinjs/trpc` を追加した（#85。#68 の「作らない」から転換） | `fetchRequestHandler` を載せるだけでは、request-scoped の DI・`HttpError` の変換・SSE のアイドルタイムアウト・未処理例外のログを利用者が毎回書くことになるため。`@trpc/server` は peer dependency（本体の依存は増えない）。request-scoped の解決は core の `app.createRequestContext` で、#86 の Apollo でも使う |
 | Apollo Server（Elysia `@elysiajs/apollo`） | パッケージは作らない | fetch 用の公式インテグレーションが無いが、`executeHTTPGraphQLRequest` を呼ぶ 30 行ほどの関数で載る（v5 で確認）。fetch ネイティブな GraphQL Yoga を推奨。[production.md](production.md)「Apollo Server」 |
 | i18n | 実装しない | 言語の選択は `acceptsLanguage` で足りる。メッセージカタログはアプリ側の関心 |
 
@@ -129,12 +130,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 ## 7. 残課題
 
-2026-11-13 時点でオープンな issue はありません。次に手を付ける候補（優先度は目安）:
-
-| 優先度 | 内容 |
-| --- | --- |
-| 低 | raw ルートの AOT 化（§6。再検討するなら performance.md の上限の計測から） |
-| 判断 | Cache ミドルウェアなど、§5.1 で見送ったものの要望が出たとき |
+2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #86 Apollo Server → #87 i18n → #88 レスポンスキャッシュ → #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC は対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 

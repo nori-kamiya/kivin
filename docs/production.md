@@ -912,25 +912,40 @@ app.listen({ port: 3000, routes: { '/graphql': { GET: apolloFetch, POST: apolloF
 
 ## tRPC
 
-tRPC の fetch アダプタ（`@trpc/server/adapters/fetch`）をワイルドカードのネイティブルートに載せます。専用のアダプタは不要です。`onRequest` フックは他のネイティブルートと同じく先に動きます。
+`@kivinjs/trpc` で tRPC のルーターをネイティブルート（`/trpc/*`）に載せます。`@trpc/server` 11 は peer dependency なので、アプリ側で入れます。
 
 ```ts
-import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { createTrpcRoutes, httpErrors } from '@kivinjs/trpc';
+import { initTRPC } from '@trpc/server';
+import * as v from 'valibot';
+
+const t = initTRPC.context<{ users: UserService; userId: string }>().create();
+const procedure = t.procedure.use(httpErrors);   // 手続きが投げた HttpError を tRPC のエラーに
+
+const appRouter = t.router({
+  user: procedure.input(v.object({ id: v.string() })).query(({ ctx, input }) => ctx.users.find(input.id)),
+});
 
 app.listen({
   port: 3000,
-  routes: {
-    '/trpc/*': (request: Request) => fetchRequestHandler({
-      endpoint: '/trpc',
-      req: request,
-      router: appRouter,
-      createContext: async () => ({ users: app.get(UserService), userId: await authenticate(request) }),
+  routes: createTrpcRoutes(appRouter, {
+    app,
+    createContext: async ({ req, requestContext }) => ({
+      users: requestContext().inject(UserService),     // request-scoped の provider も解決できる
+      userId: await authenticate(req),                  // unauthorized() を投げると UNAUTHORIZED（401）
     }),
-  },
+  }),
 });
 ```
 
-バッチ呼び出し（`/trpc/a,b?batch=1`）もそのまま動きます。GraphQL と同じく、ガードやミドルウェアはかからないので、認証は `createContext` か `onRequest` フックで行ってください。
+- `createContext` は HTTP リクエストごとに 1 回呼ばれます。バッチ呼び出し（`/trpc/a,b?batch=1`）の手続きは、同じコンテキストと同じ request-scoped のインスタンスを共有します
+- `HttpError` は、`createContext` で投げた場合は常に、手続きで投げた場合は `httpErrors` を通したときに、同じステータスの tRPC のエラー（`unauthorized()` → `UNAUTHORIZED`）になります。`createContext` で `Response` を投げると、その応答をそのまま返します
+- それ以外の例外は `INTERNAL_SERVER_ERROR`（500）になり、原因をコントローラのルートと同じく `[kivin] Unhandled error` として 1 回だけ出力します（`markErrorReported` 済みなら出しません）。`httpErrors` を通すと、クライアントに返るメッセージは `Internal Server Error` だけになります。通さないと tRPC は例外のメッセージをそのまま返します
+- tRPC は開発時（`NODE_ENV` が `production` 以外）にエラーの `stack` も返します。本番では `NODE_ENV=production` にするか、`initTRPC.create({ isDev: false })` にしてください
+- アプリの `cors` 設定はネイティブルートに効きません。ブラウザから別オリジンで呼ぶなら `createTrpcRoutes(router, { cors: { origin: 'https://app.example' } })` を指定します（プリフライトにも応答します）
+- サブスクリプション（SSE）の接続は、`listen({ idleTimeout })` で切られないよう、その接続だけアイドルタイムアウトを外します。プロキシが無通信の接続を切る場合は、`initTRPC.create({ sse: { ping: { enabled: true } } })` で ping を送ってください
+- GraphQL と同じく、ガードやミドルウェアはかかりません。認証は `createContext` か `onRequest` フックで行ってください（`onRequest` フックは他のネイティブルートと同じく先に動きます）
+- `onRequest` フックが `Request` を返して書き換えると、そのリクエストは kivin のルーターで振り分け直され、ネイティブルート（`/trpc/*` を含む）には届かず 404 になります。tRPC に限らない既存の制約です
 
 ## 未処理の例外
 

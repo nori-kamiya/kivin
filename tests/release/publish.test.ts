@@ -91,12 +91,13 @@ describe('verifyChecksums', () => {
 });
 
 describe('the real workspace', () => {
-  test('given the repository packages, when ordering them, then all 16 are present, core comes first and the order is acyclic', () => {
+  test('given the repository packages, when ordering them, then all 17 are present, core comes first and the order is acyclic', () => {
     const order = publishOrder(readWorkspaceManifests(join(import.meta.dir, '../..'))).map((manifest) => manifest.name);
-    expect(order).toHaveLength(16);
+    expect(order).toHaveLength(17);
     expect(order[0]).toBe('@kivinjs/core');
     expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/http'));
     expect(order.indexOf('@kivinjs/http')).toBeLessThan(order.indexOf('@kivinjs/static'));
     expect(order.indexOf('@kivinjs/decorators')).toBeLessThan(order.indexOf('@kivinjs/logger'));
+    expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/trpc'));
   });
 });
