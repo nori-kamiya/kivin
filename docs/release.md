@@ -86,7 +86,7 @@ git push origin vX.Y.Z
 初回の公開が済んだら、各パッケージに信頼関係を設定します（npm が対応するバージョンの CLI で、2FA を求められる）。
 
 ```bash
-for name in core decorators logger openapi valibot standard-schema jwt security http static graphql trpc session schedule config observability cli; do
+for name in core decorators logger openapi valibot standard-schema jwt security http static graphql trpc apollo session schedule config observability cli; do
   npm trust github "@kivinjs/$name" --file release.yml --repo nori-kamiya/kivin --env npm --allow-publish
 done
 ```
@@ -103,7 +103,7 @@ done
 
 ### 10. 新しいパッケージを足したリリース
 
-trusted publishing は npm に存在するパッケージにしか設定できないので、npm に無いパッケージ（例: `@kivinjs/trpc`）を含むリリースでは、もう一度だけトークンを使います。
+trusted publishing は npm に存在するパッケージにしか設定できないので、npm に無いパッケージ（例: `@kivinjs/trpc`、`@kivinjs/apollo`）を含むリリースでは、もう一度だけトークンを使います。
 
 1. 手順 5 と同じ bootstrap トークンを作り、environment `npm` の secret `NPM_BOOTSTRAP_TOKEN` に登録する
 2. 手順 6 → 7 で公開する。トークンがあると全パッケージがトークンで公開されるが、公開済みのパッケージにも問題はない

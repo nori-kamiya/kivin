@@ -11,6 +11,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - [@kivinjs/session](#kivinjssession)
 - [@kivinjs/graphql](#kivinjsgraphql)
 - [@kivinjs/trpc](#kivinjstrpc)
+- [@kivinjs/apollo](#kivinjsapollo)
 - [@kivinjs/static](#kivinjsstatic)
 - [@kivinjs/decorators](#kivinjsdecorators)
 - [@kivinjs/valibot](#kivinjsvalibot)
@@ -222,6 +223,19 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createTrpcHandler(router, options?)` | function | 同じハンドラを単体で返す |
 
 サブスクリプション（SSE、`Accept: text/event-stream`）の要求は、`listen({ idleTimeout })` で切られないように、その接続だけ Bun のアイドルタイムアウトを外します。
+
+## @kivinjs/apollo
+
+`@apollo/server` 5 と `graphql` 16 を peer dependency に持ちます。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createApolloRoutes(server, options?)` | function | Apollo Server を `listen({ routes })` のネイティブルート（`path` の GET / POST。既定は `/graphql`）として載せる。JSON のボディを読んで `executeHTTPGraphQLRequest` に渡し、incremental delivery（`@defer` / `@stream`）の応答はストリームで返す。不正な JSON は 400 |
+| `options.app` / `options.context({ req, requestContext })` | option | リクエストごとに 1 回、Apollo を呼ぶ前にコンテキストを作る。`requestContext()` は `app.createRequestContext(req)` の結果（初回呼び出し時に作る。`app` が必要）。`HttpError` や `Response` を投げると、その応答をそのまま返す |
+| `options.cors` | option | このルートの CORS（プリフライトと応答ヘッダ）。アプリの `cors` 設定はネイティブルートには効かない |
+| `apolloLifecycle(server)` | function | `onModuleInit` で `server.start()`、`onApplicationShutdown` で `server.stop()` を呼ぶ provider。`providers` に入れる |
+| `formatApolloError` | function | `new ApolloServer({ formatError: formatApolloError })`。リゾルバの `HttpError` はメッセージを保ち、`extensions.code`（`unauthorized()` → `UNAUTHENTICATED`、`forbidden()` → `FORBIDDEN` など）と `extensions.status` を付ける。想定外の例外は `Internal Server Error` だけを返し、原因を `[kivin] Unhandled error` として 1 回だけ出力する（`markErrorReported` 済みなら出さない）。`GraphQLError` はそのまま |
+| `createApolloHandler(server, options?)` | function | 同じハンドラを単体で返す |
 
 ## @kivinjs/static
 
