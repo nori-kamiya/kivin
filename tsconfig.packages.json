@@ -44,6 +44,9 @@
       "path": "./packages/i18n"
     },
     {
+      "path": "./packages/jsx"
+    },
+    {
       "path": "./packages/session"
     },
     {
