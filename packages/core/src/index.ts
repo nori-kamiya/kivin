@@ -74,7 +74,7 @@ export { createTestingApp, type TestingAppOptions } from './testing';
 export { compileWebSocketRoutes, defineWebSocket, type KivinWebSocket, type WebSocketData, type WebSocketPhase, type WebSocketRoute } from './websocket';
 export type { Constructor, HttpMethod, ParseFailure, ParseResult, ParseSuccess, SchemaAdapter, Token } from './types';
 
-export { toValidationIssues, type ValidationIssue } from './runtime/payload';
+export { getValidationFailure, toValidationIssues, type ValidationFailure, type ValidationIssue } from './runtime/payload';
 export { markErrorReported } from './runtime/results';
 export { afterResponse, enableAfterResponse, type AfterResponseCallback } from './after-response';
-export { getClientAddress } from './client-address';
+export { getClientAddress, originalRequest } from './client-address';

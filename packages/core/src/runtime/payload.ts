@@ -49,8 +49,29 @@ export function toValidationIssues(issues: unknown): ValidationIssue[] {
   });
 }
 
+/** A failed validation behind a 400 response, as the schema library reported it. Server-side only. */
+export interface ValidationFailure {
+  /** What failed: `body`, `query`, `params`, `headers` or `response`. */
+  label: string;
+  /** The schema library's own issues (valibot's carry `type`, `expected`, `requirement`…), unfiltered. */
+  issues: readonly unknown[];
+}
+
+// Keyed by the response so only failing requests pay for it; the client still gets `toValidationIssues`.
+const validationFailures = new WeakMap<Response, ValidationFailure>();
+
+/**
+ * The validation failure behind `response` (kivin's 400 for invalid input), for translating or
+ * reshaping it in `afterResponse` or an exception filter. `undefined` for any other response.
+ */
+export function getValidationFailure(response: Response): ValidationFailure | undefined {
+  return validationFailures.get(response);
+}
+
 export function createValidationErrorResponse(label: string, issues: unknown) {
-  return Response.json({ message: `${label} validation failed`, issues: toValidationIssues(issues) }, { status: 400 });
+  const response = Response.json({ message: `${label} validation failed`, issues: toValidationIssues(issues) }, { status: 400 });
+  validationFailures.set(response, { label, issues: Array.isArray(issues) ? issues : [] });
+  return response;
 }
 
 export function createSchemaValidator<TSchema>(
