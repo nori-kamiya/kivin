@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { assertSupportedBun } from './bun-version';
 import { startDev } from './dev';
 import { initProject } from './init';
-import { generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
+import { buildStaticSite, generateArtifacts, generateOpenApi, inspectModules, inspectRoutes, type ModuleInspection, type RouteInspection } from './index';
 
 function readFlag(name: string): string | undefined {
   const indexes = process.argv.reduce<number[]>((matches, arg, index) => {
@@ -35,6 +35,7 @@ Commands:
   dev       --entry <file> --outDir <dir> --main <file> [--watch <dir>]...
   openapi   --entry <file> --output <file> [--title <t>] [--version <v>]
   inspect   routes|modules --entry <file> [--format text|json]
+  ssg       --entry <file> --manifest <file> --outDir <dir> [--format directory|file] [--exclude <path>]... [--origin <url>]
 
 Options:
   -h, --help     Show this help
@@ -142,6 +143,29 @@ async function main() {
     });
 
     console.log(`openapi: ${filePath}`);
+    return;
+  }
+
+  if (command === 'ssg') {
+    const entry = readFlag('--entry');
+    const manifest = readFlag('--manifest');
+    const outDir = readFlag('--outDir');
+    if (!entry || !manifest || !outDir) {
+      throw new Error('ssg requires --entry, --manifest and --outDir');
+    }
+    const format = readFlag('--format') ?? 'directory';
+    if (format !== 'directory' && format !== 'file') {
+      throw new Error('ssg --format must be directory or file');
+    }
+    const origin = readFlag('--origin');
+    const result = await buildStaticSite({ entry, manifest, outDir, format, exclude: readFlags('--exclude'), ...(origin ? { origin } : {}) });
+    for (const warning of result.warnings) {
+      console.error(`warning: ${warning}`);
+    }
+    for (const file of result.files) {
+      console.log(`${file.path} -> ${file.file}`);
+    }
+    console.log(`ssg: ${result.files.length} file(s) in ${outDir}`);
     return;
   }
 
