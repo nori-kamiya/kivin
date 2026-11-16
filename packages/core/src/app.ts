@@ -16,6 +16,7 @@ import { toHeadResponse } from './runtime/results';
 import { createBunServeRoutes, createExactRouteLookup, createStaticAllowedMethodsLookup, getAllowedMethods, getAllowedMethodsForList, normalizeRoutePath } from './runtime/routing';
 import { type AppManifest, type CompiledRoute, EMPTY_PARAMS, type ListenOptions } from './runtime/types';
 import { afterResponseInUse, finishAfterResponse } from './after-response';
+import { createNativeRouteMatcher } from './native-routes';
 import { linkDerivedRequest, trackServer } from './client-address';
 import { HttpError } from './http';
 import { createUnhandledErrorResponse } from './runtime/results';
@@ -230,12 +231,29 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
   type HookResult = Request | Response | undefined | void;
   type Proceed = (request: Request) => Response | Promise<Response>;
 
+  // The native routes `listen({ routes })` added, for requests a hook rewrote (Bun only routed the
+  // received one). Unset until `listen()`, and only consulted for rewritten requests.
+  let matchNativeRoute: ReturnType<typeof createNativeRouteMatcher> | undefined;
+  const appServesPath = (path: string) => (staticAllowedMethods.get(path)?.length ?? 0) > 0 || getAllowedMethods(router, path).length > 0;
+
+  /** A rewritten request, routed as Bun would: an exact native path, an app route, a native pattern. */
+  const routeRewritten = (request: Request, server: unknown): Response | Promise<Response> => {
+    if (matchNativeRoute) {
+      const pathname = readPathname(request.url);
+      const native = matchNativeRoute(request, pathname);
+      if (native && (native.exact || !appServesPath(normalizeRoutePath(pathname)))) {
+        return native.handler(request, server);
+      }
+    }
+    return routeFetch(request);
+  };
+
   /**
-   * Runs the hooks from `index`; a rewritten request is routed by kivin's router, the original by
-   * `proceed`. Stays synchronous while the hooks do (an already-fulfilled promise counts), so the
+   * Runs the hooks from `index`; a rewritten request is routed by kivin (`routeRewritten`), the
+   * original by `proceed`. Stays synchronous while the hooks do (an already-fulfilled promise counts), so the
    * route's own result reaches Bun without a pending promise around it (#65).
    */
-  const runRequestHooksFrom = (index: number, original: Request, request: Request, proceed: Proceed): Response | Promise<Response> => {
+  const runRequestHooksFrom = (index: number, original: Request, request: Request, proceed: Proceed, server: unknown): Response | Promise<Response> => {
     let current = request;
     try {
       for (; index < requestHooks.length; index += 1) {
@@ -246,7 +264,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
             const resumeAt = index + 1;
             const at = current;
             return Promise.resolve(result).then(
-              (resolved) => continueRequestHooks(resolved, resumeAt, original, at, proceed),
+              (resolved) => continueRequestHooks(resolved, resumeAt, original, at, proceed, server),
               (error: unknown) => answerHookError(at, error),
             );
           }
@@ -262,20 +280,21 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     } catch (error) {
       return answerHookError(current, error);
     }
-    return current === original ? proceed(original) : routeFetch(current);
+    return current === original ? proceed(original) : routeRewritten(current, server);
   };
 
-  const continueRequestHooks = (result: HookResult, index: number, original: Request, current: Request, proceed: Proceed): Response | Promise<Response> => {
+  const continueRequestHooks = (result: HookResult, index: number, original: Request, current: Request, proceed: Proceed, server: unknown): Response | Promise<Response> => {
     if (result instanceof Response) {
       return answerUnmatched(current, result);
     }
-    return runRequestHooksFrom(index, original, result instanceof Request ? linkDerivedRequest(result, current) : current, proceed);
+    return runRequestHooksFrom(index, original, result instanceof Request ? linkDerivedRequest(result, current) : current, proceed, server);
   };
 
-  const runRequestHooks = (request: Request, proceed: Proceed) => runRequestHooksFrom(0, request, request, proceed);
+  const runRequestHooks = (request: Request, proceed: Proceed, server: unknown) => runRequestHooksFrom(0, request, request, proceed, server);
 
   // `app.fetch` always returns a promise (an already-resolved one when everything ran synchronously).
-  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request): Promise<Response> => Promise.resolve(runRequestHooks(request, routeFetch));
+  // Bun passes its server as the second argument when this is the server's fallback `fetch`.
+  const fetch = requestHooks.length === 0 ? routeFetch : (request: Request, server?: unknown): Promise<Response> => Promise.resolve(runRequestHooks(request, routeFetch, server));
 
   /** Puts the hooks in front of a native route value (handler, static Response or method map). */
   const withRequestHooks = (definition: unknown): unknown => {
@@ -283,11 +302,11 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       return definition;
     }
     if (definition instanceof Response) {
-      return (request: Request) => runRequestHooks(request, () => definition.clone());
+      return (request: Request, server: unknown) => runRequestHooks(request, () => definition.clone(), server);
     }
     if (typeof definition === 'function') {
       const handler = definition as (request: Request, server: unknown) => Response | Promise<Response>;
-      return (request: Request, server: unknown) => runRequestHooks(request, (current) => handler(current, server));
+      return (request: Request, server: unknown) => runRequestHooks(request, (current) => handler(current, server), server);
     }
     if (definition && typeof definition === 'object' && Object.keys(definition).every((key) => HTTP_METHOD_KEYS.has(key))) {
       return Object.fromEntries(Object.entries(definition).map(([method, value]) => [method, withRequestHooks(value)]));
@@ -348,6 +367,7 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
       for (const [path, definition] of Object.entries(extraRoutes)) {
         addRoute(path, withRequestHooks(definition), 'routes');
       }
+      matchNativeRoute = requestHooks.length > 0 && Object.keys(extraRoutes).length > 0 ? createNativeRouteMatcher(extraRoutes) : undefined;
       const compiledSockets = websockets ? compileWebSocketRoutes(websockets) : undefined;
       for (const [path, handler] of Object.entries(compiledSockets?.handlers ?? {})) {
         addRoute(path, handler, 'websockets');

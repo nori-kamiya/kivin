@@ -45,7 +45,7 @@ function prefixOf(request: Request, locales: readonly string[]) {
 export interface PathPrefixOptions {
   /**
    * Route `/ja/users` as `/users` (default true), so controllers need no `:lang` param. Needs the
-   * i18n `onRequest` hook; native `listen({ routes })` routes do not see rewritten requests.
+   * i18n `onRequest` hook.
    */
   strip?: boolean;
 }

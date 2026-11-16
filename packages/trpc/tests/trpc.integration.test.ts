@@ -308,6 +308,29 @@ describe('createTrpcRoutes behind an onRequest hook', () => {
       hookedServer.stop(true);
     }
   }, 15_000);
+
+  test('given a hook that rewrites the request, when a slow subscription runs, then it reaches tRPC and idleTimeout still does not cut it', async () => {
+    const hookedApp = createApp(defineApplication({
+      modules: [],
+      schemaAdapter: createValibotAdapter(),
+      // Rewrites every request (a new Request object), as Method Override or a path rewrite would.
+      onRequest: (request) => new Request(request.url.replace('/api/trpc/', '/trpc/'), request),
+    }), { routes: [] });
+    const hookedServer = hookedApp.listen({ port: 0, hostname: '127.0.0.1', idleTimeout: 1, routes: createTrpcRoutes(router, { createContext: () => ({}) as Context }) });
+    try {
+      const response = await fetch(`${new URL('/api/trpc', hookedServer.url)}/ticks?input=${encodeURIComponent(JSON.stringify({ count: 2, delayMs: 3_000 }))}`, {
+        headers: { accept: 'text/event-stream' },
+      });
+      const values: unknown[] = [];
+      for await (const data of sseData(response)) {
+        values.push(data);
+      }
+      expect(response.status).toBe(200);
+      expect(values).toEqual([1, 2]);
+    } finally {
+      hookedServer.stop(true);
+    }
+  }, 15_000);
 });
 
 describe('createTrpcRoutes options', () => {
