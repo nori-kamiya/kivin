@@ -36,7 +36,7 @@ export default defineApplication({
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstandard-schema) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsstandard-schema) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 - [Schema adapter guide](https://github.com/nori-kamiya/kivin/blob/main/docs/schema-adapter.md) (Japanese)
 
@@ -78,6 +78,6 @@ export default defineApplication({
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstandard-schema)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsstandard-schema)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)
 - [schema adapter のガイド](https://github.com/nori-kamiya/kivin/blob/main/docs/schema-adapter.md)

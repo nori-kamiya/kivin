@@ -4,7 +4,7 @@ kivin の開発を引き継ぐ人向けに、現状・進め方・壊しては�
 
 ## 1. 現状
 
-- **段階**: 全パッケージ `0.1.0`。npm への公開準備は完了しているが未公開（ルートは `private: true`）。公開手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
+- **段階**: 全 16 パッケージの `0.1.0` を 2026-11-06 に npm へ公開済み（provenance 付き。ルートの `package.json` は `private: true`）。`main` には `[Unreleased]` の変更（#61〜#68）が未公開のまま溜まっている。次の公開の前に、全パッケージへ trusted publishing（`npm trust`）を設定する必要がある。手順とオーナーの作業は [release.md](release.md)。Bun 1.4.0 以上の専用（`Bun.serve` のネイティブルート、`Bun.CryptoHasher`、`Bun.file` などを使う）
 - **性能**: CI のペア計測で Hono の 101〜134%、Elysia とは同等（97〜109%、多くの項目で信頼区間が 100% をまたぐ）。詳細は [performance.md](performance.md)
 - **機能**: Hono / Elysia の標準ミドルウェア・公式プラグイン相当はほぼ揃っている。意図的に実装しなかったものと理由は §5.1（#68）
 - **テスト**: `bun test` で約 800 件（Redis の結合テストは `REDIS_URL` があるときだけ動く）。CI は `Typecheck, test, smoke`（型検査・テスト・single binary の起動確認。Redis のサービスコンテナ付き）、同じ内容の macOS ジョブ（Redis の結合テストはスキップ）、`Performance regression vs base`（性能ゲート）、`Hono / Elysia comparison`（参考値）の 4 ジョブ
@@ -134,7 +134,6 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 | 優先度 | 内容 |
 | --- | --- |
 | 低 | raw ルートの AOT 化（§6。再検討するなら performance.md の上限の計測から） |
-| 低 | `docs/reference.md` の目次とパッケージ README のアンカー（`#kivincore` など）が `@kivinjs` への改名後のものになっていない |
 | 判断 | Cache ミドルウェアなど、§5.1 で見送ったものの要望が出たとき |
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）

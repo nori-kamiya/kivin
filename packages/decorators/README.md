@@ -42,7 +42,7 @@ export class UserController {
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivindecorators) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsdecorators) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 
 ---
@@ -89,5 +89,5 @@ export class UserController {
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivindecorators)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsdecorators)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)

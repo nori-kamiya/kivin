@@ -76,7 +76,7 @@ Each request runs one Lua script (`INCR`, plus `PEXPIRE` on the first request of
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinsecurity) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjssecurity) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 
 ---
@@ -157,5 +157,5 @@ createRateLimitMiddleware({ limit: 100, windowMs: 60_000, store });
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinsecurity)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjssecurity)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)

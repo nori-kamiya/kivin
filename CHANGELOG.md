@@ -24,6 +24,7 @@
 
 - `@kivinjs/cli`: `generate` / `openapi` / `inspect` が、`app.ts` から辿れるモジュールがトップレベルで開いたハンドル（DB のプール、キープアライブのタイマーなど）のせいで、書き出し後も終了せず CI / Docker のビルドを止めていた。単発のコマンドは完了後に明示的に終了する
 - `@kivinjs/cli`: `inspect routes` が、どのモジュールも提供していないガード（アプリが自動登録するもの）を raw 対応と判定できず、実行経路を誤って表示していた
+- 各パッケージの README と `docs/reference.md` の目次: API リファレンスへのリンクのアンカーが `@kivinjs` への改名前のもの（`#kivincore` など）のままで、該当の節に飛ばなかった
 
 ### Changed
 

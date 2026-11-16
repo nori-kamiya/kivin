@@ -37,7 +37,7 @@ createApp(definition, manifest).listen({
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstatic) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsstatic) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 
 ---
@@ -79,5 +79,5 @@ createApp(definition, manifest).listen({
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinstatic)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsstatic)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)

@@ -44,7 +44,7 @@ export function readEnv() {
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinconfig) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsconfig) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 - [Environment variables guide](https://github.com/nori-kamiya/kivin/blob/main/docs/production.md#環境変数kivinconfig) (Japanese)
 
@@ -94,6 +94,6 @@ export function readEnv() {
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinconfig)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsconfig)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)
 - [環境変数のガイド](https://github.com/nori-kamiya/kivin/blob/main/docs/production.md#環境変数kivinconfig)

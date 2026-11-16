@@ -33,7 +33,7 @@ Install it as a dev dependency of your project and call it from `package.json` s
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjscli) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 
 ---
@@ -71,5 +71,5 @@ kivin の型定義は `tsconfig.json` で `"moduleResolution": "bundler"` を前
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivincli)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjscli)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)

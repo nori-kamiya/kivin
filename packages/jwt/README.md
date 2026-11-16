@@ -45,7 +45,7 @@ export class MeController {
 
 ## Documentation
 
-- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjwt) (Japanese)
+- [API reference](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsjwt) (Japanese)
 - [Project README](https://github.com/nori-kamiya/kivin/blob/main/README.md)
 
 ---
@@ -95,5 +95,5 @@ export class MeController {
 
 ### ドキュメント
 
-- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjwt)
+- [API リファレンス](https://github.com/nori-kamiya/kivin/blob/main/docs/reference.md#kivinjsjwt)
 - [プロジェクトの README](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md)

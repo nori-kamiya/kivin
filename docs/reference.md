@@ -2,22 +2,22 @@
 
 kivin の公開 API を package ごとにまとめたリファレンスです。詳細な設計背景は各専用ドキュメント（[architecture](./architecture.md) ほか）を参照してください。
 
-- [@kivinjs/core](#kivincore)
-- [@kivinjs/security](#kivinsecurity)
-- [@kivinjs/http](#kivinhttp)
-- [@kivinjs/observability](#kivinobservability)
-- [@kivinjs/config](#kivinconfig)
-- [@kivinjs/schedule](#kivinschedule)
-- [@kivinjs/session](#kivinsession)
-- [@kivinjs/graphql](#kivingraphql)
-- [@kivinjs/static](#kivinstatic)
-- [@kivinjs/decorators](#kivindecorators)
-- [@kivinjs/valibot](#kivinvalibot)
-- [@kivinjs/standard-schema](#kivinstandard-schema)
-- [@kivinjs/jwt](#kivinjwt)
-- [@kivinjs/openapi](#kivinopenapi)
-- [@kivinjs/logger](#kivinlogger)
-- [@kivinjs/cli](#kivincli)
+- [@kivinjs/core](#kivinjscore)
+- [@kivinjs/security](#kivinjssecurity)
+- [@kivinjs/http](#kivinjshttp)
+- [@kivinjs/observability](#kivinjsobservability)
+- [@kivinjs/config](#kivinjsconfig)
+- [@kivinjs/schedule](#kivinjsschedule)
+- [@kivinjs/session](#kivinjssession)
+- [@kivinjs/graphql](#kivinjsgraphql)
+- [@kivinjs/static](#kivinjsstatic)
+- [@kivinjs/decorators](#kivinjsdecorators)
+- [@kivinjs/valibot](#kivinjsvalibot)
+- [@kivinjs/standard-schema](#kivinjsstandard-schema)
+- [@kivinjs/jwt](#kivinjsjwt)
+- [@kivinjs/openapi](#kivinjsopenapi)
+- [@kivinjs/logger](#kivinjslogger)
+- [@kivinjs/cli](#kivinjscli)
 
 ---
 
