@@ -145,6 +145,19 @@
         "@kivinjs/core": "workspace:^",
       },
     },
+    "packages/i18n": {
+      "name": "@kivinjs/i18n",
+      "version": "0.1.0",
+      "dependencies": {
+        "@kivinjs/http": "workspace:^",
+      },
+      "devDependencies": {
+        "@kivinjs/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "@kivinjs/core": "workspace:^",
+      },
+    },
     "packages/jwt": {
       "name": "@kivinjs/jwt",
       "version": "0.1.0",
@@ -348,6 +361,8 @@
     "@kivinjs/graphql": ["@kivinjs/graphql@workspace:packages/graphql"],
 
     "@kivinjs/http": ["@kivinjs/http@workspace:packages/http"],
+
+    "@kivinjs/i18n": ["@kivinjs/i18n@workspace:packages/i18n"],
 
     "@kivinjs/jwt": ["@kivinjs/jwt@workspace:packages/jwt"],
 

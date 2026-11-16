@@ -1,0 +1,55 @@
+{
+  "name": "@kivinjs/i18n",
+  "version": "0.1.0",
+  "description": "Language detection and typed message catalogs for kivin, built on Intl",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/i18n"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@kivinjs/http": "workspace:^"
+  },
+  "peerDependencies": {
+    "@kivinjs/core": "workspace:^"
+  },
+  "devDependencies": {
+    "@kivinjs/core": "workspace:*"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "i18n"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

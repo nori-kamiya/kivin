@@ -26,7 +26,10 @@ export function linkDerivedRequest(derived: Request, original: Request) {
   return derived;
 }
 
-/** @internal The request the server received for `request` (itself unless kivin derived it). */
+/**
+ * The request the server received for `request`: itself, unless kivin derived it (an `onRequest`
+ * hook's rewrite, a body-limited copy). A stable key for per-request state kept outside kivin.
+ */
 export function originalRequest(request: Request): Request {
   return derivedFrom.get(request) ?? request;
 }

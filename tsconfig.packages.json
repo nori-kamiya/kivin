@@ -41,6 +41,9 @@
       "path": "./packages/apollo"
     },
     {
+      "path": "./packages/i18n"
+    },
+    {
       "path": "./packages/session"
     },
     {

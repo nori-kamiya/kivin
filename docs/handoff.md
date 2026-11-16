@@ -32,6 +32,7 @@ core は実行時の中核だけを持ち、独立した機能は領域ごとの
 | `@kivinjs/graphql` | GraphQL Yoga のマウント | core |
 | `@kivinjs/trpc` | tRPC ルーターのマウント、`HttpError` → tRPC エラーの変換 | core、`@trpc/server`（peer。#85 で合意した外部 peer） |
 | `@kivinjs/apollo` | Apollo Server のマウント、ライフサイクル連動、`formatError` | core、`@apollo/server` / `graphql` 16（peer。#86） |
+| `@kivinjs/i18n` | 言語の決定、型付きメッセージカタログ（`Intl`）、検証エラーの翻訳 | http（経由で core。#87） |
 
 新しいパッケージを足すときは、`packages/<name>/{package.json,tsconfig.json}`、`tsconfig.base.json` の `paths`、`tsconfig.build.json` の `references`、`bun.lock` の workspace エントリ（`bun install` で更新されるが、手で足す場合は既存の形に合わせる）を揃えます（#49 / #50 が例）。
 
@@ -119,7 +120,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 | `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
 | tRPC（Elysia `@elysiajs/trpc`） | `@kivinjs/trpc` を追加した（#85。#68 の「作らない」から転換） | `fetchRequestHandler` を載せるだけでは、request-scoped の DI・`HttpError` の変換・SSE のアイドルタイムアウト・未処理例外のログを利用者が毎回書くことになるため。`@trpc/server` は peer dependency（本体の依存は増えない）。request-scoped の解決は core の `app.createRequestContext` で、#86 の Apollo でも使う |
 | Apollo Server（Elysia `@elysiajs/apollo`） | `@kivinjs/apollo` を追加した（#86。#68 の「作らない」から転換） | fetch 用の公式インテグレーションが無く、ボディの読み取り・incremental delivery のストリーム・`start` / `stop` の呼び出し・request-scoped の DI を利用者が毎回書くことになるため。`@apollo/server` と `graphql` 16 は peer dependency |
-| i18n | 実装しない | 言語の選択は `acceptsLanguage` で足りる。メッセージカタログはアプリ側の関心 |
+| i18n | `@kivinjs/i18n` を追加した（#87。#68 の「実装しない」から転換） | 言語の決定（パス接頭辞・クエリ・Cookie・`Accept-Language`）、型付きカタログ、`Content-Language` / `Vary`、検証エラーの翻訳を利用者が毎回組むことになるため。npm の依存は増やさず `Intl` で整形する。全ルートの応答を拾うため `onRequest` フック + `afterResponse` で組み、core には失敗経路だけの `getValidationFailure` と `originalRequest` を足した（成功経路のコストは変わらない） |
 
 ## 6. 既知の制約
 
@@ -131,7 +132,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 ## 7. 残課題
 
-2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #87 i18n → #88 レスポンスキャッシュ → #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server は対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
+2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #88 レスポンスキャッシュ → #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n は対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 

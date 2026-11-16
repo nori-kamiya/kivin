@@ -226,7 +226,7 @@ Types come from Standard Schema type info, so this works with validators other t
 - Generated typed HTTP client; compile-time route and DI contract checks
 - CORS, cookies (signed cookies too), WebSocket, Server-Sent Events, multipart forms, per-route body limits
 - Guards, middleware and exception filters (global and per route); `HttpError` helpers; graceful shutdown; `createTestingApp` with provider overrides
-- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting
+- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting, i18n (language detection and typed message catalogs)
 - Bun single binary builds (`bun build --compile`)
 
 ## Packages
@@ -253,6 +253,7 @@ Every package requires Bun 1.4.0 or later. Details: [docs/reference.md](docs/ref
 | `@kivinjs/graphql` | Mount GraphQL Yoga |
 | `@kivinjs/trpc` | Mount a tRPC router, with request-scoped DI in the tRPC context |
 | `@kivinjs/apollo` | Mount Apollo Server, with request-scoped DI in the GraphQL context and lifecycle integration |
+| `@kivinjs/i18n` | Language detection (path prefix, query, cookie, `Accept-Language`) and typed message catalogs on `Intl`, with translated validation errors |
 
 ## Performance
 

@@ -12,6 +12,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - [@kivinjs/graphql](#kivinjsgraphql)
 - [@kivinjs/trpc](#kivinjstrpc)
 - [@kivinjs/apollo](#kivinjsapollo)
+- [@kivinjs/i18n](#kivinjsi18n)
 - [@kivinjs/static](#kivinjsstatic)
 - [@kivinjs/decorators](#kivinjsdecorators)
 - [@kivinjs/valibot](#kivinjsvalibot)
@@ -41,6 +42,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 | `ListenOptions`, `BunRouteDefinition`, `BunRouteHandler` | type | `listen()` のオプションと native route の型 |
 | `app.close(options?)` | method | graceful shutdown: 受付停止 → 処理中のリクエストを待つ → `onApplicationShutdown` を新しい順に呼ぶ |
 | `getClientAddress(request)` | function | `listen()` で受けたリクエストの接続元アドレス（Bun の `requestIP`） |
+| `originalRequest(request)` | function | サーバーが受け取ったリクエスト。`onRequest` フックの書き換えやボディ上限のための複製で作られたリクエストでも元のオブジェクトを返す。リクエストごとの状態を `WeakMap` などでフレームワークの外に持つときのキーに使う |
 | `afterResponse(request, callback)` | function | そのリクエストの最終レスポンス（例外フィルタ・CORS の後、クライアントが受け取るもの）でコールバックを呼ぶ。`Response` を返すと差し替え。メトリクスやトレースのミドルウェアが正しいステータスを記録するのに使う |
 | `enableAfterResponse()` | function | `afterResponse` を最初のリクエストから有効にする。ガード（同期・非同期を問わない）などの `await` の後ろで走るミドルウェアが `afterResponse` を使うなら、最初のリクエストより前に 1 回呼ぶ（`@kivinjs/observability` のミドルウェアは生成時に呼ぶ） |
 | `app.init()` | method | 起動時フック（`onModuleInit` → `onApplicationBootstrap`）を実行。フックがあるアプリは `listen` 前に必須 |
@@ -237,6 +239,27 @@ HTTP レベルのミドルウェアとヘルパー。
 | `formatApolloError` | function | `new ApolloServer({ formatError: formatApolloError })`。リゾルバの `HttpError` はメッセージを保ち、`extensions.code`（`unauthorized()` → `UNAUTHENTICATED`、`forbidden()` → `FORBIDDEN` など）と `extensions.status` を付ける。想定外の例外は `Internal Server Error` だけを返し、原因を `[kivin] Unhandled error` として 1 回だけ出力する（`markErrorReported` 済みなら出さない）。`GraphQLError` はそのまま |
 | `createApolloHandler(server, options?)` | function | 同じハンドラを単体で返す |
 
+## @kivinjs/i18n
+
+npm の依存はありません（`Intl` を使います）。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `createI18n({ messages, defaultLocale, detect?, formats?, validation? })` | function | 言語ごとのカタログ（`{ en, ja }`）から i18n を作る。カタログは起動時に検査する（不正なプレースホルダ、未定義のスタイル、既定カタログに無いキーや引数、文字列と複数形の食い違いは `TypeError`） |
+| `defineMessages(catalog)` | function | 既定言語のカタログ。キー（入れ子は `cart.items` のようにドット区切り）とプレースホルダから `t(...)` の型を導く |
+| `defineTranslation(base, catalog)` | function | 他言語のカタログ。`base` と同じキーでないと型エラー |
+| `plural({ zero?, one?, two?, few?, many?, other })` | function | 複数形。`count` 引数で `Intl.PluralRules` が形を選ぶ（`zero` はどの言語でも 0 のときにも使う） |
+| プレースホルダ | syntax | `{name}`（文字列か数値）、`{n, number}`、`{d, date}`、`{d, time}`。3 つ目にスタイル名を書ける（数値は `integer` / `percent`、日時は `short` / `medium` / `long` / `full` が組み込み。`formats.number` / `formats.date` で追加）。引数が無いときは `{name}` のまま出す |
+| `i18n.translator(locale \| request)` | method | `Translator`（`t(key, params)`、`locale`、`number(value, options?)`、`date(value, options?)`）。訳の無いキーは既定言語で答える |
+| `i18n.locale(request)` | method | リクエストの言語。リクエストごとに 1 回検出し、フックが書き換えたリクエストでも同じ結果を返す |
+| `i18n.onRequest` | hook | `defineApplication({ onRequest: [i18n.onRequest] })`。ルーティング前に言語を決め、`fromPathPrefix()` があれば `/ja/users` を `/users` としてルーティングする。ルートの応答（ガード・例外フィルタ・検証エラーの応答を含む）に `Content-Language`（ハンドラが付けたものは残す）を付け、検出器が見るヘッダ（`Accept-Language`、`Cookie`）を `Vary` に追加する。ルートに一致しなかった 404 / 405 には付けない |
+| `i18n.token` / `i18n.provider` | token / provider | request-scoped の `Translator`。`providers: [i18n.provider]` に入れ、`container.resolve(i18n.token)` や `@Injectable({ deps: [i18n.token] })` で受け取る |
+| `options.detect` | option | 順に試す検出器（既定は `[fromAcceptLanguage()]`）。最初に対応言語と一致したものを使い、どれも一致しなければ `defaultLocale`。値は対応言語に照合してから使うので、未対応の値がヘッダに出ることはない |
+| `fromPathPrefix({ strip? })` / `fromQuery(name?)` / `fromCookie(name?)` / `fromAcceptLanguage()` | function | 検出器。パスの最初のセグメント、`?lang=`、`lang` Cookie、`Accept-Language`。`strip: false` にするとパスを書き換えない（ルート側に `:lang` を置く） |
+| `matchLocale(candidate, locales)` | function | 候補を対応言語に照合する（大文字小文字を無視した完全一致、次に `ja-JP` → `ja` / `en` → `en-US` の言語一致） |
+| `options.validation.issue(issue, { t, locale, label })` / `.message(label, { t, locale })` | option | 検証エラーの 400 の `issues[].message` と `message` を翻訳する（`issue` はスキーマライブラリの生の issue。`undefined` を返すと元のまま）。`onRequest` フックが必要 |
+| `LocaleDetector` | interface | 自作の検出器（`detect(request, locales)`、`vary?`、`rewrite?(request, locales)`） |
+
 ## @kivinjs/static
 
 | Export | 種別 | 概要 |
@@ -277,6 +300,8 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 `@StaticResponse()` はハンドラの結果が変わらないことを宣言します。引数を取らない GET ルートの応答を起動時に 1 回だけ計算し（ガード・ミドルウェア・フィルタが無ければ Bun のネイティブルートが直接返す）、毎回ハンドラを呼びません。`return { ok: true };` のように定数リテラルを返すだけのハンドラは `kivin generate` が自動でこの扱いにします。時刻・ストア・可変な設定などを読むハンドラには付けないでください（最初の結果が返り続けます）。
 
 検証に失敗すると `400 { message: '<body|query|params|headers> validation failed', issues: [{ path: ['tags', 1, 'name'], message: '...' }] }` を返します。`issues` は schema ライブラリに関係なく `path` と `message` だけで、リクエストの値そのもの（ライブラリの生 issue に含まれる `input` など）は返しません。ただしライブラリ既定のメッセージには値が含まれることがあるので（valibot の `email` / `regex` など）、パスワード等の機微なフィールドにはメッセージを指定してください。フィルタで独自の形式にする場合は `toValidationIssues(rawIssues)` が使えます。
+
+`getValidationFailure(response)` は、この 400 の元になった `{ label, issues }`（`issues` はスキーマライブラリの生の issue。valibot なら `type` や `requirement` を持つ）を返します。それ以外の応答では `undefined` です。`afterResponse` や例外フィルタでメッセージを翻訳するのに使い、生の issue はクライアントに返さないでください（`@kivinjs/i18n` の `validation` オプションはこれを使います）。
 
 ### OpenAPI metadata
 

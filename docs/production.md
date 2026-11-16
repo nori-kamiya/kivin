@@ -476,6 +476,50 @@ show({ context }: RouteInput) {
 
 q 値の高いものを選び、同じ q なら具体的な一致（`text/html` > `text/*` > `*/*`）、次にクライアントの順序を優先します。`text/html;q=0, */*` のように明示的に `q=0` を付けた値は `*` があっても選ばれません。エンコーディングは同じ q ならサーバー側の順序（`createCompressMiddleware` の既定は brotli → gzip）です。
 
+## 多言語化（`@kivinjs/i18n`）
+
+カタログは既定言語を `defineMessages` で定義し、他の言語を `defineTranslation` で書きます。キーと補間引数の型は既定言語のカタログから導かれるので、`t('cart.items')` の引数忘れや、訳でのキーの抜けは型エラーになります。訳のプレースホルダが既定の文言に無い引数を使っているといった食い違いは、`createI18n` が起動時に `TypeError` で知らせます。
+
+```ts
+import { createI18n, defineMessages, defineTranslation, fromAcceptLanguage, fromCookie, fromPathPrefix, plural } from '@kivinjs/i18n';
+
+const en = defineMessages({
+  greeting: 'Hello, {name}',
+  cart: { items: plural({ zero: 'Your cart is empty', one: '{count} item', other: '{count} items' }), total: 'Total: {amount, number, price}' },
+  validation: { tooShort: 'Must be at least {min} characters' },
+});
+const ja = defineTranslation(en, {
+  greeting: 'こんにちは、{name}さん',
+  cart: { items: plural({ zero: 'カートは空です', other: '{count} 点' }), total: '合計: {amount, number, price}' },
+  validation: { tooShort: '{min} 文字以上にしてください' },
+});
+
+export const i18n = createI18n({
+  messages: { en, ja },
+  defaultLocale: 'en',
+  detect: [fromPathPrefix(), fromCookie(), fromAcceptLanguage()],
+  formats: { number: { price: { style: 'currency', currency: 'JPY' } } },
+  validation: {
+    issue: (issue, { t }) => {
+      const { type, requirement } = issue as { type?: string; requirement?: number }; // valibot の issue
+      return type === 'min_length' ? t('validation.tooShort', { min: requirement ?? 0 }) : undefined;
+    },
+  },
+});
+
+defineApplication({ ..., onRequest: [i18n.onRequest], modules: [defineModule({ providers: [i18n.provider], ... })] });
+
+// ハンドラ・ガード・例外フィルタ
+const { t } = i18n.translator(context.request);
+t('cart.items', { count: 3 }); // "3 点"
+```
+
+- 言語は `detect` の順に決めます。`/ja/cart` は `fromPathPrefix()` が `ja` と判定し、`/cart` としてルーティングします（コントローラに `:lang` は不要です）。書き換えたリクエストはネイティブルート（`listen({ routes })`）には届かないので（#92）、tRPC や GraphQL のエンドポイントには接頭辞を付けずにアクセスしてください。
+- 応答には `Content-Language` と、検出器が見たヘッダの `Vary`（`Accept-Language`、`Cookie`）が付きます。CDN でキャッシュするなら、パスの接頭辞で言語を分けると `Vary` に頼らずに済みます。
+- 検証エラーの 400 は、`validation.issue` が生の issue（valibot なら `type`・`requirement`）から訳を返します。Standard Schema のアダプタでは issue が `message` と `path` しか持たないので、パスで出し分けてください。
+- DI で受け取るときは `providers: [i18n.provider]` を入れ、`container.resolve(i18n.token)` や `@Injectable({ deps: [i18n.token] })` を使います。request-scoped なので、受け取る側も request-scoped にしてください。
+- フックを入れなくても `i18n.translator(request)` は使えます（そのリクエストから言語を検出します）。ヘッダの付与、接頭辞の書き換え、検証エラーの翻訳はフックが必要です。
+
 ## ルーティング前のフック（`onRequest`）
 
 `defineApplication({ onRequest })` に渡したフックは、ルーティングの前に全リクエストで順に実行されます（Bun のネイティブルートに載ったルートも含む）。`Response` を返すと即座に応答し、`Request` を返すとそのリクエストとしてルーティングし直します。フックを設定しなければオーバーヘッドはありません。
