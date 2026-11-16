@@ -4,6 +4,7 @@ export type { AppManifest, BunRouteDefinition, BunRouteHandler, ListenOptions, M
 import type { Server } from 'bun';
 import { assertSupportedBun } from './bun-version';
 import { Container } from './container';
+import { RequestContext } from './context';
 import { createCorsHandler, createCorsMiddleware, type CorsHandler } from './cors';
 import { getInjectableMetadata, type AppDefinition, type RequestHook } from './metadata';
 import { flattenModules } from './module';
@@ -458,6 +459,18 @@ export function createApp<TSchema>(definition: AppDefinition<TSchema>, manifest:
     /** Resolves a provider from the app's root container (handy in scripts and tests). */
     get<T>(token: Token<T>): T {
       return container.resolve(token);
+    },
+    /**
+     * A `RequestContext` with its own request container, for code outside controller routes (native
+     * routes, `@kivinjs/trpc`, GraphQL contexts): `inject(...)` gives request-scoped providers one
+     * instance per call of this method, and `RequestContext` resolves to the returned context.
+     * Response headers set on it are not applied to the native route's response.
+     */
+    createRequestContext(request: Request, params: Record<string, string> = EMPTY_PARAMS): RequestContext {
+      const requestContainer = container.createRequestContainer();
+      const context = new RequestContext(request, params, requestContainer);
+      requestContainer.register({ provide: RequestContext, scope: 'request', useValue: context });
+      return context;
     },
   };
 
