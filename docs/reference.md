@@ -13,6 +13,7 @@ kivin の公開 API を package ごとにまとめたリファレンスです。
 - [@kivinjs/trpc](#kivinjstrpc)
 - [@kivinjs/apollo](#kivinjsapollo)
 - [@kivinjs/i18n](#kivinjsi18n)
+- [@kivinjs/jsx](#kivinjsjsx)
 - [@kivinjs/static](#kivinjsstatic)
 - [@kivinjs/decorators](#kivinjsdecorators)
 - [@kivinjs/valibot](#kivinjsvalibot)
@@ -167,7 +168,7 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createMethodOverride(options?)` | function | `onRequest` フック。POST をフォームの `_method`（またはヘッダ / クエリ）で PUT / PATCH / DELETE としてルーティングする |
 | `createTrailingSlash(options?)` | function | `onRequest` フック。末尾スラッシュを除く（`trim`）/ 付ける（`append`）正規 URL へリダイレクト（GET / HEAD は 301、他は 308） |
 | `proxy(target, request, options?)` | function | リバースプロキシ（Hono の `proxy`）。ホップバイホップヘッダの除去、`X-Forwarded-*`、圧縮されたままの転送、502 / 504、切断時の中断 |
-| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス。`htmlResponse` は文字列・`html` の結果・`ReadableStream`（`react-dom/server` の `renderToReadableStream` など JSX の描画結果）を受け取る |
+| `html`, `raw`, `htmlResponse`, `escapeHtml`, `HtmlString` | function / class | 自動エスケープする HTML テンプレート（Hono の `html`）と `text/html` レスポンス。`htmlResponse` は文字列・`html` の結果・`ReadableStream`（`react-dom/server` の `renderToReadableStream` など JSX の描画結果）を受け取る。`@kivinjs/jsx` を使うなら同パッケージの `render` |
 | `createRequestStorageMiddleware()`, `getCurrentRequest()`, `getRequestValue(key)`, `setRequestValue(key, value)` | function | AsyncLocalStorage で現在のリクエストと値をどこからでも参照する（Hono の `contextStorage`） |
 
 ## @kivinjs/observability
@@ -264,6 +265,24 @@ npm の依存はありません（`Intl` を使います）。
 | `matchLocale(candidate, locales)` | function | 候補を対応言語に照合する（大文字小文字を無視した完全一致、次に `ja-JP` → `ja` / `en` → `en-US` の言語一致） |
 | `options.validation.issue(issue, { t, locale, label })` / `.message(label, { t, locale })` | option | 検証エラーの 400 の `issues[].message` と `message` を翻訳する（`issue` はスキーマライブラリの生の issue。`undefined` を返すと元のまま）。`onRequest` フックが必要 |
 | `LocaleDetector` | interface | 自作の検出器（`detect(request, locales)`、`vary?`、`rewrite?(request, locales)`） |
+
+## @kivinjs/jsx
+
+npm の依存はありません。`tsconfig.json` の `"jsx": "react-jsx"` と `"jsxImportSource": "@kivinjs/jsx"` で使います（`@kivinjs/jsx/jsx-runtime` と `@kivinjs/jsx/jsx-dev-runtime` を提供）。
+
+| Export | 種別 | 概要 |
+| --- | --- | --- |
+| `render(contextOrRequest, node, { props?, status?, headers?, stream?, docType?, nonce? })` | function | ルートのレイアウトで包んだ HTML の `Response`（`text/html; charset=utf-8`、既定で `<!DOCTYPE html>` を前置）。`RequestContext` を渡すとコンポーネントから `useRequestContext()` が使える |
+| `createJsxRenderer(layout, { stream?, docType?, nonce? })` | function | レイアウトを登録するミドルウェア（Hono の `jsxRenderer`）。複数あれば外側が内側を包み、設定は内側のものが優先される。`layout` は `children` と `render` の `props` を受け取る |
+| `useRequestContext()` | function | 描画中のリクエストの `RequestContext` |
+| `renderToString(node)` | function | HTML 文字列（非同期コンポーネントと `<Suspense>` の中身を待つ） |
+| `renderToReadableStream(node, { prefix?, nonce? })` | function | HTML のストリーム。シェルを描画してから resolve し（シェルの例外は reject）、`<Suspense>` の中身は描画でき次第、`<template>` とインラインスクリプトで差し込む。中身の例外はフォールバックを残して `[kivin] Suspense boundary failed` を出力する |
+| `Suspense` | component | `fallback` を先に送り、`children` を後からストリームで送る境界。文字列への描画では `children` を待つ |
+| `createContext(defaultValue)` / `useContext(context)` | function | ツリーを通して値を渡す（`<Context.Provider value>`）。非同期コンポーネントでは最初の `await` より前に呼ぶ |
+| `raw(html)`, `jsonScript(value)` | function | エスケープせずに書く HTML（信頼できるものだけ）と、`<script>` に安全に埋め込める JSON（`<` `>` `&` U+2028 / U+2029 を `\u` エスケープ） |
+| `escapeHtml(text)` | function | `& < > " '` のエスケープ |
+| 描画の規則 | — | テキストと属性値は常にエスケープ（`<script>` / `<style>` の中も）。`class` / `className` は文字列・配列・`{ name: boolean }` を結合、`style` はオブジェクトなら camelCase を kebab-case にする（数値はそのまま）、`htmlFor` は `for`。`true` は値なしの属性、`false` / `null` / `undefined` と関数は書かない（`aria-*` / `data-*` の真偽値は `"true"` / `"false"`）。`dangerouslySetInnerHTML={{ __html }}` は中身をそのまま書く。void 要素は閉じタグなし。不正な要素名・属性名は例外 |
+| `JSX.IntrinsicElements`, `HTMLAttributes`, `Child`, `Component`, `JSXElement` | type | HTML 要素と属性の型（主な要素の固有属性、ARIA / `data-*`、SVG、`my-widget` 形式のカスタム要素）。非同期コンポーネントも使える |
 
 ## @kivinjs/static
 

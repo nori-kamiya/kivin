@@ -450,29 +450,40 @@ card({ params }: RouteInput<{ params: typeof IdSchema }>) {
 
 埋め込んだ値はすべて HTML エスケープされます（属性値も含む）。`html` で作ったものは二重にエスケープされず、配列は連結、`null` / `undefined` / 真偽値は何も出力しません。
 
-### JSX
+### JSX（`@kivinjs/jsx`）
 
-Bun は `.tsx` をそのまま実行できるので、kivin は JSX ランタイムを同梱しません。React（`react-dom/server`）などで描画したストリームを `htmlResponse` に渡します。
+`@kivinjs/jsx` は npm の依存が無い JSX ランタイムです。`tsconfig.json` に `"jsx": "react-jsx"` と `"jsxImportSource": "@kivinjs/jsx"` を設定すると、`.tsx` のコントローラやコンポーネントがそのまま使えます（`kivin generate` も `.tsx` を読みます）。
 
 ```tsx
-// pages.controller.tsx（tsconfig: "jsx": "react-jsx"）
-import { renderToReadableStream } from 'react-dom/server';
-import { htmlResponse } from '@kivinjs/http';
+// pages.controller.tsx
+import { createJsxRenderer, render, Suspense, useRequestContext } from '@kivinjs/jsx';
 
-function Page({ name }: { name: string }) {
-  return <html><body><h1>Hello, {name}</h1></body></html>;
-}
+export const Layout = createJsxRenderer<{ title?: string }>(({ title, children }) => (
+  <html lang="ja"><head><title>{title ?? 'kivin'}</title></head><body>{children}</body></html>
+), { stream: true });
+
+const Orders = async () => {
+  const orders = useRequestContext().inject(OrderService); // await より前に呼ぶ
+  return <ul>{(await orders.recent()).map((order) => <li key={order.id}>{order.title}</li>)}</ul>;
+};
 
 @Controller('/')
 export class PagesController {
   @Get('/')
-  async home() {
-    return htmlResponse(await renderToReadableStream(<Page name="kivin" />));
+  @UseMiddleware(Layout)
+  home({ context }: RouteInput) {
+    return render(context, <main><h1>注文</h1><Suspense fallback={<p>読み込み中…</p>}><Orders /></Suspense></main>, { props: { title: 'ホーム' } });
   }
 }
 ```
 
-Hono の `jsxRenderer` のようなレイアウトの共通化は、レイアウト用のコンポーネントで包めば足ります。Preact（`preact-render-to-string`）など文字列を返すレンダラーは `htmlResponse(renderToString(<Page />))` です。
+- `createJsxRenderer(Layout, options?)` はレイアウトを登録するミドルウェアです。ルート・コントローラ・モジュール・アプリのどこにでも付けられ、複数あれば外側のものが内側を包みます。ハンドラは `render(context, <Page />, { props, status, headers })` を返します。
+- コンポーネントからは `useRequestContext()` で kivin の `RequestContext` を取れます（`inject` で request-scoped の provider も解決できます）。`createContext` / `useContext` で任意の値を渡すこともできます。非同期コンポーネントでは、どちらも最初の `await` より前に呼んでください。
+- `stream: true` にすると、`<Suspense>` の外側を先に送り、中身を描画でき次第、小さなインラインスクリプトで差し込みます。CSP を使うなら `nonce` を渡してください。外側（シェル）での例外は送信前に起きるので、通常の 500 になります。`<Suspense>` の中の例外はフォールバックを残してログに出します。
+- テキストと属性値は常にエスケープします。`<script>` / `<style>` の中の文字列もエスケープするので、スクリプトにデータを渡すときは `jsonScript(data)`（`<` などを `\u003c` にした JSON）を使ってください。生の HTML は `raw()` か `dangerouslySetInnerHTML` だけで、利用者の入力を渡してはいけません。属性名・要素名が不正（スプレッドで渡した値など）なら描画せずに例外にします。
+- 関数の属性（`onclick={() => …}`）は書き出しません。サーバーで描画するだけで、クライアントでのハイドレーションはありません。
+
+React など他のレンダラーを使う場合は、描画したストリームや文字列を `htmlResponse` に渡します（`htmlResponse(await renderToReadableStream(<Page />))`）。
 
 ## 現在のリクエストへのアクセス（`@kivinjs/http`）
 

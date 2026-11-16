@@ -33,6 +33,7 @@ core は実行時の中核だけを持ち、独立した機能は領域ごとの
 | `@kivinjs/trpc` | tRPC ルーターのマウント、`HttpError` → tRPC エラーの変換 | core、`@trpc/server`（peer。#85 で合意した外部 peer） |
 | `@kivinjs/apollo` | Apollo Server のマウント、ライフサイクル連動、`formatError` | core、`@apollo/server` / `graphql` 16（peer。#86） |
 | `@kivinjs/i18n` | 言語の決定、型付きメッセージカタログ（`Intl`）、検証エラーの翻訳 | http（経由で core。#87） |
+| `@kivinjs/jsx` | JSX ランタイム（文字列 / ストリーム描画、Suspense）、ルートのレイアウト | core（#89） |
 
 新しいパッケージを足すときは、`packages/<name>/{package.json,tsconfig.json}`、`tsconfig.base.json` の `paths`、`tsconfig.build.json` の `references`、`bun.lock` の workspace エントリ（`bun install` で更新されるが、手で足す場合は既存の形に合わせる）を揃えます（#49 / #50 が例）。
 
@@ -114,7 +115,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 | 機能 | 判断 | 理由 / 代替 |
 | --- | --- | --- |
-| JSX レンダラー（Hono `jsxRenderer`） | ランタイムは同梱しない。`htmlResponse` が `ReadableStream` を受け取るようにした | Bun は `.tsx` をそのまま実行でき、React / Preact のサーバーレンダラーで足りる。独自の JSX ランタイム（型定義や属性の扱い）を保守するコストに見合わない。使い方は [production.md](production.md)「JSX」 |
+| JSX レンダラー（Hono `jsxRenderer`） | `@kivinjs/jsx` を追加した（#89。#68 の「同梱しない」から転換） | React などを入れずに HTML を返したい要望に、依存ゼロの自前ランタイムで応える（2026-11-16 に方式を合意）。要素は描画まで遅延させ、非同期コンポーネントと `<Suspense>` のストリームを扱う。エスケープは常に行い、生の HTML は `raw` / `jsonScript` / `dangerouslySetInnerHTML` だけ。レイアウトはミドルウェアがリクエストに登録し、ハンドラが `render(context, …)` で使う（ハンドラの戻り値を JSON 化する経路には手を入れない）。React などのレンダラーは引き続き `htmlResponse` で使える |
 | SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
 | Cache（Hono `cache`） | `@kivinjs/http` の `createResponseCache` を追加した（#88。#68 の「実装しない」から転換） | Bun に Web Cache API が無いので、ストアを差し替えられる形（メモリ / Redis）にした。応答の混入を防ぐため、`Authorization` / `Cookie` 付きのリクエスト、`Set-Cookie`・`private` / `no-store` / `no-cache`・`Vary: *` の応答は既定で対象外。エントリは応答の `Vary` で分ける。混入の回帰テストを持つ |
 | `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
@@ -132,7 +133,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 ## 7. 残課題
 
-2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n、#88 レスポンスキャッシュは対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
+2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n、#88 レスポンスキャッシュ、#89 JSX ランタイムは対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 
