@@ -215,6 +215,29 @@ export function StaticResponse(): MethodDecorator {
   return (_value, context) => updateDocs(context, 'StaticResponse', (current) => ({ ...current, staticResponse: true }));
 }
 
+/** Values for a route's path params when generating a static site (`kivin ssg`). */
+export type StaticParamsSource = readonly Record<string, string>[] | (() => readonly Record<string, string>[] | Promise<readonly Record<string, string>[]>);
+
+// Read by `kivin ssg` through the same well-known symbol, so it needs no shared module state.
+const STATIC_PARAMS = Symbol.for('kivin.staticParams');
+
+/**
+ * The path params `kivin ssg` renders this GET route with: `@StaticParams([{ slug: 'hello' }])` or
+ * `@StaticParams(async () => (await posts.all()).map(({ slug }) => ({ slug })))`. Only static site
+ * generation reads it; serving requests ignores it.
+ */
+export function StaticParams(source: StaticParamsSource): MethodDecorator {
+  return (_value, context) => {
+    assertMethod(context, 'StaticParams');
+    const metadata = metadataOf(context) as Record<symbol, Record<string, StaticParamsSource> | undefined>;
+    // Own map per class: an inherited one belongs to the parent class.
+    if (!Object.hasOwn(metadata, STATIC_PARAMS)) {
+      metadata[STATIC_PARAMS] = { ...metadata[STATIC_PARAMS] };
+    }
+    metadata[STATIC_PARAMS]![String(context.name)] = source;
+  };
+}
+
 /** Validates the request headers (lower-case names, e.g. `'x-api-version'`) passed as the input's `headers`. */
 export function UseHeaderSchema(schema: unknown): MethodDecorator {
   return (_value, context) => updateDocs(context, 'UseHeaderSchema', (current) => ({ ...current, headerSchema: schema }));

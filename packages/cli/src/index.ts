@@ -1,5 +1,6 @@
 import type { AppDefinition, AppManifest, CanActivate, Constructor, ModuleLike, ProviderDefinition, ProviderScope, Token } from '@kivinjs/core';
 import type * as KivinCore from '@kivinjs/core';
+import { generateStaticSite, type StaticSiteOptions } from './ssg';
 import { buildOpenApiDocument } from '@kivinjs/openapi';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
@@ -38,7 +39,7 @@ export interface ModuleInspection {
   globalFilterScopes?: ProviderScope[];
 }
 
-type CoreRuntime = Pick<typeof KivinCore, 'flattenModules' | 'getInjectableMetadata' | 'normalizeModule'>;
+type CoreRuntime = Pick<typeof KivinCore, 'createApp' | 'flattenModules' | 'getInjectableMetadata' | 'normalizeModule'>;
 
 /**
  * Decorators write metadata into whichever @kivinjs/core the app resolves, which differs from the CLI's own
@@ -138,6 +139,25 @@ function explainGeneratedImport(error: unknown, outDir: string): Error | undefin
     return undefined;
   }
   return new Error(`${match[2]} imports ${match[1]} at runtime, but that generated file does not exist yet. The entry must not import generated files at runtime (kivin generate has to load it before it can write them); import them from main.ts instead.`);
+}
+
+export { generateStaticSite, type StaticParamsSource, type StaticSiteOptions, type StaticSiteResult } from './ssg';
+
+/**
+ * `kivin ssg`: builds the app from `entry` and the generated `manifest` (`kivin generate` first), runs
+ * its startup hooks, writes the static site and closes the app.
+ */
+export async function buildStaticSite(input: { entry: string; manifest: string } & Omit<StaticSiteOptions, 'app' | 'manifest'>) {
+  const { appDefinition, core } = await loadApp(input.entry);
+  const manifest = await loadManifest(resolve(input.manifest));
+  const app = core.createApp(appDefinition, manifest);
+  await app.init();
+  try {
+    const { entry: _entry, manifest: _manifest, ...options } = input;
+    return await generateStaticSite({ ...options, app, manifest });
+  } finally {
+    await app.close();
+  }
 }
 
 export async function generateOpenApi(input: { entry: string; output: string; title?: string; version?: string }) {
