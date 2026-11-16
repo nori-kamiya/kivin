@@ -16,6 +16,7 @@
       "@kivinjs/static": ["./packages/static/src/index.ts"],
       "@kivinjs/graphql": ["./packages/graphql/src/index.ts"],
       "@kivinjs/trpc": ["./packages/trpc/src/index.ts"],
+      "@kivinjs/apollo": ["./packages/apollo/src/index.ts"],
       "@kivinjs/session": ["./packages/session/src/index.ts"],
       "@kivinjs/schedule": ["./packages/schedule/src/index.ts"],
       "@kivinjs/config": ["./packages/config/src/index.ts"],

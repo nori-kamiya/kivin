@@ -38,6 +38,9 @@
       "path": "./packages/trpc"
     },
     {
+      "path": "./packages/apollo"
+    },
+    {
       "path": "./packages/session"
     },
     {
