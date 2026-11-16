@@ -225,6 +225,19 @@
         "@kivinjs/core": "workspace:^",
       },
     },
+    "packages/trpc": {
+      "name": "@kivinjs/trpc",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@kivinjs/core": "workspace:*",
+        "@trpc/client": "11.22.1",
+        "@trpc/server": "11.22.1",
+      },
+      "peerDependencies": {
+        "@kivinjs/core": "workspace:^",
+        "@trpc/server": "^11.0.0",
+      },
+    },
     "packages/valibot": {
       "name": "@kivinjs/valibot",
       "version": "0.1.0",
@@ -303,6 +316,8 @@
     "@kivinjs/standard-schema": ["@kivinjs/standard-schema@workspace:packages/standard-schema"],
 
     "@kivinjs/static": ["@kivinjs/static@workspace:packages/static"],
+
+    "@kivinjs/trpc": ["@kivinjs/trpc@workspace:packages/trpc"],
 
     "@kivinjs/valibot": ["@kivinjs/valibot@workspace:packages/valibot"],
 
@@ -407,6 +422,10 @@
     "@tokenizer/inflate": ["@tokenizer/inflate@0.5.1", "", { "dependencies": { "debug": "^4.4.3", "token-types": "^6.1.2" } }, "sha512-56U2O6fDLFtqokwWh597IdeUgtM7j+TT9tb1soybhgA6cy163gAcVmoQr8H4Ud/CkgCkViwcuLyqtn6wYqw59Q=="],
 
     "@tokenizer/token": ["@tokenizer/token@0.3.0", "", {}, "sha512-OvjF+z51L3ov0OyAU0duzsYuvO01PH7x4t6DJx+guahgTnBHkhJdG7soQeTSFLWN3efnHyibZ4Z8l2EuWwJN3A=="],
+
+    "@trpc/client": ["@trpc/client@11.22.1", "", { "peerDependencies": { "@trpc/server": "11.22.1", "typescript": ">=5.7.2" }, "bin": { "intent": "bin/intent.js" } }, "sha512-flkAwF8bzzNCVJ5xcTMS+Az6Go/XK30ZIOGT94UJBYAmMq1w2tY7gk7+CIMiRUdvHzOYAVPitX2H+20qcIIomA=="],
+
+    "@trpc/server": ["@trpc/server@11.22.1", "", { "peerDependencies": { "typescript": ">=5.7.2" }, "bin": { "intent": "bin/intent.js" } }, "sha512-9SjWTS5iwENHOVPqpTjm0I1Os/CtuT6p8kDlovyEm00pXhpHX55tQM2vszJTEpcQhm/JfUz4ut/7Y9JZZQZo6A=="],
 
     "@tybys/wasm-util": ["@tybys/wasm-util@0.10.4", "", { "dependencies": { "tslib": "^2.4.0" } }, "sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A=="],
 

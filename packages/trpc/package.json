@@ -1,0 +1,55 @@
+{
+  "name": "@kivinjs/trpc",
+  "version": "0.1.0",
+  "description": "Mount a tRPC router on kivin native routes, with request-scoped DI in the tRPC context",
+  "license": "MIT",
+  "author": "nori-kamiya",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nori-kamiya/kivin.git",
+    "directory": "packages/trpc"
+  },
+  "homepage": "https://github.com/nori-kamiya/kivin#readme",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "peerDependencies": {
+    "@kivinjs/core": "workspace:^",
+    "@trpc/server": "^11.0.0"
+  },
+  "devDependencies": {
+    "@kivinjs/core": "workspace:*",
+    "@trpc/client": "11.22.1",
+    "@trpc/server": "11.22.1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "bun run build"
+  },
+  "bugs": {
+    "url": "https://github.com/nori-kamiya/kivin/issues"
+  },
+  "keywords": [
+    "kivin",
+    "bun",
+    "web-framework",
+    "trpc"
+  ],
+  "engines": {
+    "bun": ">=1.4.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

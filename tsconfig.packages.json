@@ -35,6 +35,9 @@
       "path": "./packages/graphql"
     },
     {
+      "path": "./packages/trpc"
+    },
+    {
       "path": "./packages/session"
     },
     {
