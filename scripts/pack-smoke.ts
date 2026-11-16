@@ -118,7 +118,7 @@ function spawnServer(command: string[], cwd: string, port: number): Bun.Subproce
   return child;
 }
 
-async function exercise(baseUrl: string, label: string): Promise<void> {
+async function exercise(baseUrl: string, label: string, pages = false): Promise<void> {
   const greeting = await fetch(`${baseUrl}/greetings/Ada`);
   assert(greeting.status === 200, `${label}: GET /greetings/Ada returned ${greeting.status}`);
   const greetingBody = (await greeting.json()) as { message?: string };
@@ -126,6 +126,12 @@ async function exercise(baseUrl: string, label: string): Promise<void> {
 
   const created = await fetch(`${baseUrl}/greetings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: 'Grace' }) });
   assert(created.status === 201, `${label}: valid POST returned ${created.status}`);
+
+  if (pages) {
+    const page = await fetch(`${baseUrl}/pages/%3CAda%3E`);
+    const pageBody = await page.text();
+    assert(page.status === 200 && pageBody === '<!DOCTYPE html><html><body><p>Hello, &lt;Ada&gt;</p></body></html>', `${label}: GET /pages/<Ada> returned ${page.status} ${pageBody}`);
+  }
 
   const invalid = await fetch(`${baseUrl}/greetings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: '' }) });
   assert(invalid.status >= 400 && invalid.status < 500, `${label}: the valibot schema did not reject an empty name (status ${invalid.status})`);
@@ -146,12 +152,20 @@ const files: Record<string, string> = {
         verbatimModuleSyntax: true,
         skipLibCheck: false,
         noEmit: true,
+        jsx: 'react-jsx',
+        jsxImportSource: '@kivinjs/jsx',
       },
-      include: ['src/**/*.ts', '.kivin/generated/**/*.ts'],
+      include: ['src/**/*.ts', 'src/**/*.tsx', '.kivin/generated/**/*.ts'],
     },
     null,
     2,
   ),
+  'src/page.tsx': `import { renderToString } from '@kivinjs/jsx';
+
+const Greeting = async ({ name }: { name: string }) => <h1>Hello, {name}</h1>;
+
+console.log(await renderToString(<main><Greeting name="<Ada>" /></main>));
+`,
   'src/greeting.schemas.ts': `import * as v from 'valibot';
 
 export const NameParamSchema = v.object({ name: v.string() });
@@ -198,11 +212,31 @@ export class GreetingController {
   }
 }
 `,
+  'src/page.controller.tsx': `import type { RouteInput } from '@kivinjs/core';
+import { Controller, Get, Injectable, UseMiddleware } from '@kivinjs/decorators';
+import { createJsxRenderer, render, useRequestContext } from '@kivinjs/jsx';
+import { GreetingService } from './greeting.service';
+
+export const Layout = createJsxRenderer(({ children }) => <html><body>{children}</body></html>);
+
+const Message = ({ name }: { name: string }) => <p>{useRequestContext().inject(GreetingService).greet(name).message}</p>;
+
+@Controller('/pages')
+@Injectable()
+export class PageController {
+  @Get('/:name')
+  @UseMiddleware(Layout)
+  page({ params, context }: RouteInput) {
+    return render(context, <Message name={params.name ?? ''} />);
+  }
+}
+`,
   'src/greeting.module.ts': `import { Module } from '@kivinjs/decorators';
 import { GreetingController } from './greeting.controller';
 import { GreetingService } from './greeting.service';
+import { Layout, PageController } from './page.controller';
 
-@Module({ providers: [GreetingService], controllers: [GreetingController] })
+@Module({ providers: [GreetingService, Layout], controllers: [GreetingController, PageController] })
 export class GreetingModule {}
 `,
   'src/app.ts': `import { defineApplication } from '@kivinjs/core';
@@ -264,7 +298,9 @@ try {
   const importAll = `import { readdirSync, readFileSync } from 'node:fs';
 const failures = [];
 let count = 0;
+let packages = 0;
 for (const dir of readdirSync('node_modules/@kivinjs')) {
+  packages += 1;
   const manifest = JSON.parse(readFileSync(\`node_modules/@kivinjs/\${dir}/package.json\`, 'utf8'));
   for (const key of Object.keys(manifest.exports ?? {})) {
     if (key === './package.json' || key.includes('*')) continue;
@@ -281,11 +317,15 @@ if (failures.length > 0) {
   console.error(failures.join('\\n'));
   process.exit(1);
 }
-console.log(\`imported \${count} entry points\`);
+console.log(\`imported \${count} entry points from \${packages} packages\`);
 `;
   writeFileSync(join(appDir, 'import-all.mjs'), importAll);
   const imported = await mustRun('import every package', ['bun', 'import-all.mjs']);
-  assert(imported.includes(`imported ${release.packages.length} entry points`), `expected one entry point per package (${release.packages.length}), got: ${imported.trim()}`);
+  assert(new RegExp(`imported \\d+ entry points from ${release.packages.length} packages`).test(imported), `expected every package (${release.packages.length}) to be imported, got: ${imported.trim()}`);
+
+  step('a .tsx page renders through the installed @kivinjs/jsx runtime');
+  const page = await mustRun('bun src/page.tsx', ['bun', 'src/page.tsx'], appDir);
+  assert(page.trim() === '<main><h1>Hello, &lt;Ada&gt;</h1></main>', `unexpected JSX output: ${page.trim()}`);
 
   const kivin = join(appDir, 'node_modules/.bin/kivin');
   step('kivin --version prints the package version');
@@ -314,7 +354,7 @@ console.log(\`imported \${count} entry points\`);
   const compiledPort = freePort();
   const compiled = spawnServer([join(runDir, 'app')], runDir, compiledPort);
   await waitFor(`http://127.0.0.1:${compiledPort}/greetings/Ada`, compiled, 'compiled binary');
-  await exercise(`http://127.0.0.1:${compiledPort}`, 'compiled binary');
+  await exercise(`http://127.0.0.1:${compiledPort}`, 'compiled binary', true);
   compiled.kill('SIGTERM');
   await compiled.exited;
   children.delete(compiled);
@@ -323,7 +363,7 @@ console.log(\`imported \${count} entry points\`);
   const devPort = freePort();
   const dev = spawnServer([kivin, 'dev', '--entry', 'src/app.ts', '--outDir', '.kivin/generated', '--main', 'src/main.ts', '--watch', 'src'], appDir, devPort);
   await waitFor(`http://127.0.0.1:${devPort}/greetings/Ada`, dev, 'kivin dev');
-  await exercise(`http://127.0.0.1:${devPort}`, 'kivin dev');
+  await exercise(`http://127.0.0.1:${devPort}`, 'kivin dev', true);
   dev.kill('SIGTERM');
   const stopped = await Promise.race([dev.exited, Bun.sleep(10_000).then(() => 'timeout' as const)]);
   assert(stopped !== 'timeout', 'kivin dev did not exit within 10s of SIGTERM');

@@ -91,9 +91,9 @@ describe('verifyChecksums', () => {
 });
 
 describe('the real workspace', () => {
-  test('given the repository packages, when ordering them, then all 19 are present, core comes first and the order is acyclic', () => {
+  test('given the repository packages, when ordering them, then all 20 are present, core comes first and the order is acyclic', () => {
     const order = publishOrder(readWorkspaceManifests(join(import.meta.dir, '../..'))).map((manifest) => manifest.name);
-    expect(order).toHaveLength(19);
+    expect(order).toHaveLength(20);
     expect(order[0]).toBe('@kivinjs/core');
     expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/http'));
     expect(order.indexOf('@kivinjs/http')).toBeLessThan(order.indexOf('@kivinjs/static'));
@@ -101,5 +101,6 @@ describe('the real workspace', () => {
     expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/trpc'));
     expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/apollo'));
     expect(order.indexOf('@kivinjs/http')).toBeLessThan(order.indexOf('@kivinjs/i18n'));
+    expect(order.indexOf('@kivinjs/core')).toBeLessThan(order.indexOf('@kivinjs/jsx'));
   });
 });
