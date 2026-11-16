@@ -1,6 +1,6 @@
 // @kivinjs/trpc: mounts a tRPC router on kivin native routes, with kivin's DI (request-scoped
 // providers included) available in the tRPC context and kivin's HttpError mapped to tRPC errors.
-import { createCorsHandler, HttpError, type CorsOptions, type RequestContext } from '@kivinjs/core';
+import { createCorsHandler, originalRequest, HttpError, type CorsOptions, type RequestContext } from '@kivinjs/core';
 import { TRPCError, type AnyRouter, type inferRouterContext } from '@trpc/server';
 import { fetchRequestHandler, type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import type { HTTPBaseHandlerOptions } from '@trpc/server/http';
@@ -126,9 +126,10 @@ export function createTrpcHandler<TRouter extends AnyRouter>(router: TRouter, op
   const cors = corsOptions ? createCorsHandler(corsOptions) : undefined;
 
   const handle = async (request: Request, server?: ServerTimeout): Promise<Response> => {
-    // A subscription (SSE) stays open with gaps longer than `idleTimeout`; Bun would cut it.
+    // A subscription (SSE) stays open with gaps longer than `idleTimeout`; Bun would cut it. Bun only
+    // knows the request it received, not one an `onRequest` hook rewrote.
     if (server && request.headers.get('accept')?.includes('text/event-stream')) {
-      server.timeout(request, 0);
+      server.timeout(originalRequest(request), 0);
     }
 
     let answer: Response | undefined;
