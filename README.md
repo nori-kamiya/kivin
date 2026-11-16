@@ -4,6 +4,12 @@
 
 A lightweight, Fetch API based web framework built for Bun single-binary deployment. It is early-stage (`v0.1.0`), so the API may still change before a stable release.
 
+**About the name:** kivin comes from the Japanese word *kibin* (機敏), meaning quick and responsive: acting swiftly and precisely as the situation demands. Keeping the runtime that nimble is the framework's central design goal:
+
+- Route resolution, validation wiring and OpenAPI generation happen at build time from the AST, not at runtime, so handling a request stays close to calling a pre-generated execution function.
+- Features you don't use cost nothing at runtime, so you get module / DI structure while keeping a Hono-like thin core.
+- Apps ship as a single binary, and CI compares throughput and startup time against the base branch on every change.
+
 Goals:
 
 - A thin runtime core, like Hono
