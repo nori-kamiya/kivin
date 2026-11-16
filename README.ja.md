@@ -226,7 +226,7 @@ contracts.ts: Type '{ contractError: "UserController.findById: the handler input
 - 型付き HTTP クライアントの生成、route と DI のコンパイル時 contract 検査
 - CORS、Cookie（署名付きも）、WebSocket、Server-Sent Events、multipart フォーム、ルート単位のボディ上限
 - guard / middleware / 例外フィルタ（global とルート単位）、`HttpError` ヘルパー、graceful shutdown、provider を差し替えられる `createTestingApp`
-- 必要なものだけ入れるミドルウェア群: 認証 guard（Basic / Bearer / JWKS 対応の JWT）、CSRF、secure headers（`createSecureHeadersMiddleware`。**既定では有効になりません**）、レートリミット、IP 許可 / 拒否リスト、圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、リバースプロキシ、静的ファイル、セッション、メトリクス / トレース / ヘルスチェック、型付き環境変数、cron、GraphQL Yoga・Apollo Server・tRPC のマウント、i18n（言語の決定と型付きメッセージカタログ）
+- 必要なものだけ入れるミドルウェア群: 認証 guard（Basic / Bearer / JWKS 対応の JWT）、CSRF、secure headers（`createSecureHeadersMiddleware`。**既定では有効になりません**）、レートリミット、IP 許可 / 拒否リスト、圧縮、ETag、レスポンスキャッシュ（メモリ / Redis）、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、リバースプロキシ、静的ファイル、セッション、メトリクス / トレース / ヘルスチェック、型付き環境変数、cron、GraphQL Yoga・Apollo Server・tRPC のマウント、i18n（言語の決定と型付きメッセージカタログ）
 - Bun single binary ビルド（`bun build --compile`）
 
 ## Packages
@@ -243,7 +243,7 @@ contracts.ts: Type '{ contractError: "UserController.findById: the handler input
 | `@kivinjs/openapi` | OpenAPI 3.1 ドキュメント生成 |
 | `@kivinjs/security` | Basic / Bearer 認証ガード、CSRF、secure headers、レートリミット、IP 制限 |
 | `@kivinjs/jwt` | JWT の検証・署名（Web Crypto）、JWKS、認証 guard |
-| `@kivinjs/http` | 圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ |
+| `@kivinjs/http` | 圧縮、ETag、レスポンスキャッシュ、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ |
 | `@kivinjs/static` | 静的ファイル配信（`serveStatic`） |
 | `@kivinjs/session` | サーバー側セッション（署名付き Cookie、差し替え可能なストア） |
 | `@kivinjs/logger` | JSON line の構造化ロガーと request logger middleware |

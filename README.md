@@ -226,7 +226,7 @@ Types come from Standard Schema type info, so this works with validators other t
 - Generated typed HTTP client; compile-time route and DI contract checks
 - CORS, cookies (signed cookies too), WebSocket, Server-Sent Events, multipart forms, per-route body limits
 - Guards, middleware and exception filters (global and per route); `HttpError` helpers; graceful shutdown; `createTestingApp` with provider overrides
-- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting, i18n (language detection and typed message catalogs)
+- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, response cache (memory / Redis), timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting, i18n (language detection and typed message catalogs)
 - Bun single binary builds (`bun build --compile`)
 
 ## Packages
@@ -243,7 +243,7 @@ Every package requires Bun 1.4.0 or later. Details: [docs/reference.md](docs/ref
 | `@kivinjs/openapi` | OpenAPI 3.1 document generation |
 | `@kivinjs/security` | Basic / Bearer guards, CSRF, secure headers, rate limiting, IP restriction |
 | `@kivinjs/jwt` | JWT verification / signing (Web Crypto), JWKS, auth guard |
-| `@kivinjs/http` | Compression, ETag, timeout, request ID, content negotiation, streaming, pretty JSON, method override, trailing slash |
+| `@kivinjs/http` | Compression, ETag, response cache, timeout, request ID, content negotiation, streaming, pretty JSON, method override, trailing slash |
 | `@kivinjs/static` | Static file serving (`serveStatic`) |
 | `@kivinjs/session` | Server-side sessions (signed cookie, pluggable stores) |
 | `@kivinjs/logger` | JSON-line logger and request logger middleware |

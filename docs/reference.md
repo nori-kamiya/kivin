@@ -151,6 +151,11 @@ HTTP レベルのミドルウェアとヘルパー。
 | `createTimeoutMiddleware(ms, options)` | function | 時間内に終わらないリクエストに 504 を返すミドルウェア |
 | `createCompressMiddleware(options)` | function | gzip / brotli 圧縮ミドルウェア（Accept-Encoding の交渉、閾値、型フィルタ、NDJSON はストリーム圧縮） |
 | `createEtagMiddleware(options)` | function | ボディのハッシュから弱い ETag を付け、If-None-Match に 304 を返すミドルウェア |
+| `createResponseCache({ store?, key?, statusHeader? })` | function | 共有のレスポンスキャッシュ（Hono の `cache`）。`middleware(options?)` でルートに付けるミドルウェア、`invalidate(urlOrRequest)` でその URL の全バリアント、`invalidateTag(tag)` でタグの付いた応答を消す。キーの既定はリクエストの完全な URL |
+| `cache.middleware({ ttl?, tags?, statuses?, maxSize?, vary? })` | method | GET の応答を保存し、GET / HEAD に返す（ヒット時は `Age` を付け、保存した ETag と `If-None-Match` が一致すれば 304）。TTL は `ttl`（秒）、無ければ `Cache-Control` の `s-maxage` → `max-age`。どれも無ければ保存しない。`Authorization` / `Cookie` 付きのリクエストは素通し、`Set-Cookie`・`Cache-Control: private / no-store / no-cache`・`Vary: *`・SSE / NDJSON・`statuses`（既定 `[200]`）以外・`maxSize`（既定 1 MiB）超は保存しない。応答の `Vary`（と `vary` に挙げたリクエストヘッダ。`@kivinjs/i18n` のようにミドルウェアの外で `Vary` を付けるものと組み合わせるときに使う）のヘッダ値ごとに別のエントリにする |
+| `MemoryCacheStore({ maxEntries?, maxBytes? })` | class | プロセス内の LRU ストア（既定 1000 件 / 64 MiB） |
+| `RedisCacheStore(client, { prefix? })` | class | Redis のストア（複数インスタンスで共有）。エントリは JSON（ボディは base64）を `SET … PX`、タグは集合で、保存とタグ登録・タグの削除はそれぞれ Lua スクリプト 1 回。既定の prefix は `kivin:cache:`。`client` は Bun の `RedisClient` / `Bun.redis` |
+| `ResponseCacheStore`, `CacheRecord`, `CacheOptions` | interface / type | 自作のストア（`get` / `set(key, record, ttlMs, tags)` / `deleteTag`）と関連の型 |
 | `createRequestIdMiddleware(options)` / `getRequestId(request)` | function | リクエスト ID の付与（受信 ID は形式を検証）とレスポンスへの反映、ロガー連携 |
 | `accepts(request, header, supported, fallback?)` | function | コンテンツネゴシエーション（Hono の `accepts`）。`Accept` / `Accept-Language` / `Accept-Encoding` / `Accept-Charset` から最適な値を返す。q 値（最も具体的な範囲の q が効く）→ 具体性 → 順序で選び、無ければ `fallback` |
 | `acceptsType(request, types)` / `acceptsLanguage(request, languages)` | function | `Accept` / `Accept-Language` 用の短縮形（言語は `en` ⇔ `en-US` の前方一致に対応） |

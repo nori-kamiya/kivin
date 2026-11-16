@@ -1,7 +1,9 @@
 // @kivinjs/http: HTTP-level middleware and helpers (compression, ETag, timeout, request IDs, content
-// negotiation, streaming, pretty JSON, method override, trailing slashes).
+// negotiation, streaming, pretty JSON, method override, trailing slashes, response cache).
 export { accepts, acceptsEncoding, acceptsLanguage, acceptsType, negotiate, parseAcceptHeader, type AcceptEntry } from './accepts';
 export { createCompressMiddleware, createEtagMiddleware, type CompressionEncoding, type CompressOptions, type EtagOptions } from './compress';
+export { createResponseCache, MemoryCacheStore, type CacheOptions, type CacheRecord, type MemoryCacheStoreOptions, type ResponseCacheOptions, type ResponseCacheStore } from './cache';
+export { RedisCacheStore, type RedisCacheStoreOptions, type RedisCommandClient } from './cache-redis';
 export { createRequestIdMiddleware, getRequestId, type RequestIdOptions } from './request-id';
 export { createTimeoutMiddleware, type TimeoutOptions } from './timeout';
 export { createPrettyJsonMiddleware, type PrettyJsonOptions } from './pretty-json';

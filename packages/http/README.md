@@ -2,7 +2,7 @@
 
 *English | [日本語](#日本語)*
 
-HTTP middleware and helpers for kivin: compression, ETag, timeout, request IDs, content negotiation, streaming, pretty JSON, method override, trailing slashes, reverse proxy and HTML templates.
+HTTP middleware and helpers for kivin: compression, ETag, response cache, timeout, request IDs, content negotiation, streaming, pretty JSON, method override, trailing slashes, reverse proxy and HTML templates.
 
 **Requires Bun 1.4.0 or later** (Bun only; it does not run on Node). Part of [kivin](https://github.com/nori-kamiya/kivin/blob/main/README.md), which is early-stage and may change before a stable release.
 
@@ -44,7 +44,7 @@ export default defineApplication({
 
 ## 日本語
 
-kivin 用の HTTP ミドルウェアとヘルパーです。圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、リバースプロキシ、HTML テンプレートを提供します。
+kivin 用の HTTP ミドルウェアとヘルパーです。圧縮、ETag、レスポンスキャッシュ、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、リバースプロキシ、HTML テンプレートを提供します。
 
 **Bun 1.4.0 以上が必要です**（Bun 専用で、Node では動きません）。[kivin](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md) の一部で、early-stage のため安定版までに変わる可能性があります。
 

@@ -194,6 +194,35 @@ defineApplication({
 
 - GET / HEAD の 200 で ETag の無いレスポンスに、ボディのハッシュから弱い ETag を付け、`If-None-Match` が一致すれば `304` を返します
 - SSE / NDJSON、`maxSize`（既定 1 MiB）を超えるボディ、すでに ETag があるもの（`serveStatic` など）はそのまま通します
+
+## レスポンスキャッシュ（`@kivinjs/http`）
+
+```ts
+import { createEtagMiddleware, createResponseCache, RedisCacheStore } from '@kivinjs/http';
+import { RedisClient } from 'bun';
+
+export const cache = createResponseCache({ store: new RedisCacheStore(new RedisClient(process.env.REDIS_URL)) });
+
+@Controller('/products')
+class ProductController {
+  @Get('/')
+  @UseMiddleware(cache.middleware({ ttl: 60, tags: ['products'] }), createEtagMiddleware())
+  list() { ... }
+
+  @Post('/')
+  async create(...) {
+    ...
+    await cache.invalidateTag('products');
+  }
+}
+```
+
+- 応答が別の利用者に渡らないことを最優先にしています。`Authorization` / `Cookie` 付きのリクエストはキャッシュを読みも書きもせず、`Set-Cookie`・`Cache-Control: private / no-store / no-cache`・`Vary: *` の応答は保存しません。ログイン中の利用者向けのページはキャッシュされないので、共有してよい部分は Cookie を送らない別のパスに分けてください。
+- 応答の `Vary`（`Accept-Language` など）のヘッダ値ごとに別のエントリになります。リクエストヘッダで内容を変える応答は、必ずそのヘッダを `Vary` に入れてください。入れないと、最初の応答が全員に返ります。`@kivinjs/i18n` のフックは `Vary` を付けますが、付けるのはルートのミドルウェアより外側なので、`cache.middleware` の中からは見えません。`Accept-Language` で言語を決めるなら `cache.middleware({ vary: ['Accept-Language'] })` を指定してください（指定しないと言語の違う利用者に同じ応答が返ります）。言語をパスの接頭辞で分ける場合は不要です。
+- TTL は `ttl`（秒）、無ければ応答の `Cache-Control` の `s-maxage` → `max-age` です。どれも無い応答は保存しません。
+- ETag のミドルウェアを `cache.middleware` の内側（後ろ）に置くと、保存した応答にも ETag が残り、ヒット時に `If-None-Match` が一致すれば 304 を返します。ヒットした応答には `Age` が付き、`statusHeader: 'x-cache'` で `HIT` / `MISS` も出せます。
+- `MemoryCacheStore`（既定）はプロセスごとです。複数インスタンスでは `RedisCacheStore` を使わないと、無効化が他のインスタンスに届きません。
+- 同じ URL への同時のミスはそれぞれハンドラを実行します（まとめません）。
 ## 静的ファイル
 
 `serveStatic` は Bun のネイティブルートにそのまま渡せるハンドラです（アプリのルートと同じく Bun のルーターで振り分けられます）。
