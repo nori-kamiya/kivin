@@ -554,7 +554,7 @@ const { t } = i18n.translator(context.request);
 t('cart.items', { count: 3 }); // "3 点"
 ```
 
-- 言語は `detect` の順に決めます。`/ja/cart` は `fromPathPrefix()` が `ja` と判定し、`/cart` としてルーティングします（コントローラに `:lang` は不要です）。書き換えたリクエストはネイティブルート（`listen({ routes })`）には届かないので（#92）、tRPC や GraphQL のエンドポイントには接頭辞を付けずにアクセスしてください。
+- 言語は `detect` の順に決めます。`/ja/cart` は `fromPathPrefix()` が `ja` と判定し、`/cart` としてルーティングします（コントローラに `:lang` は不要です）。書き換えたリクエストは `listen({ routes })` のネイティブルート（tRPC や GraphQL）にも届きます。
 - 応答には `Content-Language` と、検出器が見たヘッダの `Vary`（`Accept-Language`、`Cookie`）が付きます。CDN でキャッシュするなら、パスの接頭辞で言語を分けると `Vary` に頼らずに済みます。
 - 検証エラーの 400 は、`validation.issue` が生の issue（valibot なら `type`・`requirement`）から訳を返します。Standard Schema のアダプタでは issue が `message` と `path` しか持たないので、パスで出し分けてください。
 - DI で受け取るときは `providers: [i18n.provider]` を入れ、`container.resolve(i18n.token)` や `@Injectable({ deps: [i18n.token] })` を使います。request-scoped なので、受け取る側も request-scoped にしてください。
@@ -582,6 +582,7 @@ defineApplication({
 - `createMethodOverride` は POST だけを対象にし、既定では PUT / PATCH / DELETE のみ許可します。フォームはクローンから読むので、ルート側でも同じボディを読めます。`{ from: { header: 'X-HTTP-Method-Override' } }` や `{ from: { query: '_method' } }` も指定できます。
 - `createTrailingSlash` は `//evil.example/` のようなパスでも `Location` が `//` で始まらないようにしています（オープンリダイレクト対策）。kivin はもともと末尾スラッシュの有無を同じルートとして扱うので、これは URL を 1 つにそろえるためのものです。
 - フックが書き換えたリクエストでも `getClientAddress` は元の接続元を返します。
+- 書き換えたリクエストは kivin が振り分け直します。`listen({ routes })` のネイティブルート（GraphQL・tRPC など）にも Bun と同じ優先順（完全一致 → アプリのルート → `:param` / `/*` のネイティブルート）で届き、ハンドラには Bun の `server` も渡ります。`server.timeout(request, …)` などリクエストを Bun に渡す API には `originalRequest(request)` を使ってください（Bun は受け取ったリクエストしか知りません）。
 
 ## multipart / form
 
@@ -1023,7 +1024,7 @@ app.listen({
 - アプリの `cors` 設定はネイティブルートに効きません。ブラウザから別オリジンで呼ぶなら `createTrpcRoutes(router, { cors: { origin: 'https://app.example' } })` を指定します（プリフライトにも応答します）
 - サブスクリプション（SSE）の接続は、`listen({ idleTimeout })` で切られないよう、その接続だけアイドルタイムアウトを外します。プロキシが無通信の接続を切る場合は、`initTRPC.create({ sse: { ping: { enabled: true } } })` で ping を送ってください
 - GraphQL と同じく、ガードやミドルウェアはかかりません。認証は `createContext` か `onRequest` フックで行ってください（`onRequest` フックは他のネイティブルートと同じく先に動きます）
-- `onRequest` フックが `Request` を返して書き換えると、そのリクエストは kivin のルーターで振り分け直され、ネイティブルート（`/trpc/*` を含む）には届かず 404 になります。tRPC に限らない既存の制約です
+- `onRequest` フックが `Request` を返して書き換えたリクエストも `/trpc/*` に届き、サブスクリプションのアイドルタイムアウトも外れます
 
 ## 静的サイト生成（`kivin ssg`）
 
