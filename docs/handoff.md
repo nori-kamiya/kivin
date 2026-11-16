@@ -23,7 +23,7 @@ core は実行時の中核だけを持ち、独立した機能は領域ごとの
 | `@kivinjs/logger` | JSON 構造化ロガー、リクエストロガー | core, decorators |
 | `@kivinjs/jwt` | JWT 検証・署名、JWKS、JWT ガード | core |
 | `@kivinjs/security` | Basic / Bearer 認証、CSRF、secure headers、レートリミット、IP 制限、`anyGuard` | core |
-| `@kivinjs/http` | 圧縮、ETag、タイムアウト、リクエスト ID、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、プロキシ、HTML テンプレート、リクエストストレージ | core |
+| `@kivinjs/http` | 圧縮、ETag、タイムアウト、リクエスト ID、ネゴシエーション、ストリーミング、Pretty JSON、Method Override、末尾スラッシュ、プロキシ、HTML テンプレート、リクエストストレージ、レスポンスキャッシュ | core |
 | `@kivinjs/static` | 静的ファイル配信 | http（経由で core） |
 | `@kivinjs/observability` | Prometheus、OpenTelemetry、Server-Timing、ヘルスチェック | core |
 | `@kivinjs/config` | 型付き環境変数 | core |
@@ -116,7 +116,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 | --- | --- | --- |
 | JSX レンダラー（Hono `jsxRenderer`） | ランタイムは同梱しない。`htmlResponse` が `ReadableStream` を受け取るようにした | Bun は `.tsx` をそのまま実行でき、React / Preact のサーバーレンダラーで足りる。独自の JSX ランタイム（型定義や属性の扱い）を保守するコストに見合わない。使い方は [production.md](production.md)「JSX」 |
 | SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
-| Cache（Hono `cache`） | 実装しない | Bun には Web Cache API が無い。共有のレスポンスキャッシュは Vary・認証付きレスポンス・無効化の設計が要り、誤るとユーザー間で応答が混ざる。ETag（`@kivinjs/http`）と `Cache-Control` + CDN / リバースプロキシで代替する。要望が出たら別 issue にする |
+| Cache（Hono `cache`） | `@kivinjs/http` の `createResponseCache` を追加した（#88。#68 の「実装しない」から転換） | Bun に Web Cache API が無いので、ストアを差し替えられる形（メモリ / Redis）にした。応答の混入を防ぐため、`Authorization` / `Cookie` 付きのリクエスト、`Set-Cookie`・`private` / `no-store` / `no-cache`・`Vary: *` の応答は既定で対象外。エントリは応答の `Vary` で分ける。混入の回帰テストを持つ |
 | `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
 | tRPC（Elysia `@elysiajs/trpc`） | `@kivinjs/trpc` を追加した（#85。#68 の「作らない」から転換） | `fetchRequestHandler` を載せるだけでは、request-scoped の DI・`HttpError` の変換・SSE のアイドルタイムアウト・未処理例外のログを利用者が毎回書くことになるため。`@trpc/server` は peer dependency（本体の依存は増えない）。request-scoped の解決は core の `app.createRequestContext` で、#86 の Apollo でも使う |
 | Apollo Server（Elysia `@elysiajs/apollo`） | `@kivinjs/apollo` を追加した（#86。#68 の「作らない」から転換） | fetch 用の公式インテグレーションが無く、ボディの読み取り・incremental delivery のストリーム・`start` / `stop` の呼び出し・request-scoped の DI を利用者が毎回書くことになるため。`@apollo/server` と `graphql` 16 は peer dependency |
@@ -132,7 +132,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 ## 7. 残課題
 
-2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #88 レスポンスキャッシュ → #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n は対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
+2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #89 JSX ランタイム → #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n、#88 レスポンスキャッシュは対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 
