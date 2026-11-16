@@ -226,7 +226,7 @@ contracts.ts: Type '{ contractError: "UserController.findById: the handler input
 - 型付き HTTP クライアントの生成、route と DI のコンパイル時 contract 検査
 - CORS、Cookie（署名付きも）、WebSocket、Server-Sent Events、multipart フォーム、ルート単位のボディ上限
 - guard / middleware / 例外フィルタ（global とルート単位）、`HttpError` ヘルパー、graceful shutdown、provider を差し替えられる `createTestingApp`
-- 必要なものだけ入れるミドルウェア群: 認証 guard（Basic / Bearer / JWKS 対応の JWT）、CSRF、secure headers（`createSecureHeadersMiddleware`。**既定では有効になりません**）、レートリミット、IP 許可 / 拒否リスト、圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、リバースプロキシ、静的ファイル、セッション、メトリクス / トレース / ヘルスチェック、型付き環境変数、cron、GraphQL Yoga のマウント
+- 必要なものだけ入れるミドルウェア群: 認証 guard（Basic / Bearer / JWKS 対応の JWT）、CSRF、secure headers（`createSecureHeadersMiddleware`。**既定では有効になりません**）、レートリミット、IP 許可 / 拒否リスト、圧縮、ETag、タイムアウト、リクエスト ID、コンテンツネゴシエーション、ストリーミング、リバースプロキシ、静的ファイル、セッション、メトリクス / トレース / ヘルスチェック、型付き環境変数、cron、GraphQL Yoga と tRPC のマウント
 - Bun single binary ビルド（`bun build --compile`）
 
 ## Packages
@@ -251,6 +251,7 @@ contracts.ts: Type '{ contractError: "UserController.findById: the handler input
 | `@kivinjs/config` | 型付き・検証済みの環境変数 |
 | `@kivinjs/schedule` | アプリのライフサイクルに連動する cron ジョブ |
 | `@kivinjs/graphql` | GraphQL Yoga のマウント |
+| `@kivinjs/trpc` | tRPC ルーターのマウント（tRPC のコンテキストで request-scoped の DI を使える） |
 
 ## Performance
 
