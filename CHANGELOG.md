@@ -30,6 +30,8 @@
 
 ### Fixed
 
+- `@kivinjs/core`: `onRequest` フックが `Request` を返して書き換えると、そのリクエストが `listen({ routes })` のネイティブルート（GraphQL・tRPC・`/openapi.json` など）に届かず 404 になっていた。書き換えたリクエストも Bun と同じ優先順（完全一致 → アプリのルート → `:param` / `/*`）でネイティブルートに振り分け、ハンドラに Bun の `server` を渡す。書き換えないリクエストの経路は変わらない（#92）
+- `@kivinjs/trpc`: フックが書き換えたリクエストのサブスクリプション（SSE）が、`idleTimeout` で切られていた。`server.timeout` を Bun が受け取った元のリクエストに対して呼ぶ（#92）
 - `@kivinjs/cli`: `generate` / `openapi` / `inspect` が、`app.ts` から辿れるモジュールがトップレベルで開いたハンドル（DB のプール、キープアライブのタイマーなど）のせいで、書き出し後も終了せず CI / Docker のビルドを止めていた。単発のコマンドは完了後に明示的に終了する
 - `@kivinjs/cli`: `inspect routes` が、どのモジュールも提供していないガード（アプリが自動登録するもの）を raw 対応と判定できず、実行経路を誤って表示していた
 - 各パッケージの README と `docs/reference.md` の目次: API リファレンスへのリンクのアンカーが `@kivinjs` への改名前のもの（`#kivincore` など）のままで、該当の節に飛ばなかった
