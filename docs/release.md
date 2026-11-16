@@ -1,6 +1,6 @@
 # リリース手順書
 
-16 個の `@kivinjs/*` パッケージを、同じバージョンで npm に公開する手順です。ここに書いた順に、オーナー本人が行います。コードと CI は用意済みなので、オーナーにしかできない作業（npm と GitHub の設定、トークン、承認）だけを書いています。
+すべての `@kivinjs/*` パッケージを、同じバージョンで npm に公開する手順です。ここに書いた順に、オーナー本人が行います。コードと CI は用意済みなので、オーナーにしかできない作業（npm と GitHub の設定、トークン、承認）だけを書いています。
 
 ## 全体像
 
@@ -64,7 +64,7 @@ Settings → Rules → Rulesets → New ruleset → New tag ruleset。
 
 ### 6. リリース前の確認
 
-1. 全 16 パッケージの `version` が同じで、公開したいバージョンになっている（バージョンを上げる作業は別。`release:verify --tag` が不一致を検出する）
+1. 全パッケージの `version` が同じで、公開したいバージョンになっている（バージョンを上げる作業は別。`release:verify --tag` が不一致を検出する）
 2. `CHANGELOG.md` の `## [X.Y.Z] - Unreleased` を `## [X.Y.Z] - 公開日` に書き換えて、main へマージしておく（`release:verify --tag` は見出しの有無だけを検査する）
 3. 各パッケージに `README.md` がある。`files` に `README.md` を含めているので、無いと `release:verify` が失敗する
 4. ローカルで通す: `bun install --frozen-lockfile && bun run release:check && bun run release:pack && bun run release:verify && bun run pack:smoke`
@@ -83,15 +83,15 @@ git push origin vX.Y.Z
 
 ### 8. trusted publishing に切り替え、トークンを消す
 
-初回の公開が済んだら、16 パッケージそれぞれに信頼関係を設定します（npm が対応するバージョンの CLI で、2FA を求められる）。
+初回の公開が済んだら、各パッケージに信頼関係を設定します（npm が対応するバージョンの CLI で、2FA を求められる）。
 
 ```bash
-for name in core decorators logger openapi valibot standard-schema jwt security http static graphql session schedule config observability cli; do
+for name in core decorators logger openapi valibot standard-schema jwt security http static graphql trpc session schedule config observability cli; do
   npm trust github "@kivinjs/$name" --file release.yml --repo nori-kamiya/kivin --env npm --allow-publish
 done
 ```
 
-スコープを変えた場合は `@kivinjs` を読み替えます。16 個すべてを設定したら、次を行います。
+スコープを変えた場合は `@kivinjs` を読み替えます。すべてを設定したら、次を行います。
 
 1. GitHub の environment `npm` から `NPM_BOOTSTRAP_TOKEN` を削除する
 2. npm の Access Tokens で bootstrap トークンを revoke する
@@ -101,9 +101,18 @@ done
 
 手順 6 → 7 だけです。トークンは使いません。
 
+### 10. 新しいパッケージを足したリリース
+
+trusted publishing は npm に存在するパッケージにしか設定できないので、npm に無いパッケージ（例: `@kivinjs/trpc`）を含むリリースでは、もう一度だけトークンを使います。
+
+1. 手順 5 と同じ bootstrap トークンを作り、environment `npm` の secret `NPM_BOOTSTRAP_TOKEN` に登録する
+2. 手順 6 → 7 で公開する。トークンがあると全パッケージがトークンで公開されるが、公開済みのパッケージにも問題はない
+3. 新しいパッケージに `npm trust github ...`（手順 8 のコマンド）を設定する
+4. 手順 8 と同じく、secret の削除とトークンの revoke を行う
+
 ## 途中で失敗したとき
 
-16 個のうち一部だけ公開された状態は、次の手順で直します。**`npm unpublish` は使いません。** 公開済みの名前とバージョンは再利用できず、依存している人を壊すためです。
+一部のパッケージだけ公開された状態は、次の手順で直します。**`npm unpublish` は使いません。** 公開済みの名前とバージョンは再利用できず、依存している人を壊すためです。
 
 1. 失敗した publish ジョブのログで、どのパッケージで止まったかを確認する
 2. 原因（一時的なネットワーク障害、レジストリの 5xx、レビュアーの承認切れなど）を直す
@@ -112,7 +121,7 @@ done
    - 一致: 公開済みなので飛ばす
    - 404: 公開する
    - 不一致: **失敗して止まる**。同じバージョンに別の内容がすでにあるということなので、自動では上書きも続行もしない
-5. 不一致で止まった、または公開済みの内容に誤りが見つかった場合は、そのバージョンを `npm deprecate` で非推奨にし、パッチバージョンを上げて、全 16 パッケージを新しいバージョンで公開し直す（バージョンは全パッケージで揃える）
+5. 不一致で止まった、または公開済みの内容に誤りが見つかった場合は、そのバージョンを `npm deprecate` で非推奨にし、パッチバージョンを上げて、全パッケージを新しいバージョンで公開し直す（バージョンは全パッケージで揃える）
 
 再実行できるのは、`release:pack` の出力が決定的だからです（同じコミットから 2 回 pack して manifest.json が一致することを確認済み）。ただしこの決定性は、tarball に入るファイルのモードが同じことが前提です（CI の checkout は umask 022 の 0644）。ローカルで作った値と比べる場合は、同じ umask で checkout し直してください。再実行は build からやり直すので、途中で `main` やロックファイルが変わっていても、タグが指すコミットから作り直されます。
 
@@ -122,7 +131,7 @@ done
 bun run release:pack
 bun run release:verify
 bun run pack:smoke
-bun scripts/release/publish.ts --dry-run   # 認証なしで npm publish --dry-run を 16 個に対して実行する
+bun scripts/release/publish.ts --dry-run   # 認証なしで npm publish --dry-run を全パッケージに対して実行する
 ```
 
 `publish.ts` は `--dry-run` なしでは GitHub Actions の外で実行を拒否します。

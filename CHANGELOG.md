@@ -12,7 +12,9 @@
 - `@kivinjs/core`: `InjectableMetadata.composesEnhancers`。ガードを合成するクラスに付けると、アプリがその `deps` のガードクラスも自動登録する（#62）
 - `@kivinjs/core`: グローバルミドルウェアの `handleUnmatched(request, response)`。ルートに一致しなかったリクエスト（404 / 405 / 自動の `OPTIONS`・CORS プリフライト）と `onRequest` フックが返した応答で呼ばれる。未使用時のコストは 404 / 405 の経路での配列長の確認だけ（#63）
 - `@kivinjs/http`: `htmlResponse` が `ReadableStream` も受け取る。`react-dom/server` の `renderToReadableStream` などで描画した JSX をそのまま返せる（#68）
-- `docs/production.md`: JSX（React）、Apollo Server、tRPC をネイティブルートに載せる方法。実物のライブラリで動作を確認した（#68）
+- `docs/production.md`: JSX（React）、Apollo Server をネイティブルートに載せる方法。実物のライブラリで動作を確認した（#68）
+- `@kivinjs/trpc`（新パッケージ）: `createTrpcRoutes(router, { app, createContext })` で tRPC のルーターをネイティブルートに載せる。`createContext` の `requestContext()` から request-scoped の provider を HTTP リクエストごとに解決でき、`HttpError` は対応する tRPC のエラーになる（手続き内は `httpErrors` ミドルウェア）。サブスクリプション（SSE）はアイドルタイムアウトで切られない。`@trpc/server` 11 は peer dependency（#85）
+- `@kivinjs/core`: `app.createRequestContext(request, params?)`。コントローラのルート以外（ネイティブルート、tRPC / GraphQL のコンテキストなど）から、request-scoped の provider を解決できる `RequestContext` を作る（#85）
 - `docs/production.md`: 「データベース接続」。`kivin generate` はトップレベルのコードを実行するがプロバイダとライフサイクルフックは実行しないので、DB クライアントは `useFactory` で作り、接続の確認と切断は `onModuleInit` / `onApplicationShutdown` で行う
 - `@kivinjs/observability`: `createMetrics()` がルートに一致しなかったリクエストと `onRequest` フックの応答を `route="(unmatched)"` で `http_requests_total` に数える（ヒストグラムには入れない。未知のメソッドは `_OTHER`）。`unmatchedRoute` でラベルの変更・無効化（#63）
 - `@kivinjs/session`: Redis のセッションストア `RedisSessionStore`。複数インスタンスでセッションを共有できる。Bun 組み込みの Redis クライアント（`RedisClient` / `Bun.redis`）をそのまま渡せ、npm の依存は増えない（#61）
