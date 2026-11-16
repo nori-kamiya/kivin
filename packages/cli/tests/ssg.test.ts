@@ -1,6 +1,6 @@
 import { generateStaticSite } from '@kivinjs/cli';
 import { describe, expect, test } from 'bun:test';
-import { existsSync, readdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -33,8 +33,7 @@ const app = {
   },
 };
 
-// The real path: macOS's tmpdir is behind a symlink (/var → /private/var).
-const tempDir = () => join(realpathSync(tmpdir()), `kivin-ssg-${crypto.randomUUID()}`);
+const tempDir = () => join(tmpdir(), `kivin-ssg-${crypto.randomUUID()}`);
 const listFiles = (dir: string): string[] => readdirSync(dir, { recursive: true, withFileTypes: true }).filter((entry) => entry.isFile()).map((entry) => join(entry.parentPath, entry.name).slice(dir.length + 1)).sort();
 
 describe('generateStaticSite', () => {

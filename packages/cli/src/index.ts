@@ -3,7 +3,7 @@ import type * as KivinCore from '@kivinjs/core';
 import { generateStaticSite, type StaticSiteOptions } from './ssg';
 import { buildOpenApiDocument } from '@kivinjs/openapi';
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
-import { dirname, resolve, sep } from 'node:path';
+import { basename, dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { buildManifestSourceFromAst } from './ast';
 import { GENERATE_STAGING_PREFIX, INSPECT_STAGING_PREFIX } from './staging';
@@ -72,9 +72,12 @@ export async function loadAppDefinition(entry: string): Promise<AppDefinition<un
 }
 
 export async function generateArtifacts(input: { entry: string; outDir: string; title?: string; version?: string; aot?: boolean }) {
-  const outDir = resolve(input.outDir);
+  const requestedOutDir = resolve(input.outDir);
   // A sibling of outDir keeps the generated relative imports identical, and the final step is renames within one filesystem.
-  await mkdir(dirname(outDir), { recursive: true });
+  await mkdir(dirname(requestedOutDir), { recursive: true });
+  // realpath: Bun resolves the manifest's imports from its real location, so imports counted from a
+  // symlinked parent (/var → /private/var on macOS) would climb the wrong number of levels.
+  const outDir = resolve(await realpath(dirname(requestedOutDir)), basename(requestedOutDir));
   const stagingDir = await mkdtemp(resolve(dirname(outDir), GENERATE_STAGING_PREFIX));
   const staged = (name: string) => resolve(stagingDir, name);
   let warnings: string[] = [];
@@ -117,10 +120,10 @@ export async function generateArtifacts(input: { entry: string; outDir: string; 
   }
 
   return {
-    manifestPath: resolve(outDir, 'manifest.ts'),
-    contractsPath: resolve(outDir, 'contracts.ts'),
-    clientPath: resolve(outDir, 'client.ts'),
-    openApiPath: resolve(outDir, 'openapi.json'),
+    manifestPath: resolve(requestedOutDir, 'manifest.ts'),
+    contractsPath: resolve(requestedOutDir, 'contracts.ts'),
+    clientPath: resolve(requestedOutDir, 'client.ts'),
+    openApiPath: resolve(requestedOutDir, 'openapi.json'),
     warnings,
   };
 }
