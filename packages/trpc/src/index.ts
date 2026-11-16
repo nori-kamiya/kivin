@@ -1,6 +1,6 @@
 // @kivinjs/trpc: mounts a tRPC router on kivin native routes, with kivin's DI (request-scoped
 // providers included) available in the tRPC context and kivin's HttpError mapped to tRPC errors.
-import { HttpError, type RequestContext } from '@kivinjs/core';
+import { createCorsHandler, HttpError, type CorsOptions, type RequestContext } from '@kivinjs/core';
 import { TRPCError, type AnyRouter, type inferRouterContext } from '@trpc/server';
 import { fetchRequestHandler, type FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
 import type { HTTPBaseHandlerOptions } from '@trpc/server/http';
@@ -36,6 +36,11 @@ export interface TrpcRouteOptions<TRouter extends AnyRouter> extends Omit<HTTPBa
    * answers with the matching tRPC error; throwing a `Response` answers with that response as is.
    */
   createContext?: (options: TrpcCreateContextOptions) => inferRouterContext<TRouter> | Promise<inferRouterContext<TRouter>>;
+  /**
+   * CORS for these routes (preflight and response headers). The app's `cors` setting covers controller
+   * routes only, not native routes.
+   */
+  cors?: CorsOptions;
 }
 
 const CODE_BY_STATUS: Readonly<Record<number, TRPCErrorCode>> = {
@@ -68,13 +73,23 @@ export function toTRPCError(error: HttpError): TRPCError {
 }
 
 /**
- * tRPC middleware that answers an `HttpError` thrown by a procedure with the matching tRPC error
- * (tRPC would otherwise report it as INTERNAL_SERVER_ERROR): `t.procedure.use(httpErrors)`.
+ * tRPC middleware that makes procedure errors behave like kivin's routes: an `HttpError` becomes the
+ * matching tRPC error (tRPC would report it as INTERNAL_SERVER_ERROR), and an unexpected error reaches
+ * the client only as "Internal Server Error" (tRPC would send its message): `t.procedure.use(httpErrors)`.
  */
-export async function httpErrors<TResult extends { ok: boolean; error?: { cause?: unknown } }>(options: { next: () => Promise<TResult> }): Promise<TResult> {
+export async function httpErrors<TResult extends { ok: boolean; error?: TRPCError }>(options: { next: () => Promise<TResult> }): Promise<TResult> {
   const result = await options.next();
-  if (!result.ok && result.error?.cause instanceof HttpError) {
-    throw toTRPCError(result.error.cause);
+  const error = result.ok ? undefined : result.error;
+  if (!error) {
+    return result;
+  }
+  if (error.cause instanceof HttpError) {
+    throw toTRPCError(error.cause);
+  }
+  // tRPC wraps a non-TRPCError in INTERNAL_SERVER_ERROR and copies its message; a TRPCError the
+  // procedure threw on purpose (its own message) is left alone.
+  if (error.code === 'INTERNAL_SERVER_ERROR' && error.cause !== undefined && !(error.cause instanceof TRPCError) && error.message === error.cause.message) {
+    throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'Internal Server Error', cause: error.cause });
   }
   return result;
 }
@@ -82,14 +97,16 @@ export async function httpErrors<TResult extends { ok: boolean; error?: { cause?
 const ERROR_REPORTED = Symbol.for('kivin.errorReported');
 const ANSWERED_WITH_RESPONSE = Symbol('kivin.trpc.answeredWithResponse');
 
+const answeredWithResponse = (error: TRPCError) => (error.cause as Record<symbol, unknown> | undefined)?.[ANSWERED_WITH_RESPONSE] === true;
+
 // Same contract as kivin's own routes: an unexpected error is logged once, unless a logger already
-// reported it (`markErrorReported`).
+// reported it (`markErrorReported`); an HttpError is an intended answer, not an unexpected error.
 function reportUnexpected(error: TRPCError) {
   if (error.code !== 'INTERNAL_SERVER_ERROR') {
     return;
   }
   const cause: unknown = error.cause ?? error;
-  if (typeof cause === 'object' && cause !== null && ((cause as Record<symbol, unknown>)[ERROR_REPORTED] || (cause as Record<symbol, unknown>)[ANSWERED_WITH_RESPONSE])) {
+  if (cause instanceof HttpError || (typeof cause === 'object' && cause !== null && (cause as Record<symbol, unknown>)[ERROR_REPORTED])) {
     return;
   }
   console.error('[kivin] Unhandled error', cause);
@@ -104,10 +121,11 @@ function normalizeEndpoint(endpoint: string) {
 
 /** The request handler behind `createTrpcRoutes`, for mounting it some other way. */
 export function createTrpcHandler<TRouter extends AnyRouter>(router: TRouter, options: TrpcRouteOptions<TRouter> = {}) {
-  const { endpoint: rawEndpoint = '/trpc', app, createContext, onError, ...handlerOptions } = options;
+  const { endpoint: rawEndpoint = '/trpc', app, cors: corsOptions, createContext, onError, ...handlerOptions } = options;
   const endpoint = normalizeEndpoint(rawEndpoint);
+  const cors = corsOptions ? createCorsHandler(corsOptions) : undefined;
 
-  return async (request: Request, server?: ServerTimeout): Promise<Response> => {
+  const handle = async (request: Request, server?: ServerTimeout): Promise<Response> => {
     // A subscription (SSE) stays open with gaps longer than `idleTimeout`; Bun would cut it.
     if (server && request.headers.get('accept')?.includes('text/event-stream')) {
       server.timeout(request, 0);
@@ -142,12 +160,20 @@ export function createTrpcHandler<TRouter extends AnyRouter>(router: TRouter, op
         }
       }),
       onError: (errorOptions) => {
+        if (answeredWithResponse(errorOptions.error)) {
+          return;
+        }
         onError?.(errorOptions);
         reportUnexpected(errorOptions.error);
       },
     } as Parameters<typeof fetchRequestHandler<TRouter>>[0]);
     return answer ?? response;
   };
+
+  if (!cors) {
+    return handle;
+  }
+  return async (request: Request, server?: ServerTimeout): Promise<Response> => cors.ensure(request, await handle(request, server));
 }
 
 /**
@@ -165,12 +191,17 @@ export function createTrpcHandler<TRouter extends AnyRouter>(router: TRouter, op
  * });
  * ```
  *
- * `onRequest` hooks run first as for any native route; guards and middleware do not (they belong to
- * controller routes): authenticate in `createContext` or in a hook.
+ * `onRequest` hooks run first as for any native route; guards, middleware and the app's `cors` do not
+ * (they belong to controller routes): authenticate in `createContext` or in a hook, and pass `cors` here.
  */
 export function createTrpcRoutes<TRouter extends AnyRouter>(router: TRouter, options: TrpcRouteOptions<TRouter> = {}) {
   const endpoint = normalizeEndpoint(options.endpoint ?? '/trpc');
   const handler = createTrpcHandler(router, options);
   const path = endpoint === '/' ? '/*' : `${endpoint}/*`;
-  return { [path]: { GET: handler, POST: handler } } as Record<string, { GET: typeof handler; POST: typeof handler }>;
+  if (!options.cors) {
+    return { [path]: { GET: handler, POST: handler } } as Record<string, { GET: typeof handler; POST: typeof handler; OPTIONS?: (request: Request) => Response }>;
+  }
+  const cors = createCorsHandler(options.cors);
+  const preflight = (request: Request) => cors.preflight(request, ['GET', 'POST']) ?? new Response(null, { status: 204, headers: { allow: 'GET, POST, OPTIONS' } });
+  return { [path]: { GET: handler, POST: handler, OPTIONS: preflight } } as Record<string, { GET: typeof handler; POST: typeof handler; OPTIONS?: (request: Request) => Response }>;
 }
