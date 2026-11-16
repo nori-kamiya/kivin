@@ -1,4 +1,4 @@
-import { createApp, defineApplication, defineModule, forbidden, markErrorReported, RequestContext, unauthorized } from '@kivinjs/core';
+import { createApp, defineApplication, defineModule, forbidden, HttpError, markErrorReported, RequestContext, unauthorized } from '@kivinjs/core';
 import { createTrpcRoutes, httpErrors } from '@kivinjs/trpc';
 import { createValibotAdapter } from '@kivinjs/valibot';
 import { createTRPCClient, httpBatchLink, httpLink, TRPCClientError } from '@trpc/client';
@@ -204,11 +204,11 @@ describe('createTrpcRoutes with a real tRPC client', () => {
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  test('given no httpErrors middleware, when a procedure throws an HttpError, then it is an internal error and is logged once', async () => {
+  test('given no httpErrors middleware, when a procedure throws an HttpError, then tRPC answers INTERNAL_SERVER_ERROR and it is not logged as unhandled', async () => {
     const error = await clientError(client('ada').denyWithoutMiddleware.query());
 
     expect(error.data?.code).toBe('INTERNAL_SERVER_ERROR');
-    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 
   test('given an unexpected error, when a procedure throws it, then the client gets a 500 and the cause is logged once', async () => {
@@ -216,6 +216,7 @@ describe('createTrpcRoutes with a real tRPC client', () => {
 
     expect(error.data?.code).toBe('INTERNAL_SERVER_ERROR');
     expect(error.data?.httpStatus).toBe(500);
+    expect(error.message).toBe('Internal Server Error');
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError.mock.calls[0]?.[0]).toBe('[kivin] Unhandled error');
     expect((consoleError.mock.calls[0]?.[1] as Error).message).toBe('database is down');
@@ -283,5 +284,96 @@ describe('createTrpcRoutes and app.close()', () => {
     }
     expect(subscriptionFinished).toBe(before + 1);
     await reader.cancel().catch(() => undefined);
+  });
+});
+
+describe('createTrpcRoutes behind an onRequest hook', () => {
+  test('given a hook that lets the request through, when a slow subscription runs, then idleTimeout still does not cut it', async () => {
+    const hookedApp = createApp(defineApplication({
+      modules: [],
+      schemaAdapter: createValibotAdapter(),
+      onRequest: () => undefined,
+    }), { routes: [] });
+    const hookedServer = hookedApp.listen({ port: 0, hostname: '127.0.0.1', idleTimeout: 1, routes: createTrpcRoutes(router, { createContext: () => ({}) as Context }) });
+    try {
+      const response = await fetch(`${new URL('/trpc', hookedServer.url)}/ticks?input=${encodeURIComponent(JSON.stringify({ count: 2, delayMs: 3_000 }))}`, {
+        headers: { accept: 'text/event-stream' },
+      });
+      const values: unknown[] = [];
+      for await (const data of sseData(response)) {
+        values.push(data);
+      }
+      expect(values).toEqual([1, 2]);
+    } finally {
+      hookedServer.stop(true);
+    }
+  }, 15_000);
+});
+
+describe('createTrpcRoutes options', () => {
+  const plainApp = createApp(defineApplication({ modules: [], schemaAdapter: createValibotAdapter() }), { routes: [] });
+  const onErrorCalls: string[] = [];
+  const optionsServer = plainApp.listen({
+    port: 0,
+    hostname: '127.0.0.1',
+    routes: createTrpcRoutes(router, {
+      cors: { origin: 'https://app.example' },
+      onError: ({ error }) => {
+        onErrorCalls.push(error.code);
+      },
+      createContext: ({ req }) => {
+        if (req.headers.get('x-mode') === 'response') {
+          throw new Response('stop', { status: 418 });
+        }
+        if (req.headers.get('x-mode') === 'http-500') {
+          throw new HttpError(500, 'kivin decided');
+        }
+        return {} as Context;
+      },
+    }),
+  });
+  const endpoint = (path: string) => `${new URL('/trpc', optionsServer.url)}/${path}`;
+
+  beforeEach(() => {
+    onErrorCalls.length = 0;
+  });
+  afterAll(() => {
+    optionsServer.stop(true);
+  });
+
+  test('given cors, when a browser sends a preflight from an allowed origin, then it is answered with CORS headers', async () => {
+    const response = await fetch(endpoint('rename'), {
+      method: 'OPTIONS',
+      headers: { origin: 'https://app.example', 'access-control-request-method': 'POST', 'access-control-request-headers': 'content-type' },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example');
+    expect(response.headers.get('access-control-allow-methods')).toContain('POST');
+  });
+
+  test('given cors, when a procedure answers an allowed origin, then the response carries CORS headers', async () => {
+    const allowed = await fetch(endpoint('user?input=%7B%22id%22%3A2%7D'), { headers: { origin: 'https://app.example' } });
+    const other = await fetch(endpoint('user?input=%7B%22id%22%3A2%7D'), { headers: { origin: 'https://evil.example' } });
+
+    expect(allowed.headers.get('access-control-allow-origin')).toBe('https://app.example');
+    expect(other.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
+  test('given createContext throws a Response, when called, then onError is not called and nothing is logged', async () => {
+    const response = await fetch(endpoint('whoami'), { headers: { 'x-mode': 'response', origin: 'https://app.example' } });
+
+    expect(response.status).toBe(418);
+    expect(response.headers.get('access-control-allow-origin')).toBe('https://app.example');
+    expect(onErrorCalls).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  test('given createContext throws an HttpError with status 500, when called, then onError sees it and it is not logged as unhandled', async () => {
+    const response = await fetch(endpoint('whoami'), { headers: { 'x-mode': 'http-500' } });
+
+    expect(response.status).toBe(500);
+    expect(onErrorCalls).toEqual(['INTERNAL_SERVER_ERROR']);
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

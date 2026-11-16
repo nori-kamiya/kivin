@@ -215,8 +215,9 @@ HTTP レベルのミドルウェアとヘルパー。
 | --- | --- | --- |
 | `createTrpcRoutes(router, options?)` | function | tRPC のルーターを `listen({ routes })` のネイティブルート（`<endpoint>/*` の GET / POST）として載せる。`endpoint` の既定は `/trpc`。`fetchRequestHandler` の他のオプション（`responseMeta`、`allowBatching` など）はそのまま渡る |
 | `options.app` / `options.createContext({ req, resHeaders, info, requestContext })` | option | `createContext` は HTTP リクエストごとに 1 回呼ばれる（バッチ内の手続きは同じコンテキストを共有）。`requestContext()` は `app.createRequestContext(req)` の結果（初回呼び出し時に作る。`app` が必要）。`HttpError` を投げると対応する tRPC のエラー、`Response` を投げるとその応答をそのまま返す |
-| `options.onError` | option | tRPC の `onError`。これとは別に、`INTERNAL_SERVER_ERROR` の原因は `[kivin] Unhandled error` として 1 回だけ出力する（`markErrorReported` 済みなら出さない） |
-| `httpErrors` | tRPC middleware | `t.procedure.use(httpErrors)`。手続きが投げた `HttpError` を対応する tRPC のエラーにする（使わないと `INTERNAL_SERVER_ERROR`） |
+| `options.cors` | option | このルートの CORS（プリフライトと応答ヘッダ）。アプリの `cors` 設定はコントローラのルートにだけ効き、ネイティブルートには効かない |
+| `options.onError` | option | tRPC の `onError`。これとは別に、`INTERNAL_SERVER_ERROR` の原因は `[kivin] Unhandled error` として 1 回だけ出力する（`HttpError` と `markErrorReported` 済みのものは出さない。`createContext` が `Response` を投げたときは `onError` も呼ばない） |
+| `httpErrors` | tRPC middleware | `t.procedure.use(httpErrors)`。手続きが投げた `HttpError` を対応する tRPC のエラーにし、想定外の例外はメッセージを `Internal Server Error` に置き換えてクライアントに返す（使わないと、`HttpError` は `INTERNAL_SERVER_ERROR` になり、想定外の例外のメッセージはそのまま返る） |
 | `toTRPCError(error)` | function | `HttpError` を同じステータスの tRPC のエラーに変換する。tRPC にコードが無いステータスは 4xx → `BAD_REQUEST`、5xx → `INTERNAL_SERVER_ERROR` |
 | `createTrpcHandler(router, options?)` | function | 同じハンドラを単体で返す |
 
