@@ -1025,6 +1025,32 @@ app.listen({
 - GraphQL と同じく、ガードやミドルウェアはかかりません。認証は `createContext` か `onRequest` フックで行ってください（`onRequest` フックは他のネイティブルートと同じく先に動きます）
 - `onRequest` フックが `Request` を返して書き換えると、そのリクエストは kivin のルーターで振り分け直され、ネイティブルート（`/trpc/*` を含む）には届かず 404 になります。tRPC に限らない既存の制約です
 
+## 静的サイト生成（`kivin ssg`）
+
+GET ルートの応答をビルド時にファイルへ書き出し、`@kivinjs/static` や CDN から配信できます。`@kivinjs/jsx` のページと組み合わせる想定です。
+
+```tsx
+@Controller('/posts')
+export class PostController {
+  @Get('/:slug')
+  @UseMiddleware(Layout)
+  @StaticParams(async () => (await posts.all()).map(({ slug }) => ({ slug })))
+  show({ params, context }: RouteInput) {
+    return render(context, <Post slug={params.slug} />);
+  }
+}
+```
+
+```bash
+kivin generate --entry src/app.ts --outDir .kivin/generated
+kivin ssg --entry src/app.ts --manifest .kivin/generated/manifest.ts --outDir dist --exclude /admin
+```
+
+- `kivin ssg` はアプリを作って `app.init()` を実行し、終わったら `app.close()` します。`kivin generate` と違ってプロバイダとライフサイクルフックが動くので、ページが DB を読むならビルド環境から DB に接続できる必要があります（環境変数で読み取り専用の接続先を渡すなど）。`@StaticParams` の関数は `init()` の後に呼ばれるので、初期化済みのプロバイダやストアを使えます。
+- パスパラメータのあるルートは、`@StaticParams` か API の `params` で値を宣言したものだけを書き出します。宣言の無い動的ルート、2xx 以外の応答、拡張子を決められない型は警告して飛ばします。
+- 書き出したディレクトリは `serveStatic({ root: 'dist' })` でそのまま配信できます（`--format directory` の `about/index.html` を `/about` で返します）。
+- リクエストは `http://localhost` から来たものとして作ります（`--origin` で変更できます）。ヘッダや Cookie は付かないので、認証が要るルートは `--exclude` で除いてください。
+
 ## 未処理の例外
 
 フィルタで処理されなかった例外は、クライアントには `500 { message: 'Internal Server Error' }` だけを返し（原因やスタックは返しません）、サーバ側では `console.error('[kivin] Unhandled error', error)` に 1 回出力します。

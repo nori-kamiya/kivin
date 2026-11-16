@@ -2,7 +2,7 @@
 
 *English | [日本語](#日本語)*
 
-The kivin code generation CLI: `generate` (manifest, contracts, typed client, OpenAPI), `dev` (regenerate and restart on save), `openapi` and `inspect`.
+The kivin code generation CLI: `generate` (manifest, contracts, typed client, OpenAPI), `dev` (regenerate and restart on save), `openapi`, `inspect` and `ssg` (static site generation).
 
 **Requires Bun 1.4.0 or later** (Bun only; it does not run on Node). Part of [kivin](https://github.com/nori-kamiya/kivin/blob/main/README.md), which is early-stage and may change before a stable release.
 
@@ -40,7 +40,7 @@ Install it as a dev dependency of your project and call it from `package.json` s
 
 ## 日本語
 
-kivin のコード生成 CLI です。`generate`（manifest・contracts・型付きクライアント・OpenAPI）、`dev`（保存のたびに再生成して再起動）、`openapi`、`inspect` を提供します。
+kivin のコード生成 CLI です。`generate`（manifest・contracts・型付きクライアント・OpenAPI）、`dev`（保存のたびに再生成して再起動）、`openapi`、`inspect`、`ssg`（静的サイト生成）を提供します。
 
 **Bun 1.4.0 以上が必要です**（Bun 専用で、Node では動きません）。[kivin](https://github.com/nori-kamiya/kivin/blob/main/README.ja.md) の一部で、early-stage のため安定版までに変わる可能性があります。
 

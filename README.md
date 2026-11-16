@@ -226,7 +226,7 @@ Types come from Standard Schema type info, so this works with validators other t
 - Generated typed HTTP client; compile-time route and DI contract checks
 - CORS, cookies (signed cookies too), WebSocket, Server-Sent Events, multipart forms, per-route body limits
 - Guards, middleware and exception filters (global and per route); `HttpError` helpers; graceful shutdown; `createTestingApp` with provider overrides
-- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, response cache (memory / Redis), timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting, i18n (language detection and typed message catalogs), a JSX runtime with route layouts
+- Opt-in middleware packages: auth guards (Basic / Bearer / JWT with JWKS), CSRF, secure headers (`createSecureHeadersMiddleware`, **not enabled by default**), rate limiting, IP allow / deny lists, compression, ETag, response cache (memory / Redis), timeouts, request IDs, content negotiation, streaming, reverse proxy, static files, sessions, metrics / tracing / health checks, typed env vars, cron jobs, GraphQL Yoga, Apollo Server and tRPC mounting, i18n (language detection and typed message catalogs), a JSX runtime with route layouts, static site generation (`kivin ssg`)
 - Bun single binary builds (`bun build --compile`)
 
 ## Packages
@@ -239,7 +239,7 @@ Every package requires Bun 1.4.0 or later. Details: [docs/reference.md](docs/ref
 | `@kivinjs/decorators` | Module / Controller / Route / Enhancer / OpenAPI decorators |
 | `@kivinjs/valibot` | Valibot schema adapter |
 | `@kivinjs/standard-schema` | Standard Schema adapter (Zod, ArkType, Valibot, ...) |
-| `@kivinjs/cli` | Code generation CLI (`generate`, `dev`, `openapi`, `inspect`) |
+| `@kivinjs/cli` | Code generation CLI (`generate`, `dev`, `openapi`, `inspect`, `ssg`) |
 | `@kivinjs/openapi` | OpenAPI 3.1 document generation |
 | `@kivinjs/security` | Basic / Bearer guards, CSRF, secure headers, rate limiting, IP restriction |
 | `@kivinjs/jwt` | JWT verification / signing (Web Crypto), JWKS, auth guard |

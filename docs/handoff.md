@@ -17,7 +17,7 @@ core は実行時の中核だけを持ち、独立した機能は領域ごとの
 | --- | --- | --- |
 | `@kivinjs/core` | ルーティング、DI、モジュール、ライフサイクル、入力検証、Cookie（署名付き含む）/ SSE / WebSocket、CORS、`onRequest` フック、`afterResponse`、`basePath` | — |
 | `@kivinjs/decorators` | TC39 デコレータ（`@Controller` / `@Get` / `@UseGuards` / `@StaticResponse` …） | core |
-| `@kivinjs/cli` | `kivin generate`（AST → manifest / OpenAPI / contracts / 型付きクライアント / AOT 実行関数）、`dev`、`inspect` | core, openapi, oxc-parser, oxc-resolver |
+| `@kivinjs/cli` | `kivin generate`（AST → manifest / OpenAPI / contracts / 型付きクライアント / AOT 実行関数）、`dev`、`inspect`、`ssg` | core, openapi, oxc-parser, oxc-resolver |
 | `@kivinjs/openapi` | OpenAPI 3.1 生成、Swagger UI の HTML | core |
 | `@kivinjs/valibot` / `@kivinjs/standard-schema` | schema adapter | core（valibot は `valibot` も） |
 | `@kivinjs/logger` | JSON 構造化ロガー、リクエストロガー | core, decorators |
@@ -116,7 +116,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 | 機能 | 判断 | 理由 / 代替 |
 | --- | --- | --- |
 | JSX レンダラー（Hono `jsxRenderer`） | `@kivinjs/jsx` を追加した（#89。#68 の「同梱しない」から転換） | React などを入れずに HTML を返したい要望に、依存ゼロの自前ランタイムで応える（2026-11-16 に方式を合意）。要素は描画まで遅延させ、非同期コンポーネントと `<Suspense>` のストリームを扱う。エスケープは常に行い、生の HTML は `raw` / `jsonScript` / `dangerouslySetInnerHTML` だけ。レイアウトはミドルウェアがリクエストに登録し、ハンドラが `render(context, …)` で使う（ハンドラの戻り値を JSON 化する経路には手を入れない）。React などのレンダラーは引き続き `htmlResponse` で使える |
-| SSG（Hono `ssg`） | 実装しない | API フレームワークとしての優先度が低い。静的ページは別のツールで作り、`@kivinjs/static` で配信する |
+| SSG（Hono `ssg`） | `kivin ssg` を追加した（#90。#68 の「実装しない」から転換） | `@kivinjs/jsx` と組み合わせてページを書き出せるようにした。ビルド時の機能なので本体は `@kivinjs/cli` に置き、実行時のパッケージには何も足していない（`@StaticParams` はデコレータのメタデータに書くだけ）。プロバイダが必要になるので `app.init()` / `app.close()` を実行する |
 | Cache（Hono `cache`） | `@kivinjs/http` の `createResponseCache` を追加した（#88。#68 の「実装しない」から転換） | Bun に Web Cache API が無いので、ストアを差し替えられる形（メモリ / Redis）にした。応答の混入を防ぐため、`Authorization` / `Cookie` 付きのリクエスト、`Set-Cookie`・`private` / `no-store` / `no-cache`・`Vary: *` の応答は既定で対象外。エントリは応答の `Vary` で分ける。混入の回帰テストを持つ |
 | `combine` の `every` / `except` | 実装した | `everyGuard` / `exceptGuard`（`@kivinjs/security`）。`anyGuard` と同じく DI で合成する（#62） |
 | tRPC（Elysia `@elysiajs/trpc`） | `@kivinjs/trpc` を追加した（#85。#68 の「作らない」から転換） | `fetchRequestHandler` を載せるだけでは、request-scoped の DI・`HttpError` の変換・SSE のアイドルタイムアウト・未処理例外のログを利用者が毎回書くことになるため。`@trpc/server` は peer dependency（本体の依存は増えない）。request-scoped の解決は core の `app.createRequestContext` で、#86 の Apollo でも使う |
@@ -133,7 +133,7 @@ Hono / Elysia の標準ミドルウェア・ヘルパー・公式プラグイン
 
 ## 7. 残課題
 
-2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #90 SSG → #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n、#88 レスポンスキャッシュ、#89 JSX ランタイムは対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
+2026-11-16 に、§5.1 と #66 で見送った機能をすべて実装する方針にした。issue を小さい順に進める: #66 raw ルートの AOT 化（#85 tRPC、#86 Apollo Server、#87 i18n、#88 レスポンスキャッシュ、#89 JSX ランタイム、#90 SSG は対応済み）。raw ルートの AOT 化は、見送ったときの上限の計測（performance.md）から始める。
 
 ## 8. 最近の変更（#38〜#81 と issue #61〜#68 の対応）
 

@@ -321,6 +321,8 @@ NestJS 風の宣言的 API。コンパイル時に AST から読み取られる�
 
 `@UseBodySchema(schema)`, `@UseQuerySchema(schema)`, `@UseParamSchema(schema)`, `@UseHeaderSchema(schema)`。`@BodyLimit(bytes)` はルートのボディ上限（413。アプリ全体の既定は `defineApplication({ bodyLimit })`）。ヘッダは小文字の名前（`'x-api-version'` など）で検証され、schema にあるキーだけが `headers` に渡ります（schema が無ければ全ヘッダの文字列レコード）。ヘッダの検証はガードやミドルウェアより前に行われ、失敗は `400 headers validation failed` です。クエリで同じキーが繰り返されると（`?tag=a&tag=b`、生成クライアントが配列を送る形）配列になります。`v.array(...)` で受けられ、単一値の schema に繰り返しキーが来た場合は 400 です。OpenAPI には `in: header` のパラメータとして出力されます。`@Consumes('multipart/form-data' | 'application/x-www-form-urlencoded' | 'application/json')` はボディの形式（フォームなら `FormData` を読んでオブジェクトにしてから検証。OpenAPI と生成クライアントにも反映）。
 
+`@StaticParams(source)` は `kivin ssg` がこの GET ルートを描画するときのパスパラメータを宣言します（`[{ slug: 'hello' }]` か、それを返す関数。`async` 可）。静的サイト生成だけが読み、リクエストの処理には影響しません。
+
 `@StaticResponse()` はハンドラの結果が変わらないことを宣言します。引数を取らない GET ルートの応答を起動時に 1 回だけ計算し（ガード・ミドルウェア・フィルタが無ければ Bun のネイティブルートが直接返す）、毎回ハンドラを呼びません。`return { ok: true };` のように定数リテラルを返すだけのハンドラは `kivin generate` が自動でこの扱いにします。時刻・ストア・可変な設定などを読むハンドラには付けないでください（最初の結果が返り続けます）。
 
 検証に失敗すると `400 { message: '<body|query|params|headers> validation failed', issues: [{ path: ['tags', 1, 'name'], message: '...' }] }` を返します。`issues` は schema ライブラリに関係なく `path` と `message` だけで、リクエストの値そのもの（ライブラリの生 issue に含まれる `input` など）は返しません。ただしライブラリ既定のメッセージには値が含まれることがあるので（valibot の `email` / `regex` など）、パスワード等の機微なフィールドにはメッセージを指定してください。フィルタで独自の形式にする場合は `toValidationIssues(rawIssues)` が使えます。
@@ -459,3 +461,19 @@ inspect modules --entry <app.ts> [--format text|json]
 （`native-static` / `singleton-runtime` / `context-runtime` / `request-runtime`）・
 guard / middleware / filter の scope を表示する。
 `inspect modules` は provider / controller scope と app-global な enhancer 配線を表示する。
+
+### `ssg`
+
+アプリの GET ルートを呼び出し、応答をファイルに書き出す（静的サイト生成。Hono の `ssg` に相当）。先に `kivin generate` で manifest を作る。
+
+```
+ssg --entry <app.ts> --manifest <manifest.ts> --outDir <dir> [--format directory|file] [--exclude <path>]... [--origin <url>]
+```
+
+- アプリを作って `app.init()`（`onModuleInit` などの起動時フック）を実行し、書き出した後に `app.close()` する。`generate` と違ってプロバイダが動くので、DB などはビルド環境から接続できる必要がある
+- パスパラメータの無い GET ルートはそのまま、ある GET ルートは `@StaticParams(...)` か API の `params` で宣言した値ごとに描画する。宣言の無い動的ルートは警告して飛ばす。値は URL エンコードしてから埋め込み、`outDir` の外に出るパスは書かない
+- ファイル名: HTML は `--format directory`（既定）なら `/about` → `about/index.html`、`file` なら `about.html`（`@kivinjs/static` でそのまま配信できるのは `directory`）。拡張子のあるパス（`/feed.xml`）はそのまま、それ以外は `Content-Type` から拡張子を決める（JSON → `.json`、`text/plain` → `.txt`、XML・CSS・JS・画像・PDF など）。決められない型、2xx 以外、同じファイルに書き出す 2 つ目のルートは警告して飛ばす
+- `--exclude` はルートのパス（`/posts/:slug`）か描画するパス（`/admin`）に一致したものを除く（複数指定可）
+
+API: `generateStaticSite({ app, manifest, outDir, format?, params?, exclude?, origin? })`（`@kivinjs/cli` から import。`app` は `init()` 済みの `createApp(...)` の結果、`exclude` は文字列・正規表現の配列か判定関数）と、エントリから組み立てる `buildStaticSite({ entry, manifest, outDir, ... })`。結果は `{ files: [{ path, file, contentType }], warnings }`。
+
